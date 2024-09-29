@@ -58,7 +58,7 @@ func main() {
 	// Client connection
 	err := ib.Connect(IB_HOST, IB_PORT, int64(rand.Intn(1e9)))
 	if err != nil {
-		log.Error().Err(err)
+		log.Error().Err(err).Msg("Connect")
 		return
 	}
 	defer ib.Disconnect()

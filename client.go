@@ -26,6 +26,14 @@ import (
 	"time"
 )
 
+const TIMEOUT = 30 * time.Second
+
+var connectionTimeout = TIMEOUT
+
+func SetConnectionTimeout(timeout time.Duration) {
+	connectionTimeout = timeout
+}
+
 type ConnState int
 
 const (
@@ -114,9 +122,9 @@ func (c *EClient) reset() {
 }
 
 func (c *EClient) setConnState(state ConnState) {
-	_state := c.connState
+	cs := c.connState
 	c.connState = state
-	log.Debug().Stringer("from", _state).Stringer("to", c.connState).Msg("connection state changed")
+	log.Debug().Stringer("from", cs).Stringer("to", c.connState).Msg("connection state changed")
 }
 
 // request is a goroutine that will get the req from reqChan and send it to TWS.
@@ -170,13 +178,13 @@ func (c *EClient) startAPI() error {
 	}
 
 	// receive startAPI info: Next valid Id and managed accounts
-	timeout := time.After(30 * time.Second)
+	timeoutChan := time.After(connectionTimeout)
 	var IdReceived, AccountsReceived bool
 	for c.scanner.Scan() {
 		select {
 		case <-c.Ctx.Done():
 			return nil
-		case <-timeout:
+		case <-timeoutChan:
 			return errors.New("timeout")
 		default:
 			msgBuf := NewMsgBuffer(c.scanner.Bytes())
@@ -362,8 +370,13 @@ func (c *EClient) ServerVersion() Version {
 	return c.serverVersion
 }
 
-// SetServerLogLevel setup the log level of server.
-// The default detail level is ERROR. For more details, see API Logging.
+// SetServerLogLevel sets the log level of the server.
+// logLevel can be:
+// 1 = SYSTEM
+// 2 = ERROR	(default)
+// 3 = WARNING
+// 4 = INFORMATION
+// 5 = DETAIL
 func (c *EClient) SetServerLogLevel(logLevel int64) {
 
 	const VERSION = 1

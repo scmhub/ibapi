@@ -15,14 +15,15 @@ const (
 func main() {
 	// We set logger for pretty logs to console
 	log := ibapi.Logger()
-	//ibapi.SetLogLevel(int(zerolog.TraceLevel))
+	// ibapi.SetLogLevel(int(zerolog.TraceLevel))
 	ibapi.SetConsoleWriter()
+	// ibapi.SetConnectionTimeout(1 * time.Second)
 
 	// IB CLient
 	ib := ibapi.NewEClient(nil)
 
 	if err := ib.Connect(IB_HOST, IB_PORT, rand.Int63n(999999)); err != nil {
-		log.Error().Err(err)
+		log.Error().Err(err).Msg("Connect")
 		return
 	}
 

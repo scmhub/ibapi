@@ -6,10 +6,13 @@ import (
 	"time"
 )
 
-const host = "10.74.0.9"           // "localhost"
-const port = 4002                  // 7496
-var clientID = rand.Int63n(999999) //100
-const account = "DU5352527"        // "DUD00029"
+const (
+	host    = "localhost"
+	port    = 7496
+	account = "DUD00029"
+)
+
+var clientID = rand.Int63n(999999)
 
 func TestClient(t *testing.T) {
 	// We set logger for pretty logs to console
