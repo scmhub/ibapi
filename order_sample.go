@@ -1051,6 +1051,14 @@ func LimitOrderWithCustomerAccount(action string, quantity Decimal, limitPrice f
 	return order
 }
 
+func LimitOrderWithIncludeOvernight(action string, quantity Decimal, limitPrice float64) *Order {
+	order := LimitOrder(action, quantity, limitPrice)
+	order.IncludeOvernight = true
+
+	return order
+
+}
+
 // CancelOrderEmpty .
 func CancelOrderEmpty() OrderCancel {
 
@@ -1068,10 +1076,22 @@ func CancelOrderWithManualTime(manualOrderCancelTime string) OrderCancel {
 	return orderCancel
 }
 
-func LimitOrderWithIncludeOvernight(action string, quantity Decimal, limitPrice float64) *Order {
+// LimitOrderWithCmeTaggingFields .
+func LimitOrderWithCmeTaggingFields(action string, quantity Decimal, limitPrice float64, extOperator string, manualOrderIndicator int64) *Order {
+
 	order := LimitOrder(action, quantity, limitPrice)
-	order.IncludeOvernight = true
+	order.ExtOperator = extOperator
+	order.ManualOrderIndicator = manualOrderIndicator
 
 	return order
+}
 
+// OrderCancelWithCmeTaggingFields .
+func OrderCancelWithCmeTaggingFields(extOperator string, manualOrderIndicator int64) OrderCancel {
+
+	orderCancel := NewOrderCancel()
+	orderCancel.ExtOperator = extOperator
+	orderCancel.ManualOrderIndicator = manualOrderIndicator
+
+	return orderCancel
 }

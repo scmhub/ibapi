@@ -341,11 +341,11 @@ func DutchWarrant() *Contract {
 func SimpleFuture() *Contract {
 
 	contract := NewContract()
-	contract.Symbol = "GBL"
+	contract.Symbol = "ES"
 	contract.SecType = "FUT"
-	contract.Exchange = "EUREX"
-	contract.Currency = "EUR"
-	contract.LastTradeDateOrContractMonth = "202303"
+	contract.Exchange = "CME"
+	contract.Currency = "USD"
+	contract.LastTradeDateOrContractMonth = "202503"
 
 	return contract
 }

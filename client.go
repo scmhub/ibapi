@@ -1065,6 +1065,11 @@ func (c *EClient) PlaceOrder(orderID OrderID, contract *Contract, order *Order) 
 		return
 	}
 
+	if c.serverVersion < MIN_SERVER_VER_CME_TAGGING_FIELDS && order.ManualOrderIndicator != UNSET_INT {
+		c.wrapper.Error(orderID, UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support manual indicator parameter", "")
+		return
+	}
+
 	var VERSION int
 	if c.serverVersion < MIN_SERVER_VER_NOT_HELD {
 		VERSION = 27
@@ -1515,6 +1520,10 @@ func (c *EClient) PlaceOrder(orderID OrderID, contract *Contract, order *Order) 
 		fields = append(fields, order.IncludeOvernight)
 	}
 
+	if c.serverVersion >= MIN_SERVER_VER_CME_TAGGING_FIELDS {
+		fields = append(fields, order.ManualOrderIndicator)
+	}
+
 	msg := makeFields(fields...)
 
 	c.reqChan <- msg
@@ -1528,19 +1537,34 @@ func (c *EClient) CancelOrder(orderID OrderID, orderCancel OrderCancel) {
 		return
 	}
 
+	if c.serverVersion < MIN_SERVER_VER_CME_TAGGING_FIELDS && (orderCancel.ExtOperator != "" || orderCancel.ManualOrderIndicator != UNSET_INT) {
+		c.wrapper.Error(orderID, UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support ext operator and manual order indicator parameters.", "")
+	}
+
 	const VERSION = 1
 
-	fields := make([]interface{}, 0, 7)
-	fields = append(fields, CANCEL_ORDER, VERSION, orderID)
+	fields := make([]interface{}, 0, 9)
+	fields = append(fields, CANCEL_ORDER)
 
-	if c.serverVersion > MIN_SERVER_VER_MANUAL_ORDER_TIME {
+	if c.serverVersion < MIN_SERVER_VER_CME_TAGGING_FIELDS {
+		fields = append(fields, VERSION)
+	}
+
+	fields = append(fields, orderID)
+
+	if c.serverVersion >= MIN_SERVER_VER_MANUAL_ORDER_TIME {
 		fields = append(fields, orderCancel.ManualOrderCancelTime)
 	}
 
-	if c.serverVersion > MIN_SERVER_VER_RFQ_FIELDS && c.serverVersion < MIN_SERVER_VER_UNDO_RFQ_FIELDS {
+	if c.serverVersion >= MIN_SERVER_VER_RFQ_FIELDS && c.serverVersion < MIN_SERVER_VER_UNDO_RFQ_FIELDS {
 		fields = append(fields, "")
 		fields = append(fields, "")
 		fields = append(fields, UNSET_INT)
+	}
+
+	if c.serverVersion >= MIN_SERVER_VER_CME_TAGGING_FIELDS {
+		fields = append(fields, orderCancel.ExtOperator)
+		fields = append(fields, orderCancel.ManualOrderIndicator)
 	}
 
 	msg := makeFields(fields...)
@@ -1589,11 +1613,26 @@ func (c *EClient) ReqAllOpenOrders() {
 }
 
 // ReqGlobalCancel cancels all open orders globally. It cancels both API and TWS open orders.
-func (c *EClient) ReqGlobalCancel() {
+func (c *EClient) ReqGlobalCancel(orderCancel OrderCancel) {
+	if c.serverVersion < MIN_SERVER_VER_CME_TAGGING_FIELDS && (orderCancel.ExtOperator != "" || orderCancel.ManualOrderIndicator != UNSET_INT) {
+		c.wrapper.Error(NO_VALID_ID, UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support ext operator and manual order indicator parameters.", "")
+	}
 
 	const VERSION = 1
 
-	msg := makeFields(REQ_GLOBAL_CANCEL, VERSION)
+	fields := make([]interface{}, 0, 4)
+	fields = append(fields, REQ_GLOBAL_CANCEL)
+
+	if c.serverVersion < MIN_SERVER_VER_CME_TAGGING_FIELDS {
+		fields = append(fields, VERSION)
+	}
+
+	if c.serverVersion >= MIN_SERVER_VER_CME_TAGGING_FIELDS {
+		fields = append(fields, orderCancel.ExtOperator)
+		fields = append(fields, orderCancel.ManualOrderIndicator)
+	}
+
+	msg := makeFields(fields...)
 
 	c.reqChan <- msg
 }

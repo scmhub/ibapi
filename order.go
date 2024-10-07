@@ -224,6 +224,8 @@ type Order struct {
 	BondAccruedInterest      string
 
 	IncludeOvernight bool
+
+	ManualOrderIndicator int64
 }
 
 // NewOrder creates a default Order.
@@ -283,6 +285,8 @@ func NewOrder() *Order {
 	order.CompeteAgainstBestOffset = UNSET_FLOAT
 	order.MidOffsetAtWhole = UNSET_FLOAT
 	order.MidOffsetAtHalf = UNSET_FLOAT
+
+	order.ManualOrderIndicator = UNSET_INT
 
 	return order
 }

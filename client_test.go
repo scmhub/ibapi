@@ -340,13 +340,13 @@ func orderOperations(ib *EClient) {
 	// with cash Qty
 	ib.PlaceOrder(ib.NextID(), USStockAtSmart(), LimitOrderWithCashQty("BUY", 111.11, 5000))
 
-	time.Sleep(-1 * time.Second)
+	time.Sleep(1 * time.Second)
 
 	// Cancel one order
 	ib.CancelOrder(ib.nextID, CancelOrderEmpty())
 
 	// cancel all orders for all accounts
-	ib.ReqGlobalCancel()
+	ib.ReqGlobalCancel(CancelOrderEmpty())
 
 	// request the day's execution
 	ib.ReqExecutions(100001, ExecutionFilter{})
@@ -374,8 +374,17 @@ func orderOperations(ib *EClient) {
 	// limit with customer account order submission
 	ib.PlaceOrder(ib.NextID(), USStockAtSmart(), LimitOrderWithCustomerAccount("BUY", StringToDecimal("100"), 111.11, "CustAcct"))
 
-	// limit with customer account order submission
+	// limit with include overnight
 	ib.PlaceOrder(ib.NextID(), USStockAtSmart(), LimitOrderWithIncludeOvernight("BUY", StringToDecimal("100"), 111.11))
+
+	// limit with CME Tag
+	ib.PlaceOrder(ib.NextID(), SimpleFuture(), LimitOrderWithCmeTaggingFields("BUY", StringToDecimal("1"), 5333, "ABCD", 1))
+	time.Sleep(5 * time.Second)
+	ib.CancelOrder(ib.nextID, OrderCancelWithCmeTaggingFields("BCDE", 0))
+	time.Sleep(2 * time.Second)
+	ib.PlaceOrder(ib.NextID(), SimpleFuture(), LimitOrderWithCmeTaggingFields("BUY", StringToDecimal("1"), 5333, "CDEF", 0))
+	time.Sleep(5 * time.Second)
+	ib.CancelOrder(ib.nextID, OrderCancelWithCmeTaggingFields("DEFG", 1))
 }
 
 func ocaSamples(ib *EClient) {
