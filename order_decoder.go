@@ -579,3 +579,10 @@ func (d *OrderDecoder) decodeIncludeOvernight(msgBuf *MsgBuffer) {
 		d.order.IncludeOvernight = msgBuf.decodeBool()
 	}
 }
+
+func (d *OrderDecoder) decodeCMETaggingFields(msgBuf *MsgBuffer) {
+	if d.serverVersion >= MIN_SERVER_VER_CME_TAGGING_FIELDS_IN_OPEN_ORDER {
+		d.order.ExtOperator = msgBuf.decodeString()
+		d.order.ManualOrderIndicator = msgBuf.decodeInt64ShowUnset()
+	}
+}

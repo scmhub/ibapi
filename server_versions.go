@@ -139,9 +139,11 @@ const (
 	MIN_SERVER_VER_UNDO_RFQ_FIELDS                    Version = 190
 	MIN_SERVER_VER_PERM_ID_AS_LONG                    Version = 191
 	MIN_SERVER_VER_CME_TAGGING_FIELDS                 Version = 192
+	MIN_SERVER_VER_CME_TAGGING_FIELDS_IN_OPEN_ORDER   Version = 193
+
 	// 100+ messaging
 	// 100 = enhanced handshake, msg length prefixes
 
 	MIN_CLIENT_VER = 100
-	MAX_CLIENT_VER = MIN_SERVER_VER_CME_TAGGING_FIELDS
+	MAX_CLIENT_VER = MIN_SERVER_VER_CME_TAGGING_FIELDS_IN_OPEN_ORDER
 )

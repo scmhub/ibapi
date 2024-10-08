@@ -492,6 +492,8 @@ func (d *EDecoder) processOpenOrderMsg(msgBuf *MsgBuffer) {
 	orderDecoder.decodeCustomerAccount(msgBuf)
 	orderDecoder.decodeProfessionalCustomer(msgBuf)
 	orderDecoder.decodeBondAccruedInterest(msgBuf)
+	orderDecoder.decodeIncludeOvernight(msgBuf)
+	orderDecoder.decodeCMETaggingFields(msgBuf)
 
 	d.wrapper.OpenOrder(order.OrderID, contract, order, orderState)
 }
