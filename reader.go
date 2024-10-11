@@ -15,8 +15,8 @@ func EReader(ctx context.Context, scanner *bufio.Scanner, decoder *EDecoder, wg 
 	// Decode
 	wg.Add(1)
 	go func() {
-		log.Debug().Msg("Decoder started")
-		defer log.Debug().Msg("Decoder ended")
+		log.Debug().Msg("decoder started")
+		defer log.Debug().Msg("decoder ended")
 		defer wg.Done()
 		for {
 			select {
@@ -44,7 +44,9 @@ func EReader(ctx context.Context, scanner *bufio.Scanner, decoder *EDecoder, wg 
 			msgChan <- msgBytes
 			if err := scanner.Err(); err != nil {
 				log.Error().Err(err).Msg("scanner error")
+				break
 			}
 		}
+		close(msgChan)
 	}()
 }

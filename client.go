@@ -20,16 +20,7 @@ import (
 	"strconv"
 	"sync"
 	"syscall"
-	"time"
 )
-
-const TIMEOUT = 30 * time.Second
-
-var connectionTimeout = TIMEOUT
-
-func SetConnectionTimeout(timeout time.Duration) {
-	connectionTimeout = timeout
-}
 
 type ConnState int
 
