@@ -14,14 +14,11 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
-	"errors"
 	"fmt"
 	"os"
 	"os/signal"
 	"strconv"
-	"strings"
 	"sync"
-	"sync/atomic"
 	"syscall"
 	"time"
 )
@@ -68,7 +65,6 @@ type EClient struct {
 	serverVersion  Version
 	connTime       string
 	connState      ConnState
-	nextID         int64
 	writer         *bufio.Writer
 	scanner        *bufio.Scanner
 	wrapper        EWrapper
@@ -99,7 +95,6 @@ func (c *EClient) reset() {
 	c.clientID = -1
 	c.extraAuth = false
 	c.conn = &Connection{}
-	c.nextID = -1
 	c.serverVersion = -1
 	c.connTime = ""
 
@@ -177,46 +172,6 @@ func (c *EClient) startAPI() error {
 		return err
 	}
 
-	// receive startAPI info: Next valid Id and managed accounts
-	timeoutChan := time.After(connectionTimeout)
-	var IdReceived, AccountsReceived bool
-	for c.scanner.Scan() {
-		select {
-		case <-c.Ctx.Done():
-			return nil
-		case <-timeoutChan:
-			return errors.New("timeout")
-		default:
-			msgBuf := NewMsgBuffer(c.scanner.Bytes())
-			if msgBuf.Len() == 0 {
-				return errors.New("no fields")
-			}
-			// read the msg type
-			msgID := msgBuf.decodeInt64()
-			switch msgID {
-			case NEXT_VALID_ID:
-				_ = msgBuf.decodeString()
-				reqID := msgBuf.decodeInt64()
-				c.nextID = reqID - 1
-				log.Info().Int64("next valid ID", reqID).Msg("start API")
-				IdReceived = true
-				if AccountsReceived {
-					return nil
-				}
-			case MANAGED_ACCTS:
-				_ = msgBuf.decodeString()
-				accountsNames := msgBuf.decodeString()
-				accounts := strings.Split(accountsNames, ",")
-				log.Info().Strs("accounts", accounts).Msg("start API")
-				AccountsReceived = true
-				if IdReceived {
-					return nil
-				}
-			default:
-				return errors.New("unknown field")
-			}
-		}
-	}
 	return nil
 }
 
@@ -342,17 +297,6 @@ func (c *EClient) IsConnected() bool {
 // SetConnectionOptions setup the Connection Options.
 func (c *EClient) SetConnectionOptions(opts string) {
 	c.connectOptions = opts
-}
-
-// NextID return a local next ID. It is initialised at connection.
-// NextID = -1 if non initialised.
-func (c *EClient) NextID() int64 {
-	return atomic.AddInt64(&c.nextID, 1)
-}
-
-// ResetID set the nextID
-func (c *EClient) ResetID(id int64) {
-	c.nextID = id
 }
 
 // ReqCurrentTime asks the current system time on the server side.

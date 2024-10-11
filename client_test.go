@@ -13,6 +13,12 @@ const (
 )
 
 var clientID = rand.Int63n(999999)
+var orderID int64
+
+func nextID() int64 {
+	orderID++
+	return orderID
+}
 
 func TestClient(t *testing.T) {
 	// We set logger for pretty logs to console
@@ -309,41 +315,42 @@ func orderOperations(ib *EClient) {
 	ib.ReqAutoOpenOrders(true)
 	ib.ReqOpenOrders()
 	// Placing/modifying an order - remember to ALWAYS increment the nextValidId after placing an order so it can be used for the next one!
-	ib.PlaceOrder(ib.NextID(), USStock(), LimitOrder("SELL", ONE, 50))
+	ib.PlaceOrder(nextID(), USStock(), LimitOrder("SELL", ONE, 50))
 
-	// ib.PlaceOrder(ib.NextID(), OptionAtBox(), Block("BUY", StringToDecimal("50"), 20))
-	// ib.PlaceOrder(ib.NextID(), OptionAtBox(), BoxTop("SELL", StringToDecimal("10")))
+	// ib.PlaceOrder(nextID(), OptionAtBox(), Block("BUY", StringToDecimal("50"), 20))
+	// ib.PlaceOrder(nextID(), OptionAtBox(), BoxTop("SELL", StringToDecimal("10")))
 
-	// ib.PlaceOrder(ib.NextID(), FutureComboContract(), ComboLimitOrder("SELL", ONE, 1, false))
-	// ib.PlaceOrder(ib.NextID(), StockComboContract(), ComboMarketOrder("BUY", ONE, false))
-	// ib.PlaceOrder(ib.NextID(), OptionComboContract(), ComboMarketOrder("BUY", ONE, true))
-	// ib.PlaceOrder(ib.NextID(), StockComboContract(), LimitOrderForComboWithLegPrices("BUY", ONE, []float64{10, 5}, true))
-	// ib.PlaceOrder(ib.NextID(), USStock(), Discretionary("SELL", ONE, 45, 0.5))
-	// ib.PlaceOrder(ib.NextID(), OptionAtBox(), LimitIfTouched("SELL", ONE, 30, 34))
-	// ib.PlaceOrder(ib.NextID(), USStock(), LimitOnClose("SELL", ONE, 34))
-	// ib.PlaceOrder(ib.NextID(), USStock(), LimitOnOpen("BUY", ONE, 35))
-	// ib.PlaceOrder(ib.NextID(), USStock(), MarketIfTouched("BUY", ONE, 35))
-	// ib.PlaceOrder(ib.NextID(), USStock(), MarketOnClose("SELL", ONE))
-	// ib.PlaceOrder(ib.NextID(), USStock(), MarketOnOpen("BUY", ONE))
-	// ib.PlaceOrder(ib.NextID(), USStock(), MarketOrder("SELL", ONE))
-	// ib.PlaceOrder(ib.NextID(), USStock(), MarketToLimit("BUY", ONE))
-	// ib.PlaceOrder(ib.NextID(), OptionAtIse(), MidpointMatch("BUY", ONE))
-	// ib.PlaceOrder(ib.NextID(), USStock(), Stop("SELL", ONE, 34.4))
-	// ib.PlaceOrder(ib.NextID(), USStock(), StopLimit("BUY", ONE, 35, 33))
-	// ib.PlaceOrder(ib.NextID(), USStock(), StopWithProtection("SELL", ONE, 45))
-	// ib.PlaceOrder(ib.NextID(), USStock(), SweepToFill("BUY", ONE, 35))
-	// ib.PlaceOrder(ib.NextID(), USStock(), TrailingStop("SELL", ONE, 0.5, 30))
-	// ib.PlaceOrder(ib.NextID(), USStock(), TrailingStopLimit("BUY", ONE, 2, 5, 50))
+	// ib.PlaceOrder(nextID(), FutureComboContract(), ComboLimitOrder("SELL", ONE, 1, false))
+	// ib.PlaceOrder(nextID(), StockComboContract(), ComboMarketOrder("BUY", ONE, false))
+	// ib.PlaceOrder(nextID(), OptionComboContract(), ComboMarketOrder("BUY", ONE, true))
+	// ib.PlaceOrder(nextID(), StockComboContract(), LimitOrderForComboWithLegPrices("BUY", ONE, []float64{10, 5}, true))
+	// ib.PlaceOrder(nextID(), USStock(), Discretionary("SELL", ONE, 45, 0.5))
+	// ib.PlaceOrder(nextID(), OptionAtBox(), LimitIfTouched("SELL", ONE, 30, 34))
+	// ib.PlaceOrder(nextID(), USStock(), LimitOnClose("SELL", ONE, 34))
+	// ib.PlaceOrder(nextID(), USStock(), LimitOnOpen("BUY", ONE, 35))
+	// ib.PlaceOrder(nextID(), USStock(), MarketIfTouched("BUY", ONE, 35))
+	// ib.PlaceOrder(nextID(), USStock(), MarketOnClose("SELL", ONE))
+	// ib.PlaceOrder(nextID(), USStock(), MarketOnOpen("BUY", ONE))
+	// ib.PlaceOrder(nextID(), USStock(), MarketOrder("SELL", ONE))
+	// ib.PlaceOrder(nextID(), USStock(), MarketToLimit("BUY", ONE))
+	// ib.PlaceOrder(nextID(), OptionAtIse(), MidpointMatch("BUY", ONE))
+	// ib.PlaceOrder(nextID(), USStock(), Stop("SELL", ONE, 34.4))
+	// ib.PlaceOrder(nextID(), USStock(), StopLimit("BUY", ONE, 35, 33))
+	// ib.PlaceOrder(nextID(), USStock(), StopWithProtection("SELL", ONE, 45))
+	// ib.PlaceOrder(nextID(), USStock(), SweepToFill("BUY", ONE, 35))
+	// ib.PlaceOrder(nextID(), USStock(), TrailingStop("SELL", ONE, 0.5, 30))
+	// ib.PlaceOrder(nextID(), USStock(), TrailingStopLimit("BUY", ONE, 2, 5, 50))
 
 	// mid price
-	ib.PlaceOrder(ib.NextID(), USStockAtSmart(), Midprice("BUY", ONE, 150))
+	ib.PlaceOrder(nextID(), USStockAtSmart(), Midprice("BUY", ONE, 150))
 	// with cash Qty
-	ib.PlaceOrder(ib.NextID(), USStockAtSmart(), LimitOrderWithCashQty("BUY", 111.11, 5000))
+	orderID++
+	ib.PlaceOrder(nextID(), USStockAtSmart(), LimitOrderWithCashQty("BUY", 111.11, 5000))
 
 	time.Sleep(1 * time.Second)
 
 	// Cancel one order
-	ib.CancelOrder(ib.nextID, CancelOrderEmpty())
+	ib.CancelOrder(nextID(), CancelOrderEmpty())
 
 	// cancel all orders for all accounts
 	ib.ReqGlobalCancel(CancelOrderEmpty())
@@ -355,36 +362,36 @@ func orderOperations(ib *EClient) {
 	ib.ReqCompletedOrders(false)
 
 	// order submission
-	ib.PlaceOrder(ib.NextID(), CryptoContract(), LimitOrder("BUY", StringToDecimal("0.12345678"), 3700))
+	ib.PlaceOrder(nextID(), CryptoContract(), LimitOrder("BUY", StringToDecimal("0.12345678"), 3700))
 
 	// order time
-	ib.PlaceOrder(ib.NextID(), USStockAtSmart(), LimitOrderWithManualOrderTime("BUY", StringToDecimal("100"), 111.11, "20240714-13:00:00"))
+	ib.PlaceOrder(nextID(), USStockAtSmart(), LimitOrderWithManualOrderTime("BUY", StringToDecimal("100"), 111.11, "20240714-13:00:00"))
 	// Cancel one order
-	ib.CancelOrder(ib.nextID, CancelOrderWithManualTime("20240914-00:00:05"))
+	ib.CancelOrder(nextID(), CancelOrderWithManualTime("20240914-00:00:05"))
 
 	// peg best to mid order submission
-	ib.PlaceOrder(ib.NextID(), IBKRATSContract(), PegBestUpToMidOrder("BUY", StringToDecimal("100"), 111.11, 100, 200, 0.02, 0.025))
+	ib.PlaceOrder(nextID(), IBKRATSContract(), PegBestUpToMidOrder("BUY", StringToDecimal("100"), 111.11, 100, 200, 0.02, 0.025))
 
 	// peg best order submission
-	ib.PlaceOrder(ib.NextID(), IBKRATSContract(), PegBestOrder("BUY", StringToDecimal("100"), 111.11, 100, 200, 0.03))
+	ib.PlaceOrder(nextID(), IBKRATSContract(), PegBestOrder("BUY", StringToDecimal("100"), 111.11, 100, 200, 0.03))
 
 	// peg mid order submission
-	ib.PlaceOrder(ib.NextID(), IBKRATSContract(), PegMidOrder("BUY", StringToDecimal("100"), 111.11, 100, 200, 0.025))
+	ib.PlaceOrder(nextID(), IBKRATSContract(), PegMidOrder("BUY", StringToDecimal("100"), 111.11, 100, 200, 0.025))
 
 	// limit with customer account order submission
-	ib.PlaceOrder(ib.NextID(), USStockAtSmart(), LimitOrderWithCustomerAccount("BUY", StringToDecimal("100"), 111.11, "CustAcct"))
+	ib.PlaceOrder(nextID(), USStockAtSmart(), LimitOrderWithCustomerAccount("BUY", StringToDecimal("100"), 111.11, "CustAcct"))
 
 	// limit with include overnight
-	ib.PlaceOrder(ib.NextID(), USStockAtSmart(), LimitOrderWithIncludeOvernight("BUY", StringToDecimal("100"), 111.11))
+	ib.PlaceOrder(nextID(), USStockAtSmart(), LimitOrderWithIncludeOvernight("BUY", StringToDecimal("100"), 111.11))
 
 	// limit with CME Tag
-	ib.PlaceOrder(ib.NextID(), SimpleFuture(), LimitOrderWithCmeTaggingFields("BUY", StringToDecimal("1"), 5333, "ABCD", 1))
+	ib.PlaceOrder(nextID(), SimpleFuture(), LimitOrderWithCmeTaggingFields("BUY", StringToDecimal("1"), 5333, "ABCD", 1))
 	time.Sleep(5 * time.Second)
-	ib.CancelOrder(ib.nextID, OrderCancelWithCmeTaggingFields("BCDE", 0))
+	ib.CancelOrder(nextID(), OrderCancelWithCmeTaggingFields("BCDE", 0))
 	time.Sleep(2 * time.Second)
-	ib.PlaceOrder(ib.NextID(), SimpleFuture(), LimitOrderWithCmeTaggingFields("BUY", StringToDecimal("1"), 5333, "CDEF", 0))
+	ib.PlaceOrder(nextID(), SimpleFuture(), LimitOrderWithCmeTaggingFields("BUY", StringToDecimal("1"), 5333, "CDEF", 0))
 	time.Sleep(5 * time.Second)
-	ib.CancelOrder(ib.nextID, OrderCancelWithCmeTaggingFields("DEFG", 1))
+	ib.CancelOrder(nextID(), OrderCancelWithCmeTaggingFields("DEFG", 1))
 }
 
 func ocaSamples(ib *EClient) {
@@ -394,7 +401,7 @@ func ocaSamples(ib *EClient) {
 	orders = append(orders, LimitOrder("BUY", ONE, 12))
 	for _, order := range orders {
 		OneCancelsAll("TestOca", order, 2)
-		ib.PlaceOrder(ib.NextID(), USStock(), order)
+		ib.PlaceOrder(nextID(), USStock(), order)
 	}
 }
 
@@ -407,17 +414,17 @@ func conditionSamples(ib *EClient) {
 	lmt.Conditions = append(lmt.Conditions, NewPercentageChangeCondition(15.0, 208813720, "SMART", true, true))
 	lmt.Conditions = append(lmt.Conditions, NewTimeCondition("20220808 10:00:00 US/Eastern", true, false))
 	lmt.Conditions = append(lmt.Conditions, NewVolumeCondition(208813720, "SMART", false, 100, true))
-	ib.PlaceOrder(ib.NextID(), USStock(), lmt)
+	ib.PlaceOrder(nextID(), USStock(), lmt)
 
 	// Conditions can make the order active or cancel it. Only LMT orders can be conditionally canceled.
 	lmt2 := LimitOrder("BUY", StringToDecimal("100"), 20)
 	lmt2.ConditionsCancelOrder = true
 	lmt2.Conditions = append(lmt2.Conditions, NewPriceCondition(DefaultTriggerMethod, 208813720, "SMART", 600, false, false))
-	ib.PlaceOrder(ib.NextID(), EuropeanStock(), lmt2)
+	ib.PlaceOrder(nextID(), EuropeanStock(), lmt2)
 }
 
 func bracketSample(ib *EClient) {
-	parent, takeProfit, stopLoss := BracketOrder(ib.NextID(), "BUY", StringToDecimal("100"), 30, 40, 20)
+	parent, takeProfit, stopLoss := BracketOrder(nextID(), "BUY", StringToDecimal("100"), 30, 40, 20)
 	ib.PlaceOrder(parent.OrderID, EuropeanStock(), parent)
 	ib.PlaceOrder(takeProfit.OrderID, EuropeanStock(), takeProfit)
 	ib.PlaceOrder(stopLoss.OrderID, EuropeanStock(), stopLoss)
@@ -427,14 +434,14 @@ func hedgeSample(ib *EClient) {
 	//F Hedge order
 	//Parent order on a contract which currency differs from your base currency
 	parent := LimitOrder("BUY", StringToDecimal("100"), 10)
-	parent.OrderID = ib.NextID()
+	parent.OrderID = nextID()
 	parent.Transmit = false
 	// Hedge on the currency conversion
 	hedge := MarketFHedge(parent.OrderID, "BUY")
 	// Place the parent first...
 	ib.PlaceOrder(parent.OrderID, EuropeanStock(), parent)
 	// Then the hedge order
-	ib.PlaceOrder(ib.NextID(), EurGbpFx(), hedge)
+	ib.PlaceOrder(nextID(), EurGbpFx(), hedge)
 }
 
 func testAlgoSamples(ib *EClient) {
@@ -442,49 +449,49 @@ func testAlgoSamples(ib *EClient) {
 	baseOrder := LimitOrder("BUY", StringToDecimal("1000"), 1)
 	// arrival px
 	FillArrivalPriceParams(baseOrder, 0.1, "Aggressive", "09:00:00 US/Eastern", "16:00:00 US/Eastern", true, true)
-	ib.PlaceOrder(ib.NextID(), USStockAtSmart(), baseOrder)
+	ib.PlaceOrder(nextID(), USStockAtSmart(), baseOrder)
 	// dark ice
 	FillDarkIceParams(baseOrder, 10, "09:00:00 US/Eastern", "16:00:00 US/Eastern", true)
-	ib.PlaceOrder(ib.NextID(), USStockAtSmart(), baseOrder)
+	ib.PlaceOrder(nextID(), USStockAtSmart(), baseOrder)
 	// accumulate/distribute - The Time Zone in "startTime" and "endTime" attributes is ignored and always defaulted to GMT
 	FillAccumulateDistributeParams(baseOrder, 10, 60, true, true, 1, true, true, "12:00:00", "16:00:00")
-	ib.PlaceOrder(ib.NextID(), USStockAtSmart(), baseOrder)
+	ib.PlaceOrder(nextID(), USStockAtSmart(), baseOrder)
 	// twap
 	FillTwapParams(baseOrder, "Marketable", "09:00:00 US/Eastern", "16:00:00 US/Eastern", true)
-	ib.PlaceOrder(ib.NextID(), USStockAtSmart(), baseOrder)
+	ib.PlaceOrder(nextID(), USStockAtSmart(), baseOrder)
 	// vwap
 	FillVwapParams(baseOrder, 0.2, "09:00:00 US/Eastern", "16:00:00 US/Eastern", true, true, true)
-	ib.PlaceOrder(ib.NextID(), USStockAtSmart(), baseOrder)
+	ib.PlaceOrder(nextID(), USStockAtSmart(), baseOrder)
 	// balance impact risk
 	FillBalanceImpactRiskParams(baseOrder, 0.1, "Aggressive", true)
-	ib.PlaceOrder(ib.NextID(), USStockAtSmart(), baseOrder)
+	ib.PlaceOrder(nextID(), USStockAtSmart(), baseOrder)
 	// mini impact
 	FillMinImpactParams(baseOrder, 0.3)
-	ib.PlaceOrder(ib.NextID(), USStockAtSmart(), baseOrder)
+	ib.PlaceOrder(nextID(), USStockAtSmart(), baseOrder)
 	// adaptive
 	FillAdaptiveParams(baseOrder, "Normal")
-	ib.PlaceOrder(ib.NextID(), USStockAtSmart(), baseOrder)
+	ib.PlaceOrder(nextID(), USStockAtSmart(), baseOrder)
 	// close price
 	FillClosePriceParams(baseOrder, 0.5, "Neutral", "12:00:00 US/Eastern", true)
-	ib.PlaceOrder(ib.NextID(), USStockAtSmart(), baseOrder)
+	ib.PlaceOrder(nextID(), USStockAtSmart(), baseOrder)
 	// percentage of volume
 	FillPctVolParams(baseOrder, 0.5, "12:00:00 US/Eastern", "14:00:00 US/Eastern", true)
-	ib.PlaceOrder(ib.NextID(), USStockAtSmart(), baseOrder)
+	ib.PlaceOrder(nextID(), USStockAtSmart(), baseOrder)
 	// price variant percentage of volume
 	FillPriceVariantPctVolParams(baseOrder, 0.1, 0.05, 0.01, 0.2, "12:00:00 US/Eastern", "14:00:00 US/Eastern", true)
-	ib.PlaceOrder(ib.NextID(), USStockAtSmart(), baseOrder)
+	ib.PlaceOrder(nextID(), USStockAtSmart(), baseOrder)
 	// size variant percentage of volume
 	FillSizeVariantPctVolParams(baseOrder, 0.2, 0.4, "12:00:00 US/Eastern", "14:00:00 US/Eastern", true)
-	ib.PlaceOrder(ib.NextID(), USStockAtSmart(), baseOrder)
+	ib.PlaceOrder(nextID(), USStockAtSmart(), baseOrder)
 	// time variant percentage of volume
 	FillTimeVariantPctVolParams(baseOrder, 0.2, 0.4, "12:00:00 US/Eastern", "14:00:00 US/Eastern", true)
-	ib.PlaceOrder(ib.NextID(), USStockAtSmart(), baseOrder)
+	ib.PlaceOrder(nextID(), USStockAtSmart(), baseOrder)
 	// Jefferies vwap
 	FillJefferiesVWAPParams(baseOrder, "10:00:00 US/Eastern", "16:00:00 US/Eastern", 10, 10, "Exclude_Both", 130, 135, 1, 10, "Patience", false, "Midpoint")
-	ib.PlaceOrder(ib.NextID(), JefferiesContract(), baseOrder)
+	ib.PlaceOrder(nextID(), JefferiesContract(), baseOrder)
 	// CSFB Inline
 	FillCSFBInlineParams(baseOrder, "10:00:00 US/Eastern", "16:00:00 US/Eastern", "Patient", 10, 20, 100, "Default", false, 40, 100, 100, 35)
-	ib.PlaceOrder(ib.NextID(), CSFBContract(), baseOrder)
+	ib.PlaceOrder(nextID(), CSFBContract(), baseOrder)
 }
 
 func financialAdvisorOrderSamples(ib *EClient) {
@@ -492,24 +499,24 @@ func financialAdvisorOrderSamples(ib *EClient) {
 	faOrderOneAccount := MarketOrder("BUY", StringToDecimal("100"))
 	// Specify the Account Number directly
 	faOrderOneAccount.Account = "DU119915"
-	ib.PlaceOrder(ib.NextID(), USStock(), faOrderOneAccount)
+	ib.PlaceOrder(nextID(), USStock(), faOrderOneAccount)
 	time.Sleep(1 * time.Second)
 	// FA order group
 	faOrderGroup := LimitOrder("BUY", StringToDecimal("200"), 10)
 	faOrderGroup.FAGroup = "MyTestGroup1"
 	faOrderGroup.FAMethod = "AvailableEquity"
-	ib.PlaceOrder(ib.NextID(), USStock(), faOrderGroup)
+	ib.PlaceOrder(nextID(), USStock(), faOrderGroup)
 	time.Sleep(1 * time.Second)
 	// FA order user defined group
 	faOrderUserDefinedGroup := LimitOrder("BUY", StringToDecimal("200"), 10)
 	faOrderUserDefinedGroup.FAGroup = "MyTestProfile1"
-	ib.PlaceOrder(ib.NextID(), USStock(), faOrderUserDefinedGroup)
+	ib.PlaceOrder(nextID(), USStock(), faOrderUserDefinedGroup)
 	time.Sleep(1 * time.Second)
 	// model order
 	modelOrder := LimitOrder("BUY", StringToDecimal("200"), 100)
 	modelOrder.Account = "DF12345"
 	modelOrder.ModelCode = "Technology"
-	ib.PlaceOrder(ib.NextID(), USStock(), modelOrder)
+	ib.PlaceOrder(nextID(), USStock(), modelOrder)
 	time.Sleep(1 * time.Second)
 }
 
@@ -660,11 +667,11 @@ func reqTickByTickData(ib *EClient) {
 
 func whatIfSamples(ib *EClient) {
 	// Placing what-if order
-	ib.PlaceOrder(ib.NextID(), BondWithCusip(), WhatIfLimitOrder("BUY", StringToDecimal("100"), 20))
+	ib.PlaceOrder(nextID(), BondWithCusip(), WhatIfLimitOrder("BUY", StringToDecimal("100"), 20))
 }
 
 func ibkratsSample(ib *EClient) {
-	ib.PlaceOrder(ib.NextID(), IBKRATSContract(), LimitIBKRATS("BUY", StringToDecimal("100"), 330))
+	ib.PlaceOrder(nextID(), IBKRATSContract(), LimitIBKRATS("BUY", StringToDecimal("100"), 330))
 }
 
 func wshCalendarOperations(ib *EClient) {

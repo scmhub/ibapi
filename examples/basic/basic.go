@@ -12,6 +12,13 @@ const (
 	IB_PORT = 7497
 )
 
+var orderID int64
+
+func nextID() int64 {
+	orderID++
+	return orderID
+}
+
 func main() {
 	// We set logger for pretty logs to console
 	log := ibapi.Logger()
@@ -40,8 +47,6 @@ func main() {
 	// log.Print("Is connected: ", ib.IsConnected())
 	// log.Print("Server Version: ", ib.ServerVersion())
 	// log.Print("TWS Connection time: ", ib.TWSConnectionTime())
-	log.Info().Int64("ID", ib.NextID()).Msg("Next ID")
-	log.Info().Int64("ID", ib.NextID()).Msg("Next ID")
 
 	// time.Sleep(1 * time.Second)
 	ib.ReqCurrentTime()
@@ -64,7 +69,7 @@ func main() {
 	// 	"LookAheadInitMarginReq", "LookAheadMaintMarginReq",
 	// 	"LookAheadAvailableFunds", "LookAheadExcessLiquidity",
 	// 	"HighestSeverity", "DayTradesRemaining", "Leverage", "$LEDGER:ALL"}
-	// id := ib.NextID()
+	// id := nextID()
 	// ib.ReqAccountSummary(id, "All", strings.Join(tags, ","))
 	// time.Sleep(10 * time.Second)
 	// ib.CancelAccountSummary(id)
@@ -74,24 +79,24 @@ func main() {
 
 	// ########## market data ##########
 	// eurusd := &ibapi.Contract{Symbol: "EUR", SecType: "CASH", Currency: "USD", Exchange: "IDEALPRO"}
-	// id := ib.NextID()
+	// id := nextID()
 	// ib.ReqMktData(id, eurusd, "", false, false, nil)
 	// time.Sleep(4 * time.Second)
 	// ib.CancelMktData(id)
 
 	// ########## real time bars ##########
 	// aapl := &ibapi.Contract{ConID: 265598, Symbol: "AAPL", SecType: "STK", Exchange: "SMART"}
-	// id := ib.NextID()
+	// id := nextID()
 	// ib.ReqRealTimeBars(id, aapl, 5, "TRADES", false, nil)
 	// time.Sleep(10 * time.Second)
 	// ib.CancelRealTimeBars(id)
 
 	//  ########## contract ##########
-	// ib.ReqContractDetails(ib.NextID(), aapl)
-	// ib.ReqMatchingSymbols(ib.NextID(), "ibm")
+	// ib.ReqContractDetails(nextID(), aapl)
+	// ib.ReqMatchingSymbols(nextID(), "ibm")
 
 	// ########## orders ##########
-	// id := ib.NextID()
+	// id := nextID()
 	// eurusd := &ibapi.Contract{Symbol: "EUR", SecType: "CASH", Currency: "USD", Exchange: "IDEALPRO"}
 	// limitOrder := ibapi.LimitOrder("BUY", ibapi.StringToDecimal("20000"), 1.08)
 	// ib.PlaceOrder(id, eurusd, limitOrder)
