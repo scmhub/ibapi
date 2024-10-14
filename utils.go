@@ -37,7 +37,7 @@ func (m *MsgBuffer) decodeInt64() int64 {
 	var i int64
 	m.bs, m.err = m.ReadBytes(delim)
 	if m.err != nil {
-		log.Panic().Msg("decode int64 read error")
+		log.Panic().Err(m.err).Msg("decode int64 read error")
 	}
 
 	m.bs = m.bs[:len(m.bs)-1]
@@ -47,7 +47,8 @@ func (m *MsgBuffer) decodeInt64() int64 {
 
 	i, m.err = strconv.ParseInt(string(m.bs), 10, 64)
 	if m.err != nil {
-		log.Panic().Msg("decode int64 parse error")
+		fmt.Println(string(m.bs))
+		log.Panic().Err(m.err).Msg("decode int64 parse error")
 	}
 
 	return i
@@ -56,12 +57,12 @@ func (m *MsgBuffer) decodeInt64() int64 {
 func (m *MsgBuffer) decodeDecimal() Decimal {
 	m.bs, m.err = m.ReadBytes(delim)
 	if m.err != nil {
-		log.Panic().Msg("decode decimal read error")
+		log.Panic().Err(m.err).Msg("decode decimal read error")
 	}
 
 	d, err := StringToDecimalErr(string(m.bs[:len(m.bs)-1]))
 	if err != nil {
-		log.Panic().Msg("decode decimal parse error")
+		log.Panic().Err(err).Msg("decode decimal parse error")
 	}
 	return d
 }
@@ -70,7 +71,7 @@ func (m *MsgBuffer) decodeInt64ShowUnset() int64 {
 	var i int64
 	m.bs, m.err = m.ReadBytes(delim)
 	if m.err != nil {
-		log.Panic().Msg("decode int64ShowUnset read error")
+		log.Panic().Err(m.err).Msg("decode int64ShowUnset read error")
 	}
 
 	m.bs = m.bs[:len(m.bs)-1]
@@ -80,7 +81,7 @@ func (m *MsgBuffer) decodeInt64ShowUnset() int64 {
 
 	i, m.err = strconv.ParseInt(string(m.bs), 10, 64)
 	if m.err != nil {
-		log.Panic().Msg("decode int64ShowUnset parse error")
+		log.Panic().Err(m.err).Msg("decode int64ShowUnset parse error")
 	}
 
 	return i
@@ -90,7 +91,7 @@ func (m *MsgBuffer) decodeFloat64() float64 {
 	var f float64
 	m.bs, m.err = m.ReadBytes(delim)
 	if m.err != nil {
-		log.Panic().Msg("decode float64 read error")
+		log.Panic().Err(m.err).Msg("decode float64 read error")
 	}
 
 	m.bs = m.bs[:len(m.bs)-1]
@@ -100,7 +101,7 @@ func (m *MsgBuffer) decodeFloat64() float64 {
 
 	f, m.err = strconv.ParseFloat(string(m.bs), 64)
 	if m.err != nil {
-		log.Panic().Msg("decode float64 parse error")
+		log.Panic().Err(m.err).Msg("decode float64 parse error")
 	}
 
 	return f
@@ -110,17 +111,17 @@ func (m *MsgBuffer) decodeFloat64ShowUnset() float64 {
 	var f float64
 	m.bs, m.err = m.ReadBytes(delim)
 	if m.err != nil {
-		log.Panic().Msg("decode float64ShowUnset read error")
+		log.Panic().Err(m.err).Msg("decode float64ShowUnset read error")
 	}
 
 	m.bs = m.bs[:len(m.bs)-1]
-	if bytes.Equal(m.bs, nil) {
+	if bytes.Equal(m.bs, nil) || bytes.Equal(m.bs, []byte("None")) {
 		return UNSET_FLOAT
 	}
 
 	f, m.err = strconv.ParseFloat(string(m.bs), 64)
 	if m.err != nil {
-		log.Panic().Msg("decode float64ShowUnset parse error")
+		log.Panic().Err(m.err).Msg("decode float64ShowUnset parse error")
 	}
 
 	return f
@@ -129,7 +130,7 @@ func (m *MsgBuffer) decodeFloat64ShowUnset() float64 {
 func (m *MsgBuffer) decodeBool() bool {
 	m.bs, m.err = m.ReadBytes(delim)
 	if m.err != nil {
-		log.Panic().Msg("decode bool read error")
+		log.Panic().Err(m.err).Msg("decode bool read error")
 	}
 
 	m.bs = m.bs[:len(m.bs)-1]
@@ -143,7 +144,7 @@ func (m *MsgBuffer) decodeBool() bool {
 func (m *MsgBuffer) decodeString() string {
 	m.bs, m.err = m.ReadBytes(delim)
 	if m.err != nil {
-		log.Panic().Msg("decode string read error")
+		log.Panic().Err(m.err).Msg("decode string read error")
 	}
 
 	return string(m.bs[:len(m.bs)-1])
@@ -152,7 +153,7 @@ func (m *MsgBuffer) decodeString() string {
 func (m *MsgBuffer) decodeStringUnescaped() string {
 	m.bs, m.err = m.ReadBytes(delim)
 	if m.err != nil {
-		log.Panic().Msg("decode string read error")
+		log.Panic().Err(m.err).Msg("decode string read error")
 	}
 	var s string
 	s, m.err = strconv.Unquote(fmt.Sprint("\"", m.bs[:len(m.bs)-1], "\""))

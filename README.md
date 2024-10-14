@@ -50,6 +50,7 @@ func main() {
 
 	// New IB CLient
 	ib := ibapi.NewEClient(nil)
+	
     // Connect client
 	if err := ib.Connect(IB_HOST, IB_PORT, rand.Int63n(999999)); err != nil {
 		log.Error().Err(err)
@@ -57,7 +58,7 @@ func main() {
 	}
 
     // Create and place order
-	id := ib.NextID()
+	id := 1
 	eurusd := &ibapi.Contract{Symbol: "EUR", SecType: "CASH", Currency: "USD", Exchange: "IDEALPRO"}
 	limitOrder := ibapi.LimitOrder("BUY", ibapi.StringToDecimal("20000"), 1.08)
 	ib.PlaceOrder(id, eurusd, limitOrder)

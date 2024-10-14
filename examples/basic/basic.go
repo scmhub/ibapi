@@ -1,15 +1,15 @@
 package main
 
 import (
-	"math/rand"
 	"time"
 
+	"github.com/rs/zerolog"
 	"github.com/scmhub/ibapi"
 )
 
 const (
-	IB_HOST = "127.0.0.1"
-	IB_PORT = 7497
+	IB_HOST = "10.74.0.9" // "127.0.0.1"
+	IB_PORT = 4002        // 7497
 )
 
 var orderID int64
@@ -22,19 +22,19 @@ func nextID() int64 {
 func main() {
 	// We set logger for pretty logs to console
 	log := ibapi.Logger()
-	// ibapi.SetLogLevel(int(zerolog.TraceLevel))
+	ibapi.SetLogLevel(int(zerolog.TraceLevel))
 	ibapi.SetConsoleWriter()
 	// ibapi.SetConnectionTimeout(1 * time.Second)
 
 	// IB CLient
 	ib := ibapi.NewEClient(nil)
 
-	if err := ib.Connect(IB_HOST, IB_PORT, rand.Int63n(999999)); err != nil {
+	if err := ib.Connect(IB_HOST, IB_PORT, 5); err != nil { //rand.Int63n(999999)
 		log.Error().Err(err).Msg("Connect")
 		return
 	}
 
-	ib.SetConnectionOptions("+PACEAPI")
+	// ib.SetConnectionOptions("+PACEAPI")
 
 	// Logger test
 	// log.Trace().Interface("Log level", log.GetLevel()).Msg("Logger Trace")
@@ -54,11 +54,12 @@ func main() {
 	// ########## account ##########
 	ib.ReqManagedAccts()
 
-	// ib.ReqAutoOpenOrders(true)
+	ib.ReqAutoOpenOrders(true)
 	// ib.ReqAutoOpenOrders(false)
-	// ib.ReqAccountUpdates(true, "")
+	ib.ReqAccountUpdates(true, "")
 	ib.ReqAllOpenOrders()
 	ib.ReqPositions()
+	ib.ReqCompletedOrders(false)
 
 	// tags := []string{"AccountType", "NetLiquidation", "TotalCashValue", "SettledCash",
 	// 	"sAccruedCash", "BuyingPower", "EquityWithLoanValue",

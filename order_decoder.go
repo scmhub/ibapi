@@ -211,7 +211,7 @@ func (d *OrderDecoder) decodeTriggerMethod(msgBuf *MsgBuffer) {
 	d.order.TriggerMethod = msgBuf.decodeInt64()
 }
 
-func (d *OrderDecoder) decodeVolOrderParams(msgBuf *MsgBuffer) {
+func (d *OrderDecoder) decodeVolOrderParams(msgBuf *MsgBuffer, readOpenOrderAttribs bool) {
 	d.order.Volatility = msgBuf.decodeFloat64ShowUnset()
 	d.order.VolatilityType = msgBuf.decodeInt64()
 	d.order.DeltaNeutralOrderType = msgBuf.decodeString()
@@ -219,12 +219,17 @@ func (d *OrderDecoder) decodeVolOrderParams(msgBuf *MsgBuffer) {
 
 	if d.version >= 27 && d.order.DeltaNeutralOrderType != "" {
 		d.order.DeltaNeutralConID = msgBuf.decodeInt64()
-		d.order.DeltaNeutralSettlingFirm = msgBuf.decodeString()
-		d.order.DeltaNeutralClearingAccount = msgBuf.decodeString()
-		d.order.DeltaNeutralClearingIntent = msgBuf.decodeString()
+		if readOpenOrderAttribs {
+			d.order.DeltaNeutralSettlingFirm = msgBuf.decodeString()
+			d.order.DeltaNeutralClearingAccount = msgBuf.decodeString()
+			d.order.DeltaNeutralClearingIntent = msgBuf.decodeString()
+		}
 	}
+
 	if d.version >= 31 && d.order.DeltaNeutralOrderType != "" {
-		d.order.DeltaNeutralOpenClose = msgBuf.decodeString()
+		if readOpenOrderAttribs {
+			d.order.DeltaNeutralOpenClose = msgBuf.decodeString()
+		}
 		d.order.DeltaNeutralShortSale = msgBuf.decodeBool()
 		d.order.DeltaNeutralShortSaleSlot = msgBuf.decodeInt64()
 		d.order.DeltaNeutralDesignatedLocation = msgBuf.decodeString()
@@ -296,7 +301,9 @@ func (d *OrderDecoder) decodeScaleOrderParams(msgBuf *MsgBuffer) {
 		_ = msgBuf.decodeInt64ShowUnset() // deprecated notSuppScaleNumComponents
 		d.order.ScaleInitLevelSize = msgBuf.decodeInt64ShowUnset()
 	}
+
 	d.order.ScalePriceIncrement = msgBuf.decodeFloat64ShowUnset()
+
 	if d.version >= 28 && d.order.ScalePriceIncrement != UNSET_FLOAT && d.order.ScalePriceIncrement > 0.0 {
 		d.order.ScalePriceAdjustValue = msgBuf.decodeFloat64ShowUnset()
 		d.order.ScalePriceAdjustInterval = msgBuf.decodeInt64ShowUnset()

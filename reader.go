@@ -3,7 +3,6 @@ package ibapi
 import (
 	"bufio"
 	"context"
-	"fmt"
 	"sync"
 )
 
@@ -24,7 +23,6 @@ func EReader(ctx context.Context, scanner *bufio.Scanner, decoder *EDecoder, wg 
 				return
 			case msg, ok := <-msgChan:
 				if !ok {
-					fmt.Println("msgChan closed, exiting decoder")
 					return
 				}
 				decoder.interpret(msg) // single worker and no go here!!
