@@ -9,7 +9,7 @@ import (
 const (
 	host    = "localhost"
 	port    = 7496
-	account = "DUD00029"
+	account = "DU000001"
 )
 
 var clientID = rand.Int63n(999999)
@@ -20,10 +20,21 @@ func nextID() int64 {
 	return orderID
 }
 
+func setupIBClient(t *testing.T) *EClient {
+	ib := NewEClient(nil)
+	if err := ib.Connect(host, port, clientID); err != nil {
+		t.Fatalf("Couldn't connect EClient: %v", err)
+	}
+	t.Cleanup(func() {
+		time.Sleep(1 * time.Second)
+		if err := ib.Disconnect(); err != nil {
+			t.Errorf("Failed to disconnect EClient: %v", err)
+		}
+	})
+	return ib
+}
+
 func TestClient(t *testing.T) {
-	// We set logger for pretty logs to console
-	// SetLogLevel(int(zerolog.TraceLevel))
-	// SetConsoleWriter()
 	// IB CLient
 	ib := NewEClient(nil)
 
@@ -33,79 +44,39 @@ func TestClient(t *testing.T) {
 		log.Error().Err(err).Msg("connect")
 		return
 	}
-	// IsConnected
+	time.Sleep(1 * time.Second)
 	if !ib.IsConnected() {
 		t.Error("not connected")
 		return
 	}
 
-	reqCurrentTime(ib)
-	// pnlSingleOperation(ib)
-	// pnlOperation(ib)
-	// tickDataOperation(ib)
-	// tickOptionComputationOperation(ib)
-	// delayedTickDataOperation(ib)
-	// marketDepthOperations(ib)
-	// realTimeBars(ib)
-	// marketDataType(ib)
-	// historicalDataRequests(ib)
-	// optionsOperations(ib)
-	// contractOperations(ib)
-	// marketScanners(ib)
-	// fundamentals(ib)
-	// bulletins(ib)
-	// accountOperations(ib)
-	// orderOperations(ib)
-	// ocaSamples(ib)
-	// conditionSamples(ib)
-	// bracketSample(ib)
-	// hedgeSample(ib)
-	// testAlgoSamples(ib)
-	// financialAdvisorOrderSamples(ib)
-	// financialAdvisorOperations(ib)
-	// testDisplayGroups(ib)
-	// miscellaneous(ib)
-	// reqFamilyCodes(ib)
-	// reqMatchingSymbols(ib)
-	// reqMktDepthExchanges(ib)
-	// reqNewsTicks(ib)
-	// reqSmartComponents(ib)
-	// reqNewsProviders(ib)
-	// reqNewsArticle(ib)
-	// reqHistoricalNews(ib)
-	// reqHeadTimestamp(ib)
-	// reqHistogramData(ib)
-	// rerouteCFDOperations(ib)
-	// marketRuleOperations(ib)
-	// continuousFuturesOperations(ib)
-	// reqHistoricalTicks(ib)
-	// reqTickByTickData(ib)
-	// whatIfSamples(ib)
-	// ibkratsSample(ib)
-	// wshCalendarOperations(ib)
-
-	time.Sleep(1 * time.Second)
-
-	t.Error("host:", host, "port:", port)
+	if err := ib.Disconnect(); err != nil {
+		log.Error().Err(err).Msg("Disconnect")
+		return
+	}
 }
 
-func reqCurrentTime(ib *EClient) {
+func TestReqCurrentTime(t *testing.T) {
+	ib := setupIBClient(t)
 	ib.ReqCurrentTime()
 }
 
-func pnlSingleOperation(ib *EClient) {
+func TestPnlSingleOperation(t *testing.T) {
+	ib := setupIBClient(t)
 	ib.ReqPnLSingle(7002, account, "", 268084)
 	time.Sleep(2 * time.Second)
 	ib.CancelPnLSingle(7002)
 }
 
-func pnlOperation(ib *EClient) {
+func TestPnlOperation(t *testing.T) {
+	ib := setupIBClient(t)
 	ib.ReqPnL(7001, account, "")
 	time.Sleep(2 * time.Second)
 	ib.CancelPnL(7001)
 }
 
-func tickDataOperation(ib *EClient) {
+func TestTickDataOperation(t *testing.T) {
+	ib := setupIBClient(t)
 	ib.ReqMarketDataType(4)
 	time.Sleep(1 * time.Second)
 	// ReqMktData
@@ -158,7 +129,8 @@ func tickDataOperation(ib *EClient) {
 
 }
 
-func tickOptionComputationOperation(ib *EClient) {
+func TestTickOptionComputationOperation(t *testing.T) {
+	ib := setupIBClient(t)
 	time.Sleep(1 * time.Second)
 	ib.ReqMarketDataType(4)
 	ib.ReqMktData(2001, OptionWithLocalSymbol(), "", false, false, nil)
@@ -166,7 +138,8 @@ func tickOptionComputationOperation(ib *EClient) {
 	ib.CancelMktData(2001)
 }
 
-func delayedTickDataOperation(ib *EClient) {
+func TestDelayedTickDataOperation(t *testing.T) {
+	ib := setupIBClient(t)
 	ib.ReqMarketDataType(4)
 	ib.ReqMktData(1013, HKStk(), "", false, false, nil)
 	ib.ReqMktData(1014, USOptionContract(), "", false, false, nil)
@@ -175,7 +148,8 @@ func delayedTickDataOperation(ib *EClient) {
 	ib.CancelMktData(1014)
 }
 
-func marketDepthOperations(ib *EClient) {
+func TestMarketDepthOperations(t *testing.T) {
+	ib := setupIBClient(t)
 	ib.ReqMktDepth(2001, EurGbpFx(), 5, false, nil)
 	time.Sleep(2 * time.Second)
 	ib.CancelMktDepth(2001, false)
@@ -184,13 +158,15 @@ func marketDepthOperations(ib *EClient) {
 	ib.CancelMktDepth(2001, true)
 }
 
-func realTimeBars(ib *EClient) {
+func TestRealTimeBars(t *testing.T) {
+	ib := setupIBClient(t)
 	ib.ReqRealTimeBars(3001, EurGbpFx(), 5, "MIDPOINT", true, nil)
 	time.Sleep(2 * time.Second)
 	ib.CancelRealTimeBars(3001)
 }
 
-func marketDataType(ib *EClient) {
+func TestMarketDataType(t *testing.T) {
+	ib := setupIBClient(t)
 	// By default only real-time (1) market data is enabled
 	// Sending frozen (2) enables frozen market data
 	// Sending delayed (3) enables delayed market data and disables delayed-frozen market data
@@ -199,7 +175,8 @@ func marketDataType(ib *EClient) {
 	ib.ReqMarketDataType(2)
 }
 
-func historicalDataRequests(ib *EClient) {
+func TestHistoricalDataRequests(t *testing.T) {
+	ib := setupIBClient(t)
 	queryTime := time.Now().AddDate(0, 0, -180).Format("20060102-15:04:05")
 	ib.ReqHistoricalData(4001, EurGbpFx(), queryTime, "1 M", "1 day", "MIDPOINT", true, 1, false, nil)
 	ib.ReqHistoricalData(4002, EuropeanStock(), queryTime, "10 D", "1 min", "TRADES", true, 1, false, nil)
@@ -210,7 +187,8 @@ func historicalDataRequests(ib *EClient) {
 	ib.CancelHistoricalData(4003)
 }
 
-func optionsOperations(ib *EClient) {
+func TestOptionsOperations(t *testing.T) {
+	ib := setupIBClient(t)
 	ib.ReqSecDefOptParams(0, "IBM", "", "STK", 8314)
 	ib.CalculateImpliedVolatility(5001, OptionWithLocalSymbol(), 0.5, 55, nil)
 	ib.CancelCalculateImpliedVolatility(5001)
@@ -219,7 +197,8 @@ func optionsOperations(ib *EClient) {
 	ib.ExerciseOptions(5003, OptionWithTradingClass(), 1, 1, "", 1, "20231018-12:00:00", "CustAcct", true)
 }
 
-func contractOperations(ib *EClient) {
+func TestContractOperations(t *testing.T) {
+	ib := setupIBClient(t)
 	ib.ReqContractDetails(209, EurGbpFx())
 	time.Sleep(2 * time.Second)
 	// ReqContractDetails
@@ -240,7 +219,8 @@ func contractOperations(ib *EClient) {
 	ib.ReqContractDetails(211, ByIssuerId())
 }
 
-func marketScanners(ib *EClient) {
+func TestMarketScanners(t *testing.T) {
+	ib := setupIBClient(t)
 	// ReqScannerParameters - Requesting all available parameters which can be used to build a scanner request
 	ib.ReqScannerParameters()
 	time.Sleep(2 * time.Second)
@@ -264,19 +244,22 @@ func marketScanners(ib *EClient) {
 	ib.CancelScannerSubscription(7002)
 }
 
-func fundamentals(ib *EClient) {
+func TestFundamentals(t *testing.T) {
+	ib := setupIBClient(t)
 	ib.ReqFundamentalData(8001, USStock(), "ReportsFinSummary", nil)
 	time.Sleep(2 * time.Second)
 	ib.CancelFundamentalData(8001)
 }
 
-func bulletins(ib *EClient) {
+func TestBulletins(t *testing.T) {
+	ib := setupIBClient(t)
 	ib.ReqNewsBulletins(true)
 	time.Sleep(2 * time.Second)
 	ib.CancelNewsBulletins()
 }
 
-func accountOperations(ib *EClient) {
+func TestAccountOperations(t *testing.T) {
+	ib := setupIBClient(t)
 	ib.ReqManagedAccts()
 	time.Sleep(2 * time.Second)
 	ib.ReqAccountSummary(9001, "All", GetAllTags())
@@ -307,7 +290,8 @@ func accountOperations(ib *EClient) {
 	ib.ReqUserInfo(9007)
 }
 
-func orderOperations(ib *EClient) {
+func TestOrderOperations(t *testing.T) {
+	ib := setupIBClient(t)
 	// Requesting the next valid id
 	ib.ReqIDs(-1)
 	// Requesting Orders
@@ -394,7 +378,8 @@ func orderOperations(ib *EClient) {
 	ib.CancelOrder(nextID(), OrderCancelWithCmeTaggingFields("DEFG", 1))
 }
 
-func ocaSamples(ib *EClient) {
+func TestOcaSamples(t *testing.T) {
+	ib := setupIBClient(t)
 	orders := []*Order{}
 	orders = append(orders, LimitOrder("BUY", ONE, 10))
 	orders = append(orders, LimitOrder("BUY", ONE, 11))
@@ -405,7 +390,8 @@ func ocaSamples(ib *EClient) {
 	}
 }
 
-func conditionSamples(ib *EClient) {
+func TestConditionSamples(t *testing.T) {
+	ib := setupIBClient(t)
 	// Order conditioning activate - Order will become active if conditioning criteria is met
 	lmt := LimitOrder("BUY", StringToDecimal("100"), 20)
 	lmt.Conditions = append(lmt.Conditions, NewPriceCondition(DefaultTriggerMethod, 208813720, "SMART", 600, false, false))
@@ -423,14 +409,16 @@ func conditionSamples(ib *EClient) {
 	ib.PlaceOrder(nextID(), EuropeanStock(), lmt2)
 }
 
-func bracketSample(ib *EClient) {
+func TestBracketSample(t *testing.T) {
+	ib := setupIBClient(t)
 	parent, takeProfit, stopLoss := BracketOrder(nextID(), "BUY", StringToDecimal("100"), 30, 40, 20)
 	ib.PlaceOrder(parent.OrderID, EuropeanStock(), parent)
 	ib.PlaceOrder(takeProfit.OrderID, EuropeanStock(), takeProfit)
 	ib.PlaceOrder(stopLoss.OrderID, EuropeanStock(), stopLoss)
 }
 
-func hedgeSample(ib *EClient) {
+func TestHedgeSample(t *testing.T) {
+	ib := setupIBClient(t)
 	//F Hedge order
 	//Parent order on a contract which currency differs from your base currency
 	parent := LimitOrder("BUY", StringToDecimal("100"), 10)
@@ -444,7 +432,8 @@ func hedgeSample(ib *EClient) {
 	ib.PlaceOrder(nextID(), EurGbpFx(), hedge)
 }
 
-func testAlgoSamples(ib *EClient) {
+func TestAlgoSamples(t *testing.T) {
+	ib := setupIBClient(t)
 	// base order
 	baseOrder := LimitOrder("BUY", StringToDecimal("1000"), 1)
 	// arrival px
@@ -494,7 +483,8 @@ func testAlgoSamples(ib *EClient) {
 	ib.PlaceOrder(nextID(), CSFBContract(), baseOrder)
 }
 
-func financialAdvisorOrderSamples(ib *EClient) {
+func TestFinancialAdvisorOrderSamples(t *testing.T) {
+	ib := setupIBClient(t)
 	// FA order on one account
 	faOrderOneAccount := MarketOrder("BUY", StringToDecimal("100"))
 	// Specify the Account Number directly
@@ -520,7 +510,8 @@ func financialAdvisorOrderSamples(ib *EClient) {
 	time.Sleep(1 * time.Second)
 }
 
-func financialAdvisorOperations(ib *EClient) {
+func TestFinancialAdvisorOperations(t *testing.T) {
+	ib := setupIBClient(t)
 	// Requesting FA information
 	ib.RequestFA(ALIASES)
 	ib.RequestFA(GROUPS)
@@ -530,7 +521,8 @@ func financialAdvisorOperations(ib *EClient) {
 	ib.ReqSoftDollarTiers(4001)
 }
 
-func testDisplayGroups(ib *EClient) {
+func TestTestDisplayGroups(t *testing.T) {
+	ib := setupIBClient(t)
 	ib.QueryDisplayGroups(9001)
 	time.Sleep(1 * time.Second)
 	ib.SubscribeToGroupEvents(9002, 1)
@@ -540,50 +532,62 @@ func testDisplayGroups(ib *EClient) {
 	ib.UnsubscribeFromGroupEvents(9002)
 }
 
-func miscellaneous(ib *EClient) {
+func TestMiscellaneous(t *testing.T) {
+	ib := setupIBClient(t)
 	// Request TWS' current time
 	ib.ReqCurrentTime()
 	// Setting TWS logging level
 	ib.SetServerLogLevel(5)
 }
 
-func reqFamilyCodes(ib *EClient) {
+func TestReqFamilyCodes(t *testing.T) {
+	ib := setupIBClient(t)
 	// Request TWS' family codes
 	ib.ReqFamilyCodes()
 }
 
-func reqMatchingSymbols(ib *EClient) {
+func TestReqMatchingSymbols(t *testing.T) {
+	ib := setupIBClient(t)
 	// Request TWS' mathing symbols
 	ib.ReqMatchingSymbols(11001, "IBM")
 }
 
-func reqMktDepthExchanges(ib *EClient) {
+func TestReqMktDepthExchanges(t *testing.T) {
+	ib := setupIBClient(t)
 	// Request TWS' market depth exchanges
 	ib.ReqMktDepthExchanges()
 }
 
-func reqNewsTicks(ib *EClient) {
+func TestReqNewsTicks(t *testing.T) {
+	ib := setupIBClient(t)
 	ib.ReqMktData(12001, USStockAtSmart(), "mdoff,292", false, false, nil)
 	time.Sleep(5 * time.Second)
 	ib.CancelMktData(12001)
 }
 
-func reqSmartComponents(ib *EClient) {
-	// TODO
+func TestRreqSmartComponents(t *testing.T) {
+	ib := setupIBClient(t)
+	ib.ReqMktData(13001, USStockAtSmart(), "", false, false, nil)
+	time.Sleep(5 * time.Second)
+	ib.CancelMktData(13001)
+
 }
 
-func reqNewsProviders(ib *EClient) {
+func TesReqNewsProviders(t *testing.T) {
+	ib := setupIBClient(t)
 	// Request TWS' news providers
 	ib.ReqNewsProviders()
 }
 
-func reqNewsArticle(ib *EClient) {
+func TestReqNewsArticle(t *testing.T) {
+	ib := setupIBClient(t)
 	// Request TWS' news article
 	list := []TagValue{}
 	ib.ReqNewsArticle(12001, "MST", "MST$06f53098", list)
 }
 
-func reqHistoricalNews(ib *EClient) {
+func TestReqHistoricalNews(t *testing.T) {
+	ib := setupIBClient(t)
 	// Request TWS' historical news
 	list := []TagValue{}
 	list = append(list, TagValue{Tag: "manual", Value: "1"})
@@ -591,19 +595,22 @@ func reqHistoricalNews(ib *EClient) {
 	time.Sleep(1 * time.Second)
 }
 
-func reqHeadTimestamp(ib *EClient) {
+func TestReqHeadTimestamp(t *testing.T) {
+	ib := setupIBClient(t)
 	ib.ReqHeadTimeStamp(14001, EurGbpFx(), "MIDPOINT", true, 1)
 	time.Sleep(1 * time.Second)
 	ib.CancelHeadTimeStamp(14001)
 }
 
-func reqHistogramData(ib *EClient) {
+func TestReqHistogramData(t *testing.T) {
+	ib := setupIBClient(t)
 	ib.ReqHistogramData(15001, IBMUSStockAtSmart(), false, "1 weeks")
 	time.Sleep(2 * time.Second)
 	ib.CancelHistogramData(15001)
 }
 
-func rerouteCFDOperations(ib *EClient) {
+func TestRerouteCFDOperations(t *testing.T) {
+	ib := setupIBClient(t)
 	ib.ReqMktData(16001, USStockCFD(), "", false, false, nil)
 	time.Sleep(1 * time.Second)
 	ib.ReqMktData(16002, EuropeanStockCFD(), "", false, false, nil)
@@ -619,7 +626,8 @@ func rerouteCFDOperations(ib *EClient) {
 	time.Sleep(1 * time.Second)
 }
 
-func marketRuleOperations(ib *EClient) {
+func TestMarketRuleOperations(t *testing.T) {
+	ib := setupIBClient(t)
 	ib.ReqContractDetails(17001, IBMBond())
 	ib.ReqContractDetails(17002, IBKRStk())
 	time.Sleep(2 * time.Second)
@@ -628,7 +636,8 @@ func marketRuleOperations(ib *EClient) {
 	ib.ReqMarketRule(1388)
 }
 
-func continuousFuturesOperations(ib *EClient) {
+func TestContinuousFuturesOperations(t *testing.T) {
+	ib := setupIBClient(t)
 	ib.ReqContractDetails(18001, ContFut())
 	queryTime := time.Now().Format("20060102-15:04:05")
 	ib.ReqHistoricalData(18002, ContFut(), queryTime, "1 Y", "1 month", "TRADES", false, 1, false, nil)
@@ -636,13 +645,15 @@ func continuousFuturesOperations(ib *EClient) {
 	ib.CancelHistoricalData(18002)
 }
 
-func reqHistoricalTicks(ib *EClient) {
+func TestReqHistoricalTicks(t *testing.T) {
+	ib := setupIBClient(t)
 	ib.ReqHistoricalTicks(19001, IBMUSStockAtSmart(), "20170621 09:38:33 US/Eastern", "", 10, "BID_ASK", true, true, nil)
 	ib.ReqHistoricalTicks(19002, IBMUSStockAtSmart(), "20170621 09:38:33 US/Eastern", "", 10, "MIDPOINT", true, true, nil)
 	ib.ReqHistoricalTicks(19003, IBMUSStockAtSmart(), "20170621 09:38:33 US/Eastern", "", 10, "TRADES", true, true, nil)
 }
 
-func reqTickByTickData(ib *EClient) {
+func TestReqTickByTickData(t *testing.T) {
+	ib := setupIBClient(t)
 	//  Requesting tick-by-tick data (only refresh)
 	ib.ReqTickByTickData(20001, EuropeanStock(), "Last", 0, false)
 	ib.ReqTickByTickData(20002, EuropeanStock(), "AllLast", 0, false)
@@ -665,16 +676,19 @@ func reqTickByTickData(ib *EClient) {
 	ib.CancelTickByTickData(20008)
 }
 
-func whatIfSamples(ib *EClient) {
+func TestWhatIfSamples(t *testing.T) {
+	ib := setupIBClient(t)
 	// Placing what-if order
 	ib.PlaceOrder(nextID(), BondWithCusip(), WhatIfLimitOrder("BUY", StringToDecimal("100"), 20))
 }
 
-func ibkratsSample(ib *EClient) {
+func TestIbkratsSample(t *testing.T) {
+	ib := setupIBClient(t)
 	ib.PlaceOrder(nextID(), IBKRATSContract(), LimitIBKRATS("BUY", StringToDecimal("100"), 330))
 }
 
-func wshCalendarOperations(ib *EClient) {
+func TestWshCalendarOperations(t *testing.T) {
+	ib := setupIBClient(t)
 	// request WSH meta data
 	ib.ReqWshMetaData(30001)
 	time.Sleep(10 * time.Second)
