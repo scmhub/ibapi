@@ -8,8 +8,8 @@ import (
 )
 
 const (
-	IB_HOST = "127.0.0.1"
-	IB_PORT = 7497
+	host = "127.0.0.1"
+	port = 7497
 )
 
 var log = ibapi.Logger()
@@ -56,7 +56,7 @@ func main() {
 	ib := NewIB()
 
 	// Client connection
-	err := ib.Connect(IB_HOST, IB_PORT, int64(rand.Intn(1e9)))
+	err := ib.Connect(host, port, int64(rand.Intn(1e9)))
 	if err != nil {
 		log.Error().Err(err).Msg("Connect")
 		return

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"strings"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -8,8 +9,8 @@ import (
 )
 
 const (
-	IB_HOST = "10.74.0.9" // "127.0.0.1"
-	IB_PORT = 4002        // 7497
+	host = "localhost"
+	port = 7496
 )
 
 var orderID int64
@@ -29,7 +30,7 @@ func main() {
 	// IB CLient
 	ib := ibapi.NewEClient(nil)
 
-	if err := ib.Connect(IB_HOST, IB_PORT, 5); err != nil { //rand.Int63n(999999)
+	if err := ib.Connect(host, port, 5); err != nil { //rand.Int63n(999999)
 		log.Error().Err(err).Msg("Connect")
 		return
 	}
@@ -54,26 +55,26 @@ func main() {
 	// ########## account ##########
 	ib.ReqManagedAccts()
 
-	ib.ReqAutoOpenOrders(true)
+	// ib.ReqAutoOpenOrders(false) // Only from clientID = 0
 	// ib.ReqAutoOpenOrders(false)
-	ib.ReqAccountUpdates(true, "")
-	ib.ReqAllOpenOrders()
-	ib.ReqPositions()
-	ib.ReqCompletedOrders(false)
+	// ib.ReqAccountUpdates(true, "")
+	// ib.ReqAllOpenOrders()
+	// ib.ReqPositions()
+	// ib.ReqCompletedOrders(false)
 
-	// tags := []string{"AccountType", "NetLiquidation", "TotalCashValue", "SettledCash",
-	// 	"sAccruedCash", "BuyingPower", "EquityWithLoanValue",
-	// 	"PreviousEquityWithLoanValue", "GrossPositionValue", "ReqTEquity",
-	// 	"ReqTMargin", "SMA", "InitMarginReq", "MaintMarginReq", "AvailableFunds",
-	// 	"ExcessLiquidity", "Cushion", "FullInitMarginReq", "FullMaintMarginReq",
-	// 	"FullAvailableFunds", "FullExcessLiquidity", "LookAheadNextChange",
-	// 	"LookAheadInitMarginReq", "LookAheadMaintMarginReq",
-	// 	"LookAheadAvailableFunds", "LookAheadExcessLiquidity",
-	// 	"HighestSeverity", "DayTradesRemaining", "Leverage", "$LEDGER:ALL"}
-	// id := nextID()
-	// ib.ReqAccountSummary(id, "All", strings.Join(tags, ","))
-	// time.Sleep(10 * time.Second)
-	// ib.CancelAccountSummary(id)
+	tags := []string{"AccountType", "NetLiquidation", "TotalCashValue", "SettledCash",
+		"sAccruedCash", "BuyingPower", "EquityWithLoanValue",
+		"PreviousEquityWithLoanValue", "GrossPositionValue", "ReqTEquity",
+		"ReqTMargin", "SMA", "InitMarginReq", "MaintMarginReq", "AvailableFunds",
+		"ExcessLiquidity", "Cushion", "FullInitMarginReq", "FullMaintMarginReq",
+		"FullAvailableFunds", "FullExcessLiquidity", "LookAheadNextChange",
+		"LookAheadInitMarginReq", "LookAheadMaintMarginReq",
+		"LookAheadAvailableFunds", "LookAheadExcessLiquidity",
+		"HighestSeverity", "DayTradesRemaining", "Leverage", "$LEDGER:ALL"}
+	id := nextID()
+	ib.ReqAccountSummary(id, "All", strings.Join(tags, ","))
+	time.Sleep(10 * time.Second)
+	ib.CancelAccountSummary(id)
 
 	// ib.ReqFamilyCodes()
 	// ib.ReqScannerParameters()

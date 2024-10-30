@@ -42,7 +42,7 @@ func (d *EDecoder) interpret(msgBytes []byte) {
 	case ORDER_STATUS:
 		d.processOrderStatusMsg(msgBuf)
 	case ERR_MSG:
-		d.processErrMsgMsg(msgBuf)
+		d.processErrMsg(msgBuf)
 	case OPEN_ORDER:
 		d.processOpenOrderMsg(msgBuf)
 	case ACCT_VALUE:
@@ -192,7 +192,7 @@ func (d *EDecoder) interpret(msgBytes []byte) {
 	case USER_INFO:
 		d.processUserInfo(msgBuf)
 	default:
-		d.wrapper.Error(NO_VALID_ID, BAD_MESSAGE.Code, BAD_MESSAGE.Msg, "")
+		d.wrapper.Error(NO_VALID_ID, currentTimeMillis(), BAD_MESSAGE.Code, BAD_MESSAGE.Msg, "")
 	}
 }
 
@@ -385,9 +385,11 @@ func (d *EDecoder) processOrderStatusMsg(msgBuf *MsgBuffer) {
 	d.wrapper.OrderStatus(orderID, status, filled, remaining, avgFilledPrice, permID, parentID, lastFillPrice, clientID, whyHeld, mktCapPrice)
 }
 
-func (d *EDecoder) processErrMsgMsg(msgBuf *MsgBuffer) {
+func (d *EDecoder) processErrMsg(msgBuf *MsgBuffer) {
 
-	_ = msgBuf.decodeString()
+	if d.serverVersion < MIN_SERVER_VER_ERROR_TIME {
+		_ = msgBuf.decodeString()
+	}
 
 	reqID := msgBuf.decodeInt64()
 
@@ -398,8 +400,12 @@ func (d *EDecoder) processErrMsgMsg(msgBuf *MsgBuffer) {
 	if d.serverVersion >= MIN_SERVER_VER_ADVANCED_ORDER_REJECT {
 		advancedOrderRejectJson = msgBuf.decodeString()
 	}
+	var errorTime int64
+	if d.serverVersion >= MIN_SERVER_VER_ERROR_TIME {
+		errorTime = msgBuf.decodeInt64()
+	}
 
-	d.wrapper.Error(reqID, errorCode, errorString, advancedOrderRejectJson)
+	d.wrapper.Error(reqID, errorTime, errorCode, errorString, advancedOrderRejectJson)
 }
 
 func (d *EDecoder) processOpenOrderMsg(msgBuf *MsgBuffer) {

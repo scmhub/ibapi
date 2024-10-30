@@ -84,7 +84,7 @@ type EWrapper interface {
 	// ExecDetailsEnd is called once all executions have been sent to a client in response to reqExecutions().
 	ExecDetailsEnd(reqID int64)
 	// Error is called when there is an error with the communication or when TWS wants to send a message to the client.
-	Error(reqID TickerID, errCode int64, errString string, advancedOrderRejectJson string)
+	Error(reqID TickerID, errTime int64, errCode int64, errString string, advancedOrderRejectJson string)
 	// UpdateMktDepth returns the order book.
 	// 	TickerID -  the request's identifier.
 	// 	position -  the order book's row being updated.
@@ -370,8 +370,8 @@ func (w Wrapper) ExecDetailsEnd(reqID int64) {
 	log.Info().Int64("reqID", reqID).Msg("<ExecDetailsEnd>")
 }
 
-func (w Wrapper) Error(reqID TickerID, errCode int64, errString string, advancedOrderRejectJson string) {
-	logger := log.Error().Int64("reqID", reqID).Int64("errCode", errCode).Str("errString", errString)
+func (w Wrapper) Error(reqID TickerID, errorTime int64, errCode int64, errString string, advancedOrderRejectJson string) {
+	logger := log.Error().Int64("reqID", reqID).Int64("errorTime", errorTime).Int64("errCode", errCode).Str("errString", errString)
 	if advancedOrderRejectJson != "" {
 		logger = logger.Str("advancedOrderRejectJson", advancedOrderRejectJson)
 	}

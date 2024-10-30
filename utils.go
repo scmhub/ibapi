@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"strconv"
+	"time"
 )
 
 const (
@@ -268,4 +269,18 @@ func decimalMaxString(val Decimal) string {
 		return ""
 	}
 	return DecimalToString(val)
+}
+
+// currentTimeMillis returns the current time in milliseconds.
+func currentTimeMillis() int64 {
+	return time.Now().UnixNano() / int64(time.Millisecond)
+}
+
+// getTimeStrFromMillis converts a timestamp in milliseconds to a formatted string.
+// Returns an empty string if the input time is less than or equal to zero.
+func getTimeStrFromMillis(timestamp int64) string {
+	if timestamp > 0 {
+		return time.Unix(0, timestamp*int64(time.Millisecond)).Format("20060102-15:04:05")
+	}
+	return ""
 }

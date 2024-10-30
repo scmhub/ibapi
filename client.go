@@ -127,7 +127,7 @@ func (c *EClient) request() {
 			return
 		case req := <-c.reqChan:
 			if !c.IsConnected() {
-				c.wrapper.Error(NO_VALID_ID, NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+				c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 				break
 			}
 			nn, err := c.writer.Write(req)
@@ -146,6 +146,12 @@ func (c *EClient) request() {
 
 // startAPI initiates the message exchange between the client application and the TWS/IB Gateway.
 func (c *EClient) startAPI() error {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return NOT_CONNECTED
+	}
+
 	var msg []byte
 
 	const VERSION = 2
@@ -176,7 +182,7 @@ func (c *EClient) Connect(host string, port int, clientID int64) error {
 	log.Info().Str("host", host).Int("port", port).Int64("clientID", clientID).Msg("Connecting to IB server")
 	if err := c.conn.connect(c.host, c.port); err != nil {
 		log.Error().Err(CONNECT_FAIL).Msg("Connection fail")
-		c.wrapper.Error(NO_VALID_ID, CONNECT_FAIL.Code, CONNECT_FAIL.Msg, "")
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), CONNECT_FAIL.Code, CONNECT_FAIL.Msg, "")
 		c.reset()
 		return CONNECT_FAIL
 	}
@@ -228,17 +234,20 @@ func (c *EClient) Connect(host string, port int, clientID int64) error {
 	// init decoder
 	c.decoder = &EDecoder{wrapper: c.wrapper, serverVersion: c.serverVersion}
 
-	// startAPI
-	if err := c.startAPI(); err != nil {
-		return err
-	}
-	log.Debug().Msg("API started")
-
 	//start Ereader
 	go EReader(c.Ctx, c.scanner, c.decoder, &c.wg)
 
 	// start requester
 	go c.request()
+
+	c.setConnState(CONNECTED)
+	c.wrapper.ConnectAck()
+
+	// startAPI
+	if err := c.startAPI(); err != nil {
+		return err
+	}
+	log.Debug().Msg("API started")
 
 	// graceful shutdown
 	sigChan := make(chan os.Signal, 1)
@@ -250,8 +259,6 @@ func (c *EClient) Connect(host string, port int, clientID int64) error {
 		os.Exit(1)
 	}()
 
-	c.setConnState(CONNECTED)
-	c.wrapper.ConnectAck()
 	log.Debug().Msg("IB Client Connected!")
 
 	return nil
@@ -293,6 +300,11 @@ func (c *EClient) SetConnectionOptions(opts string) {
 // ReqCurrentTime asks the current system time on the server side.
 func (c *EClient) ReqCurrentTime() {
 
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
 	const VERSION int64 = 1
 
 	msg := makeFields(REQ_CURRENT_TIME, VERSION)
@@ -314,6 +326,10 @@ func (c *EClient) ServerVersion() Version {
 // 5 = DETAIL
 func (c *EClient) SetServerLogLevel(logLevel int64) {
 
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
 	const VERSION = 1
 
 	msg := makeFields(SET_SERVER_LOGLEVEL, VERSION, logLevel)
@@ -341,15 +357,22 @@ func (c *EClient) TWSConnectionTime() string {
 // regulatorySnapshot: With the US Value Snapshot Bundle for stocks, regulatory snapshots are available for 0.01 USD each.
 // mktDataOptions is for internal use only.Use default value XYZ.
 func (c *EClient) ReqMktData(reqID TickerID, contract *Contract, genericTickList string, snapshot bool, regulatorySnapshot bool, mktDataOptions []TagValue) {
-	switch {
-	case c.serverVersion < MIN_SERVER_VER_DELTA_NEUTRAL && contract.DeltaNeutralContract != nil:
-		c.wrapper.Error(reqID, UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support delta-neutral orders.", "")
+
+	if !c.IsConnected() {
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
-	case c.serverVersion < MIN_SERVER_VER_REQ_MKT_DATA_CONID && contract.ConID > 0:
-		c.wrapper.Error(reqID, UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support conId parameter.", "")
+	}
+
+	if c.serverVersion < MIN_SERVER_VER_DELTA_NEUTRAL && contract.DeltaNeutralContract != nil {
+		c.wrapper.Error(reqID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support delta-neutral orders.", "")
 		return
-	case c.serverVersion < MIN_SERVER_VER_TRADING_CLASS && contract.TradingClass != "":
-		c.wrapper.Error(reqID, UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support tradingClass parameter in reqMktData.", "")
+	}
+	if c.serverVersion < MIN_SERVER_VER_REQ_MKT_DATA_CONID && contract.ConID > 0 {
+		c.wrapper.Error(reqID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support conId parameter.", "")
+		return
+	}
+	if c.serverVersion < MIN_SERVER_VER_TRADING_CLASS && contract.TradingClass != "" {
+		c.wrapper.Error(reqID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support tradingClass parameter in reqMktData.", "")
 		return
 	}
 
@@ -432,6 +455,11 @@ func (c *EClient) ReqMktData(reqID TickerID, contract *Contract, genericTickList
 // CancelMktData stops the market data flow for the specified TickerId.
 func (c *EClient) CancelMktData(reqID TickerID) {
 
+	if !c.IsConnected() {
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
 	const VERSION = 2
 
 	msg := makeFields(CANCEL_MKT_DATA, VERSION, reqID)
@@ -452,8 +480,19 @@ func (c *EClient) CancelMktData(reqID TickerID) {
 //	3 -> delayed market data
 //	4 -> delayed frozen market data
 func (c *EClient) ReqMarketDataType(marketDataType int64) {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
 	if c.serverVersion < MIN_SERVER_VER_REQ_MARKET_DATA_TYPE {
-		c.wrapper.Error(NO_VALID_ID, UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support market data type requests.", "")
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support market data type requests.", "")
 		return
 	}
 
@@ -466,8 +505,14 @@ func (c *EClient) ReqMarketDataType(marketDataType int64) {
 
 // ReqSmartComponents request the smartComponents.
 func (c *EClient) ReqSmartComponents(reqID int64, bboExchange string) {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
 	if c.serverVersion < MIN_SERVER_VER_REQ_SMART_COMPONENTS {
-		c.wrapper.Error(NO_VALID_ID, UPDATE_TWS.Code, UPDATE_TWS.Msg+"  It does not support smart components request.", "")
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+"  It does not support smart components request.", "")
 		return
 	}
 
@@ -478,8 +523,14 @@ func (c *EClient) ReqSmartComponents(reqID int64, bboExchange string) {
 
 // ReqMarketRule requests the market rule.
 func (c *EClient) ReqMarketRule(marketRuleID int64) {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
 	if c.serverVersion < MIN_SERVER_VER_MARKET_RULES {
-		c.wrapper.Error(NO_VALID_ID, UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support market rule requests.", "")
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support market rule requests.", "")
 		return
 	}
 
@@ -494,13 +545,19 @@ func (c *EClient) ReqMarketRule(marketRuleID int64) {
 // ignoreSize will ignore bid/ask ticks that only update the size if true.
 // Result will be delivered via wrapper.TickByTickAllLast() wrapper.TickByTickBidAsk() wrapper.TickByTickMidPoint().
 func (c *EClient) ReqTickByTickData(reqID int64, contract *Contract, tickType string, numberOfTicks int64, ignoreSize bool) {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
 	if c.serverVersion < MIN_SERVER_VER_TICK_BY_TICK {
-		c.wrapper.Error(NO_VALID_ID, UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support tick-by-tick data requests.", "")
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support tick-by-tick data requests.", "")
 		return
 	}
 
 	if c.serverVersion < MIN_SERVER_VER_TICK_BY_TICK_IGNORE_SIZE {
-		c.wrapper.Error(NO_VALID_ID, UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support ignoreSize and numberOfTicks parameters in tick-by-tick data requests.", "")
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support ignoreSize and numberOfTicks parameters in tick-by-tick data requests.", "")
 		return
 	}
 
@@ -532,8 +589,14 @@ func (c *EClient) ReqTickByTickData(reqID int64, contract *Contract, tickType st
 
 // CancelTickByTickData cancel the tick-by-tick data
 func (c *EClient) CancelTickByTickData(reqID int64) {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
 	if c.serverVersion < MIN_SERVER_VER_TICK_BY_TICK {
-		c.wrapper.Error(NO_VALID_ID, UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support tick-by-tick data requests.", "")
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support tick-by-tick data requests.", "")
 		return
 	}
 
@@ -549,13 +612,19 @@ func (c *EClient) CancelTickByTickData(reqID int64) {
 // CalculateImpliedVolatility calculates the implied volatility of the option.
 // Result will be delivered via wrapper.TickOptionComputation().
 func (c *EClient) CalculateImpliedVolatility(reqID int64, contract *Contract, optionPrice float64, underPrice float64, impVolOptions []TagValue) {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
 	if c.serverVersion < MIN_SERVER_VER_REQ_CALC_IMPLIED_VOLAT {
-		c.wrapper.Error(NO_VALID_ID, UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support calculateImpliedVolatility req.", "")
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support calculateImpliedVolatility req.", "")
 		return
 	}
 
 	if c.serverVersion < MIN_SERVER_VER_TRADING_CLASS && contract.TradingClass != "" {
-		c.wrapper.Error(NO_VALID_ID, UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support tradingClass parameter in calculateImpliedVolatility.", "")
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support tradingClass parameter in calculateImpliedVolatility.", "")
 		return
 	}
 
@@ -604,8 +673,14 @@ func (c *EClient) CalculateImpliedVolatility(reqID int64, contract *Contract, op
 
 // CancelCalculateImpliedVolatility cancels a request to calculate volatility for a supplied option price and underlying price.
 func (c *EClient) CancelCalculateImpliedVolatility(reqID int64) {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
 	if c.serverVersion < MIN_SERVER_VER_REQ_CALC_IMPLIED_VOLAT {
-		c.wrapper.Error(reqID, UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support calculateImpliedVolatility req.", "")
+		c.wrapper.Error(reqID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support calculateImpliedVolatility req.", "")
 		return
 	}
 
@@ -620,13 +695,19 @@ func (c *EClient) CancelCalculateImpliedVolatility(reqID int64) {
 // Call this function to calculate price for a supplied option volatility and underlying price.
 // Result will be delivered via wrapper.TickOptionComputation().
 func (c *EClient) CalculateOptionPrice(reqID int64, contract *Contract, volatility float64, underPrice float64, optPrcOptions []TagValue) {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
 	if c.serverVersion < MIN_SERVER_VER_REQ_CALC_IMPLIED_VOLAT {
-		c.wrapper.Error(reqID, UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support calculateImpliedVolatility req.", "")
+		c.wrapper.Error(reqID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support calculateImpliedVolatility req.", "")
 		return
 	}
 
 	if c.serverVersion < MIN_SERVER_VER_TRADING_CLASS {
-		c.wrapper.Error(reqID, UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support tradingClass parameter in calculateImpliedVolatility.", "")
+		c.wrapper.Error(reqID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support tradingClass parameter in calculateImpliedVolatility.", "")
 		return
 	}
 
@@ -676,8 +757,14 @@ func (c *EClient) CalculateOptionPrice(reqID int64, contract *Contract, volatili
 
 // CancelCalculateOptionPrice cancels the calculation of option price.
 func (c *EClient) CancelCalculateOptionPrice(reqID int64) {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
 	if c.serverVersion < MIN_SERVER_VER_REQ_CALC_IMPLIED_VOLAT {
-		c.wrapper.Error(reqID, UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support calculateImpliedVolatility req.", "")
+		c.wrapper.Error(reqID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support calculateImpliedVolatility req.", "")
 		return
 	}
 
@@ -705,23 +792,29 @@ func (c *EClient) CancelCalculateOptionPrice(reqID int64) {
 // customerAccount is the customer account.
 // professionalCustomer:bool - professional customer.
 func (c *EClient) ExerciseOptions(reqID TickerID, contract *Contract, exerciseAction int, exerciseQuantity int, account string, override int, manualOrderTime string, customerAccount string, professionalCustomer bool) {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
 	if c.serverVersion < MIN_SERVER_VER_TRADING_CLASS && (contract.TradingClass != "" || contract.ConID > 0) {
-		c.wrapper.Error(reqID, UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support conId, multiplier, tradingClass parameter in exerciseOptions.", "")
+		c.wrapper.Error(reqID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support conId, multiplier, tradingClass parameter in exerciseOptions.", "")
 		return
 	}
 
 	if c.serverVersion < MIN_SERVER_VER_MANUAL_ORDER_TIME_EXERCISE_OPTIONS && manualOrderTime != "" {
-		c.wrapper.Error(reqID, UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support manual order time parameter in exerciseOptions.", "")
+		c.wrapper.Error(reqID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support manual order time parameter in exerciseOptions.", "")
 		return
 	}
 
 	if c.serverVersion < MIN_SERVER_VER_CUSTOMER_ACCOUNT && customerAccount != "" {
-		c.wrapper.Error(reqID, UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support customer account parameter in exerciseOptions.", "")
+		c.wrapper.Error(reqID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support customer account parameter in exerciseOptions.", "")
 		return
 	}
 
 	if c.serverVersion < MIN_SERVER_VER_PROFESSIONAL_CUSTOMER && professionalCustomer {
-		c.wrapper.Error(reqID, UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support professional customer parameter in exerciseOptions.", "")
+		c.wrapper.Error(reqID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support professional customer parameter in exerciseOptions.", "")
 		return
 	}
 
@@ -785,63 +878,68 @@ func (c *EClient) ExerciseOptions(reqID TickerID, contract *Contract, exerciseAc
 // order contains the details of the traded order.
 func (c *EClient) PlaceOrder(orderID OrderID, contract *Contract, order *Order) {
 
+	if !c.IsConnected() {
+		c.wrapper.Error(orderID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
 	if c.serverVersion < MIN_SERVER_VER_DELTA_NEUTRAL && contract.DeltaNeutralContract != nil {
-		c.wrapper.Error(orderID, UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support delta-neutral orders.", "")
+		c.wrapper.Error(orderID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support delta-neutral orders.", "")
 		return
 	}
 
 	if c.serverVersion < MIN_SERVER_VER_SCALE_ORDERS2 && order.ScaleSubsLevelSize != UNSET_INT {
-		c.wrapper.Error(orderID, UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support Subsequent Level Size for Scale orders.", "")
+		c.wrapper.Error(orderID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support Subsequent Level Size for Scale orders.", "")
 		return
 	}
 
 	if c.serverVersion < MIN_SERVER_VER_ALGO_ORDERS && order.AlgoStrategy != "" {
-		c.wrapper.Error(orderID, UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support algo orders.", "")
+		c.wrapper.Error(orderID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support algo orders.", "")
 		return
 	}
 
 	if c.serverVersion < MIN_SERVER_VER_NOT_HELD && order.NotHeld {
-		c.wrapper.Error(orderID, UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support notHeld parameter.", "")
+		c.wrapper.Error(orderID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support notHeld parameter.", "")
 		return
 	}
 
 	if c.serverVersion < MIN_SERVER_VER_SEC_ID_TYPE && (contract.SecType != "" || contract.SecID != "") {
-		c.wrapper.Error(orderID, UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support secIdType and secId parameters.", "")
+		c.wrapper.Error(orderID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support secIdType and secId parameters.", "")
 		return
 	}
 
 	if c.serverVersion < MIN_SERVER_VER_PLACE_ORDER_CONID && contract.ConID != UNSET_INT && contract.ConID > 0 {
-		c.wrapper.Error(orderID, UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support conId parameter.", "")
+		c.wrapper.Error(orderID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support conId parameter.", "")
 		return
 	}
 
 	if c.serverVersion < MIN_SERVER_VER_SSHORTX && order.ExemptCode != -1 {
-		c.wrapper.Error(orderID, UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support exemptCode parameter.", "")
+		c.wrapper.Error(orderID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support exemptCode parameter.", "")
 		return
 	}
 
 	if c.serverVersion < MIN_SERVER_VER_SSHORTX {
 		for _, comboLeg := range contract.ComboLegs {
 			if comboLeg.ExemptCode != -1 {
-				c.wrapper.Error(orderID, UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support exemptCode parameter.", "")
+				c.wrapper.Error(orderID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support exemptCode parameter.", "")
 				return
 			}
 		}
 	}
 
 	if c.serverVersion < MIN_SERVER_VER_HEDGE_ORDERS && order.HedgeType != "" {
-		c.wrapper.Error(orderID, UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support hedge orders.", "")
+		c.wrapper.Error(orderID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support hedge orders.", "")
 		return
 	}
 
 	if c.serverVersion < MIN_SERVER_VER_OPT_OUT_SMART_ROUTING && order.OptOutSmartRouting {
-		c.wrapper.Error(orderID, UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support optOutSmartRouting parameter.", "")
+		c.wrapper.Error(orderID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support optOutSmartRouting parameter.", "")
 		return
 	}
 
 	if c.serverVersion < MIN_SERVER_VER_DELTA_NEUTRAL_CONID {
 		if order.DeltaNeutralConID > 0 || order.DeltaNeutralSettlingFirm != "" || order.DeltaNeutralClearingAccount != "" || order.DeltaNeutralClearingIntent != "" {
-			c.wrapper.Error(orderID, UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support deltaNeutral parameters: ConId, SettlingFirm, ClearingAccount, ClearingIntent.", "")
+			c.wrapper.Error(orderID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support deltaNeutral parameters: ConId, SettlingFirm, ClearingAccount, ClearingIntent.", "")
 			return
 		}
 	}
@@ -851,7 +949,7 @@ func (c *EClient) PlaceOrder(orderID OrderID, contract *Contract, order *Order) 
 			order.DeltaNeutralShortSale ||
 			order.DeltaNeutralShortSaleSlot > 0 ||
 			order.DeltaNeutralDesignatedLocation != "" {
-			c.wrapper.Error(orderID, UPDATE_TWS.Code, UPDATE_TWS.Msg+"  It does not support deltaNeutral parameters: OpenClose, ShortSale, ShortSaleSlot, DesignatedLocation.", "")
+			c.wrapper.Error(orderID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+"  It does not support deltaNeutral parameters: OpenClose, ShortSale, ShortSaleSlot, DesignatedLocation.", "")
 			return
 		}
 	}
@@ -865,7 +963,7 @@ func (c *EClient) PlaceOrder(orderID OrderID, contract *Contract, order *Order) 
 				order.ScaleInitPosition != UNSET_INT ||
 				order.ScaleInitFillQty != UNSET_INT ||
 				order.ScaleRandomPercent) {
-			c.wrapper.Error(orderID, UPDATE_TWS.Code, UPDATE_TWS.Msg+
+			c.wrapper.Error(orderID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+
 				" It does not support Scale order parameters: PriceAdjustValue, PriceAdjustInterval, "+
 				"ProfitOffset, AutoReset, InitPosition, InitFillQty and RandomPercent.", "")
 			return
@@ -875,100 +973,100 @@ func (c *EClient) PlaceOrder(orderID OrderID, contract *Contract, order *Order) 
 	if c.serverVersion < MIN_SERVER_VER_ORDER_COMBO_LEGS_PRICE && contract.SecType == "BAG" {
 		for _, orderComboLeg := range order.OrderComboLegs {
 			if orderComboLeg.Price != UNSET_FLOAT {
-				c.wrapper.Error(orderID, UPDATE_TWS.Code, UPDATE_TWS.Msg+"  It does not support per-leg prices for order combo legs.", "")
+				c.wrapper.Error(orderID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+"  It does not support per-leg prices for order combo legs.", "")
 				return
 			}
 
 		}
 	}
 	if c.serverVersion < MIN_SERVER_VER_TRAILING_PERCENT && order.TrailingPercent != UNSET_FLOAT {
-		c.wrapper.Error(orderID, UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support trailing percent parameter.", "")
+		c.wrapper.Error(orderID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support trailing percent parameter.", "")
 		return
 	}
 
 	if c.serverVersion < MIN_SERVER_VER_TRADING_CLASS && contract.TradingClass != "" {
-		c.wrapper.Error(orderID, UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support tradingClass parameter in placeOrder.", "")
+		c.wrapper.Error(orderID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support tradingClass parameter in placeOrder.", "")
 		return
 	}
 
 	if c.serverVersion < MIN_SERVER_VER_SCALE_TABLE &&
 		(order.ScaleTable != "" || order.ActiveStartTime != "" || order.ActiveStopTime != "") {
-		c.wrapper.Error(orderID, UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support scaleTable, activeStartTime and activeStopTime parameters.", "")
+		c.wrapper.Error(orderID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support scaleTable, activeStartTime and activeStopTime parameters.", "")
 		return
 	}
 
 	if c.serverVersion < MIN_SERVER_VER_ALGO_ID && order.AlgoID != "" {
-		c.wrapper.Error(orderID, UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support algoId parameter.", "")
+		c.wrapper.Error(orderID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support algoId parameter.", "")
 		return
 	}
 
 	if c.serverVersion < MIN_SERVER_VER_ORDER_SOLICITED && order.Solictied {
-		c.wrapper.Error(orderID, UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support order solicited parameter.", "")
+		c.wrapper.Error(orderID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support order solicited parameter.", "")
 		return
 	}
 
 	if c.serverVersion < MIN_SERVER_VER_MODELS_SUPPORT && order.ModelCode != "" {
-		c.wrapper.Error(orderID, UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support model code parameter.", "")
+		c.wrapper.Error(orderID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support model code parameter.", "")
 		return
 	}
 
 	if c.serverVersion < MIN_SERVER_VER_EXT_OPERATOR && order.ExtOperator != "" {
-		c.wrapper.Error(orderID, UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support ext operator parameter", "")
+		c.wrapper.Error(orderID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support ext operator parameter", "")
 		return
 	}
 
 	if c.serverVersion < MIN_SERVER_VER_SOFT_DOLLAR_TIER && (order.SoftDollarTier.Name != "" || order.SoftDollarTier.Value != "") {
-		c.wrapper.Error(orderID, UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support soft dollar tier", "")
+		c.wrapper.Error(orderID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support soft dollar tier", "")
 		return
 	}
 
 	if c.serverVersion < MIN_SERVER_VER_CASH_QTY && order.CashQty != UNSET_FLOAT {
-		c.wrapper.Error(orderID, UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support cash quantity parameter", "")
+		c.wrapper.Error(orderID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support cash quantity parameter", "")
 		return
 	}
 
 	if c.serverVersion < MIN_SERVER_VER_DECISION_MAKER && (order.Mifid2DecisionMaker != "" || order.Mifid2DecisionAlgo != "") {
-		c.wrapper.Error(orderID, UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support MIFID II decision maker parameters", "")
+		c.wrapper.Error(orderID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support MIFID II decision maker parameters", "")
 		return
 	}
 
 	if c.serverVersion < MIN_SERVER_VER_MIFID_EXECUTION && (order.Mifid2ExecutionTrader != "" || order.Mifid2ExecutionAlgo != "") {
-		c.wrapper.Error(orderID, UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support MIFID II execution parameters", "")
+		c.wrapper.Error(orderID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support MIFID II execution parameters", "")
 		return
 	}
 
 	if c.serverVersion < MIN_SERVER_VER_AUTO_PRICE_FOR_HEDGE && order.DontUseAutoPriceForHedge {
-		c.wrapper.Error(orderID, UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support dontUseAutoPriceForHedge parameter", "")
+		c.wrapper.Error(orderID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support dontUseAutoPriceForHedge parameter", "")
 		return
 	}
 
 	if c.serverVersion < MIN_SERVER_VER_ORDER_CONTAINER && order.IsOmsContainer {
-		c.wrapper.Error(orderID, UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support oms container parameter", "")
+		c.wrapper.Error(orderID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support oms container parameter", "")
 		return
 	}
 
 	if c.serverVersion < MIN_SERVER_VER_PRICE_MGMT_ALGO && order.UsePriceMgmtAlgo {
-		c.wrapper.Error(orderID, UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support Use price management algo requests", "")
+		c.wrapper.Error(orderID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support Use price management algo requests", "")
 		return
 	}
 
 	if c.serverVersion < MIN_SERVER_VER_DURATION && order.Duration != UNSET_INT {
-		c.wrapper.Error(orderID, UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support duration attribute", "")
+		c.wrapper.Error(orderID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support duration attribute", "")
 		return
 	}
 
 	if c.serverVersion < MIN_SERVER_VER_POST_TO_ATS && order.PostToAts != UNSET_INT {
-		c.wrapper.Error(orderID, UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support postToAts attribute", "")
+		c.wrapper.Error(orderID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support postToAts attribute", "")
 		return
 	}
 
 	if c.serverVersion < MIN_SERVER_VER_AUTO_CANCEL_PARENT && order.AutoCancelParent {
-		c.wrapper.Error(orderID, UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support autoCancelParent attribute", "")
+		c.wrapper.Error(orderID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support autoCancelParent attribute", "")
 		return
 	}
 
 	if c.serverVersion < MIN_SERVER_VER_ADVANCED_ORDER_REJECT && order.AdvancedErrorOverride != "" {
-		c.wrapper.Error(orderID, UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support advanced error override attribute", "")
+		c.wrapper.Error(orderID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support advanced error override attribute", "")
 		return
 	}
 
@@ -978,7 +1076,7 @@ func (c *EClient) PlaceOrder(orderID OrderID, contract *Contract, order *Order) 
 			order.CompeteAgainstBestOffset != UNSET_FLOAT ||
 			order.MidOffsetAtWhole != UNSET_FLOAT ||
 			order.MidOffsetAtHalf != UNSET_FLOAT {
-			c.wrapper.Error(orderID, UPDATE_TWS.Code, UPDATE_TWS.Msg+
+			c.wrapper.Error(orderID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+
 				" It does not support PEG BEST / PEG MID order parameters: minTradeQty, minCompeteSize, "+
 				"competeAgainstBestOffset, midOffsetAtWhole and midOffsetAtHalf.", "")
 			return
@@ -986,22 +1084,22 @@ func (c *EClient) PlaceOrder(orderID OrderID, contract *Contract, order *Order) 
 	}
 
 	if c.serverVersion < MIN_SERVER_VER_CUSTOMER_ACCOUNT && order.CustomerAccount != "" {
-		c.wrapper.Error(orderID, UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support customer account parameter", "")
+		c.wrapper.Error(orderID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support customer account parameter", "")
 		return
 	}
 
 	if c.serverVersion < MIN_SERVER_VER_PROFESSIONAL_CUSTOMER && order.ProfessionalCustomer {
-		c.wrapper.Error(orderID, UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support professional customer parameter", "")
+		c.wrapper.Error(orderID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support professional customer parameter", "")
 		return
 	}
 
 	if c.serverVersion < MIN_SERVER_VER_INCLUDE_OVERNIGHT && order.IncludeOvernight {
-		c.wrapper.Error(orderID, UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support include overnight parameter", "")
+		c.wrapper.Error(orderID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support include overnight parameter", "")
 		return
 	}
 
 	if c.serverVersion < MIN_SERVER_VER_CME_TAGGING_FIELDS && order.ManualOrderIndicator != UNSET_INT {
-		c.wrapper.Error(orderID, UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support manual indicator parameter", "")
+		c.wrapper.Error(orderID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support manual indicator parameter", "")
 		return
 	}
 
@@ -1467,13 +1565,19 @@ func (c *EClient) PlaceOrder(orderID OrderID, contract *Contract, order *Order) 
 // CancelOrder cancel an order by orderId.
 // It can only be used to cancel an order that was placed originally by a client with the same client ID
 func (c *EClient) CancelOrder(orderID OrderID, orderCancel OrderCancel) {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(orderID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
 	if c.serverVersion < MIN_SERVER_VER_MANUAL_ORDER_TIME && orderCancel.ManualOrderCancelTime != "" {
-		c.wrapper.Error(orderID, UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support manual order cancel time attribute.", "")
+		c.wrapper.Error(orderID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support manual order cancel time attribute.", "")
 		return
 	}
 
 	if c.serverVersion < MIN_SERVER_VER_CME_TAGGING_FIELDS && (orderCancel.ExtOperator != "" || orderCancel.ManualOrderIndicator != UNSET_INT) {
-		c.wrapper.Error(orderID, UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support ext operator and manual order indicator parameters.", "")
+		c.wrapper.Error(orderID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support ext operator and manual order indicator parameters.", "")
 	}
 
 	const VERSION = 1
@@ -1514,6 +1618,11 @@ func (c *EClient) CancelOrder(orderID OrderID, orderCancel OrderCancel) {
 // This association will persist over multiple API and TWS sessions.
 func (c *EClient) ReqOpenOrders() {
 
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
 	const VERSION = 1
 
 	msg := makeFields(REQ_OPEN_ORDERS, VERSION)
@@ -1528,6 +1637,11 @@ func (c *EClient) ReqOpenOrders() {
 // If set to FALSE, no association will be made.
 func (c *EClient) ReqAutoOpenOrders(autoBind bool) {
 
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
 	const VERSION = 1
 
 	msg := makeFields(REQ_AUTO_OPEN_ORDERS, VERSION, autoBind)
@@ -1540,6 +1654,11 @@ func (c *EClient) ReqAutoOpenOrders(autoBind bool) {
 // No association is made between the returned orders and the requesting client.
 func (c *EClient) ReqAllOpenOrders() {
 
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
 	const VERSION = 1
 
 	msg := makeFields(REQ_ALL_OPEN_ORDERS, VERSION)
@@ -1549,8 +1668,14 @@ func (c *EClient) ReqAllOpenOrders() {
 
 // ReqGlobalCancel cancels all open orders globally. It cancels both API and TWS open orders.
 func (c *EClient) ReqGlobalCancel(orderCancel OrderCancel) {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
 	if c.serverVersion < MIN_SERVER_VER_CME_TAGGING_FIELDS && (orderCancel.ExtOperator != "" || orderCancel.ManualOrderIndicator != UNSET_INT) {
-		c.wrapper.Error(NO_VALID_ID, UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support ext operator and manual order indicator parameters.", "")
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support ext operator and manual order indicator parameters.", "")
 	}
 
 	const VERSION = 1
@@ -1578,6 +1703,11 @@ func (c *EClient) ReqGlobalCancel(orderCancel OrderCancel) {
 // numIds is depreceted
 func (c *EClient) ReqIDs(numIds int64) {
 
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
 	const VERSION = 1
 
 	msg := makeFields(REQ_IDS, VERSION, numIds)
@@ -1592,6 +1722,11 @@ func (c *EClient) ReqIDs(numIds int64) {
 // ReqAccountUpdates will start getting account values, portfolio, and last update time information.
 // it is returned via EWrapper.updateAccountValue(), EWrapperi.updatePortfolio() and Wrapper.updateAccountTime().
 func (c *EClient) ReqAccountUpdates(subscribe bool, accountName string) {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
 
 	const VERSION = 2
 
@@ -1644,6 +1779,11 @@ func (c *EClient) ReqAccountUpdates(subscribe bool, accountName string) {
 //	$LEDGER:ALL - Single flag to relay all cash balance tags* in all currencies.
 func (c *EClient) ReqAccountSummary(reqID int64, groupName string, tags string) {
 
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
 	const VERSION = 1
 
 	msg := makeFields(REQ_ACCOUNT_SUMMARY, VERSION, reqID, groupName, tags)
@@ -1655,6 +1795,11 @@ func (c *EClient) ReqAccountSummary(reqID int64, groupName string, tags string) 
 // reqId is the ID of the data request being canceled.
 func (c *EClient) CancelAccountSummary(reqID int64) {
 
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
 	const VERSION = 1
 
 	msg := makeFields(CANCEL_ACCOUNT_SUMMARY, VERSION, reqID)
@@ -1664,8 +1809,14 @@ func (c *EClient) CancelAccountSummary(reqID int64) {
 
 // ReqPositions requests real-time position data for all accounts.
 func (c *EClient) ReqPositions() {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
 	if c.serverVersion < MIN_SERVER_VER_POSITIONS {
-		c.wrapper.Error(NO_VALID_ID, UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support positions request.", "")
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support positions request.", "")
 		return
 	}
 
@@ -1678,8 +1829,14 @@ func (c *EClient) ReqPositions() {
 
 // CancelPositions cancels real-time position updates.
 func (c *EClient) CancelPositions() {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
 	if c.serverVersion < MIN_SERVER_VER_POSITIONS {
-		c.wrapper.Error(NO_VALID_ID, UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support positions request.", "")
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support positions request.", "")
 		return
 	}
 
@@ -1693,8 +1850,14 @@ func (c *EClient) CancelPositions() {
 // ReqPositionsMulti requests the positions for account and/or model.
 // Results are delivered via EWrapper.positionMulti() and EWrapper.positionMultiEnd().
 func (c *EClient) ReqPositionsMulti(reqID int64, account string, modelCode string) {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
 	if c.serverVersion < MIN_SERVER_VER_MODELS_SUPPORT {
-		c.wrapper.Error(NO_VALID_ID, UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support positions multi request.", "")
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support positions multi request.", "")
 		return
 	}
 
@@ -1707,8 +1870,14 @@ func (c *EClient) ReqPositionsMulti(reqID int64, account string, modelCode strin
 
 // CancelPositionsMulti cancels the positions update of assigned account.
 func (c *EClient) CancelPositionsMulti(reqID int64) {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
 	if c.serverVersion < MIN_SERVER_VER_MODELS_SUPPORT {
-		c.wrapper.Error(NO_VALID_ID, UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support cancel positions multi request.", "")
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support cancel positions multi request.", "")
 		return
 	}
 
@@ -1721,8 +1890,14 @@ func (c *EClient) CancelPositionsMulti(reqID int64) {
 
 // ReqAccountUpdatesMulti requests account updates for account and/or model.
 func (c *EClient) ReqAccountUpdatesMulti(reqID int64, account string, modelCode string, ledgerAndNLV bool) {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
 	if c.serverVersion < MIN_SERVER_VER_MODELS_SUPPORT {
-		c.wrapper.Error(NO_VALID_ID, UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support account updates multi request.", "")
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support account updates multi request.", "")
 		return
 	}
 
@@ -1735,8 +1910,14 @@ func (c *EClient) ReqAccountUpdatesMulti(reqID int64, account string, modelCode 
 
 // CancelAccountUpdatesMulti cancels account update for reqID.
 func (c *EClient) CancelAccountUpdatesMulti(reqID int64) {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
 	if c.serverVersion < MIN_SERVER_VER_MODELS_SUPPORT {
-		c.wrapper.Error(NO_VALID_ID, UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support cancel account updates multi request.", "")
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support cancel account updates multi request.", "")
 		return
 	}
 
@@ -1753,8 +1934,14 @@ func (c *EClient) CancelAccountUpdatesMulti(reqID int64) {
 
 // ReqPnL requests and subscribe the PnL of assigned account.
 func (c *EClient) ReqPnL(reqID int64, account string, modelCode string) {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
 	if c.serverVersion < MIN_SERVER_VER_PNL {
-		c.wrapper.Error(NO_VALID_ID, UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support PnL request.", "")
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support PnL request.", "")
 		return
 	}
 
@@ -1765,8 +1952,14 @@ func (c *EClient) ReqPnL(reqID int64, account string, modelCode string) {
 
 // CancelPnL cancels the PnL update of assigned account.
 func (c *EClient) CancelPnL(reqID int64) {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
 	if c.serverVersion < MIN_SERVER_VER_PNL {
-		c.wrapper.Error(NO_VALID_ID, UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support PnL request.", "")
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support PnL request.", "")
 		return
 	}
 
@@ -1777,8 +1970,14 @@ func (c *EClient) CancelPnL(reqID int64) {
 
 // ReqPnLSingle request and subscribe the single contract PnL of assigned account.
 func (c *EClient) ReqPnLSingle(reqID int64, account string, modelCode string, contractID int64) {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
 	if c.serverVersion < MIN_SERVER_VER_PNL {
-		c.wrapper.Error(NO_VALID_ID, UPDATE_TWS.Code, UPDATE_TWS.Msg+"  It does not support PnL request.", "")
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+"  It does not support PnL request.", "")
 		return
 	}
 
@@ -1789,8 +1988,14 @@ func (c *EClient) ReqPnLSingle(reqID int64, account string, modelCode string, co
 
 // CancelPnLSingle cancel the single contract PnL update of assigned account.
 func (c *EClient) CancelPnLSingle(reqID int64) {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
 	if c.serverVersion < MIN_SERVER_VER_PNL {
-		c.wrapper.Error(NO_VALID_ID, UPDATE_TWS.Code, UPDATE_TWS.Msg+"  It does not support PnL request.", "")
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+"  It does not support PnL request.", "")
 		return
 	}
 
@@ -1809,6 +2014,11 @@ func (c *EClient) CancelPnLSingle(reqID int64) {
 // execFilter contains attributes that describe the filter criteria used to determine which execution reports are returned.
 // NOTE: Time format must be 'yyyymmdd-hh:mm:ss' Eg: '20030702-14:55'
 func (c *EClient) ReqExecutions(reqID int64, execFilter ExecutionFilter) {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
 
 	const VERSION = 3
 
@@ -1839,22 +2049,29 @@ func (c *EClient) ReqExecutions(reqID int64, execFilter ExecutionFilter) {
 // ReqContractDetails downloads all details for a particular underlying.
 // The contract details will be received via the contractDetails() function on the EWrapper.
 func (c *EClient) ReqContractDetails(reqID int64, contract *Contract) {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
 	if c.serverVersion < MIN_SERVER_VER_SEC_ID_TYPE && (contract.SecIDType != "" || contract.SecID != "") {
-		c.wrapper.Error(reqID, UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support secIdType and secId parameters.", "")
+		c.wrapper.Error(reqID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support secIdType and secId parameters.", "")
 		return
 	}
 
 	if c.serverVersion < MIN_SERVER_VER_TRADING_CLASS && contract.TradingClass != "" {
-		c.wrapper.Error(reqID, UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support tradingClass parameter in reqContractDetails.", "")
+		c.wrapper.Error(reqID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support tradingClass parameter in reqContractDetails.", "")
 		return
 	}
 
 	if c.serverVersion < MIN_SERVER_VER_LINKING && contract.PrimaryExchange != "" {
-		c.wrapper.Error(reqID, UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support primaryExchange parameter in reqContractDetails.", "")
+		c.wrapper.Error(reqID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support primaryExchange parameter in reqContractDetails.", "")
 		return
 	}
+
 	if c.serverVersion < MIN_SERVER_VER_BOND_ISSUERID && contract.IssuerID != "" {
-		c.wrapper.Error(reqID, UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support issuerId parameter in reqContractDetails.", "")
+		c.wrapper.Error(reqID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support issuerId parameter in reqContractDetails.", "")
 		return
 	}
 
@@ -1911,8 +2128,14 @@ func (c *EClient) ReqContractDetails(reqID int64, contract *Contract) {
 
 // ReqMktDepthExchanges requests market depth exchanges.
 func (c *EClient) ReqMktDepthExchanges() {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
 	if c.serverVersion < MIN_SERVER_VER_REQ_MKT_DEPTH_EXCHANGES {
-		c.wrapper.Error(NO_VALID_ID, UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support market depth exchanges request.", "")
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support market depth exchanges request.", "")
 		return
 	}
 
@@ -1933,18 +2156,26 @@ func (c *EClient) ReqMktDepthExchanges() {
 // isSmartDepth	specifies SMART depth request.
 // mktDepthOptions is for internal use only. Use default value XYZ.
 func (c *EClient) ReqMktDepth(reqID int64, contract *Contract, numRows int, isSmartDepth bool, mktDepthOptions []TagValue) {
-	switch {
-	case c.serverVersion < MIN_SERVER_VER_TRADING_CLASS:
+
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
+	if c.serverVersion < MIN_SERVER_VER_TRADING_CLASS {
 		if contract.TradingClass != "" || contract.ConID > 0 {
-			c.wrapper.Error(reqID, UPDATE_TWS.Code, UPDATE_TWS.Msg+"  It does not support conId and tradingClass parameters in reqMktDepth.", "")
+			c.wrapper.Error(reqID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+"  It does not support conId and tradingClass parameters in reqMktDepth.", "")
 			return
 		}
-		fallthrough
-	case c.serverVersion < MIN_SERVER_VER_SMART_DEPTH && isSmartDepth:
-		c.wrapper.Error(reqID, UPDATE_TWS.Code, UPDATE_TWS.Msg+"  It does not support SMART depth request.", "")
+	}
+
+	if c.serverVersion < MIN_SERVER_VER_SMART_DEPTH && isSmartDepth {
+		c.wrapper.Error(reqID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+"  It does not support SMART depth request.", "")
 		return
-	case c.serverVersion < MIN_SERVER_VER_MKT_DEPTH_PRIM_EXCHANGE && contract.PrimaryExchange != "":
-		c.wrapper.Error(reqID, UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support primaryExchange parameter in reqMktDepth.", "")
+	}
+
+	if c.serverVersion < MIN_SERVER_VER_MKT_DEPTH_PRIM_EXCHANGE && contract.PrimaryExchange != "" {
+		c.wrapper.Error(reqID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support primaryExchange parameter in reqMktDepth.", "")
 		return
 	}
 
@@ -2000,8 +2231,14 @@ func (c *EClient) ReqMktDepth(reqID int64, contract *Contract, numRows int, isSm
 
 // CancelMktDepth cancels market depth updates.
 func (c *EClient) CancelMktDepth(reqID int64, isSmartDepth bool) {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
 	if c.serverVersion < MIN_SERVER_VER_SMART_DEPTH && isSmartDepth {
-		c.wrapper.Error(reqID, UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support SMART depth cancel.", "")
+		c.wrapper.Error(reqID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support SMART depth cancel.", "")
 		return
 	}
 
@@ -2029,6 +2266,11 @@ func (c *EClient) CancelMktDepth(reqID int64, isSmartDepth bool) {
 // If allMsgs sets to FALSE, will only return new bulletins.
 func (c *EClient) ReqNewsBulletins(allMsgs bool) {
 
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
 	const VERSION = 1
 
 	msg := makeFields(REQ_NEWS_BULLETINS, VERSION, allMsgs)
@@ -2038,6 +2280,11 @@ func (c *EClient) ReqNewsBulletins(allMsgs bool) {
 
 // CancelNewsBulletins cancels the news bulletins updates
 func (c *EClient) CancelNewsBulletins() {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
 
 	const VERSION = 1
 
@@ -2055,6 +2302,11 @@ func (c *EClient) CancelNewsBulletins() {
 // This request can only be made when connected to a FA managed account.
 func (c *EClient) ReqManagedAccts() {
 
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
 	const VERSION = 1
 
 	msg := makeFields(REQ_MANAGED_ACCTS, VERSION)
@@ -2066,8 +2318,14 @@ func (c *EClient) ReqManagedAccts() {
 // The data returns in an XML string via wrapper.ReceiveFA().
 // faData is 1->"GROUPS", 3->"ALIASES".
 func (c *EClient) RequestFA(faDataType FaDataType) {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
 	if c.serverVersion < MIN_SERVER_VER_FA_PROFILE_DESUPPORT && faDataType == 2 {
-		c.wrapper.Error(NO_VALID_ID, FA_PROFILE_NOT_SUPPORTED.Code, FA_PROFILE_NOT_SUPPORTED.Msg, "")
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), FA_PROFILE_NOT_SUPPORTED.Code, FA_PROFILE_NOT_SUPPORTED.Msg, "")
 		return
 	}
 
@@ -2085,6 +2343,16 @@ func (c *EClient) RequestFA(faDataType FaDataType) {
 // 3 = ACCOUNT ALIASES
 // cxml is the XML string containing the new FA configuration information.
 func (c *EClient) ReplaceFA(reqID int64, faDataType FaDataType, cxml string) {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
+	if c.serverVersion >= MIN_SERVER_VER_REPLACE_FA_END && faDataType == 2 {
+		c.wrapper.Error(reqID, currentTimeMillis(), FA_PROFILE_NOT_SUPPORTED.Code, FA_PROFILE_NOT_SUPPORTED.Msg, "")
+		return
+	}
 
 	const VERSION = 1
 
@@ -2158,9 +2426,15 @@ func (c *EClient) ReplaceFA(reqID int64, faDataType FaDataType, cxml string) {
 // chartOptions is for internal use only. Use default value XYZ.
 
 func (c *EClient) ReqHistoricalData(reqID int64, contract *Contract, endDateTime string, duration string, barSize string, whatToShow string, useRTH bool, formatDate int, keepUpToDate bool, chartOptions []TagValue) {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
 	if c.serverVersion < MIN_SERVER_VER_TRADING_CLASS {
 		if contract.TradingClass != "" || contract.ConID > 0 {
-			c.wrapper.Error(reqID, UPDATE_TWS.Code, UPDATE_TWS.Msg, "")
+			c.wrapper.Error(reqID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg, "")
 		}
 	}
 
@@ -2239,6 +2513,11 @@ func (c *EClient) ReqHistoricalData(reqID int64, contract *Contract, endDateTime
 // reqId, the ticker ID, must be a unique value.
 func (c *EClient) CancelHistoricalData(reqID int64) {
 
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
 	const VERSION = 1
 
 	msg := makeFields(CANCEL_HISTORICAL_DATA, VERSION, reqID)
@@ -2249,8 +2528,14 @@ func (c *EClient) CancelHistoricalData(reqID int64) {
 // ReqHeadTimeStamp request the head timestamp of assigned contract.
 // call this func to get the headmost data you can get
 func (c *EClient) ReqHeadTimeStamp(reqID int64, contract *Contract, whatToShow string, useRTH bool, formatDate int) {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
 	if c.serverVersion < MIN_SERVER_VER_REQ_HEAD_TIMESTAMP {
-		c.wrapper.Error(reqID, UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support head time stamp requests.", "")
+		c.wrapper.Error(reqID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support head time stamp requests.", "")
 		return
 	}
 
@@ -2283,8 +2568,14 @@ func (c *EClient) ReqHeadTimeStamp(reqID int64, contract *Contract, whatToShow s
 
 // CancelHeadTimeStamp cancels the head timestamp data.
 func (c *EClient) CancelHeadTimeStamp(reqID int64) {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
 	if c.serverVersion < MIN_SERVER_VER_CANCEL_HEADTIMESTAMP {
-		c.wrapper.Error(reqID, UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support head time stamp requests.", "")
+		c.wrapper.Error(reqID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support head time stamp requests.", "")
 		return
 	}
 
@@ -2295,8 +2586,14 @@ func (c *EClient) CancelHeadTimeStamp(reqID int64) {
 
 // ReqHistogramData requests histogram data.
 func (c *EClient) ReqHistogramData(reqID int64, contract *Contract, useRTH bool, timePeriod string) {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
 	if c.serverVersion < MIN_SERVER_VER_REQ_HISTOGRAM {
-		c.wrapper.Error(NO_VALID_ID, UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support histogram requests..", "")
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support histogram requests..", "")
 		return
 	}
 
@@ -2327,8 +2624,14 @@ func (c *EClient) ReqHistogramData(reqID int64, contract *Contract, useRTH bool,
 
 // CancelHistogramData cancels histogram data.
 func (c *EClient) CancelHistogramData(reqID int64) {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
 	if c.serverVersion < MIN_SERVER_VER_REQ_HISTOGRAM {
-		c.wrapper.Error(NO_VALID_ID, UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support histogram requests..", "")
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support histogram requests..", "")
 		return
 	}
 
@@ -2339,8 +2642,14 @@ func (c *EClient) CancelHistogramData(reqID int64) {
 
 // ReqHistoricalTicks requests historical ticks.
 func (c *EClient) ReqHistoricalTicks(reqID int64, contract *Contract, startDateTime string, endDateTime string, numberOfTicks int, whatToShow string, useRTH bool, ignoreSize bool, miscOptions []TagValue) {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
 	if c.serverVersion < MIN_SERVER_VER_HISTORICAL_TICKS {
-		c.wrapper.Error(NO_VALID_ID, UPDATE_TWS.Code, UPDATE_TWS.Msg+"  It does not support historical ticks requests..", "")
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+"  It does not support historical ticks requests..", "")
 		return
 	}
 
@@ -2386,6 +2695,11 @@ func (c *EClient) ReqHistoricalTicks(reqID int64, contract *Contract, startDateT
 // ReqScannerParameters requests an XML string that describes all possible scanner queries.
 func (c *EClient) ReqScannerParameters() {
 
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
 	const VERSION = 1
 
 	msg := makeFields(REQ_SCANNER_PARAMETERS, VERSION)
@@ -2398,8 +2712,14 @@ func (c *EClient) ReqScannerParameters() {
 // scannerSubscription contains possible parameters used to filter results.
 // scannerSubscriptionOptions is for internal use only.Use default value XYZ.
 func (c *EClient) ReqScannerSubscription(reqID int64, subscription *ScannerSubscription, scannerSubscriptionOptions []TagValue, scannerSubscriptionFilterOptions []TagValue) {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
 	if c.serverVersion < MIN_SERVER_VER_SCANNER_GENERIC_OPTS && len(scannerSubscriptionFilterOptions) > 0 {
-		c.wrapper.Error(NO_VALID_ID, UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support API scanner subscription generic filter options", "")
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support API scanner subscription generic filter options", "")
 		return
 	}
 
@@ -2462,6 +2782,11 @@ func (c *EClient) ReqScannerSubscription(reqID int64, subscription *ScannerSubsc
 // reqId is the unique ticker ID used for subscription.
 func (c *EClient) CancelScannerSubscription(reqID int64) {
 
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
 	const VERSION = 1
 
 	msg := makeFields(CANCEL_SCANNER_SUBSCRIPTION, VERSION, reqID)
@@ -2499,8 +2824,14 @@ func (c *EClient) CancelScannerSubscription(reqID int64) {
 //
 // realTimeBarOptions is for internal use only. Use default value XYZ.
 func (c *EClient) ReqRealTimeBars(reqID int64, contract *Contract, barSize int, whatToShow string, useRTH bool, realTimeBarsOptions []TagValue) {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
 	if c.serverVersion < MIN_SERVER_VER_TRADING_CLASS && contract.TradingClass != "" {
-		c.wrapper.Error(reqID, UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support conId and tradingClass parameter in reqRealTimeBars.", "")
+		c.wrapper.Error(reqID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support conId and tradingClass parameter in reqRealTimeBars.", "")
 		return
 	}
 
@@ -2550,6 +2881,11 @@ func (c *EClient) ReqRealTimeBars(reqID int64, contract *Contract, barSize int, 
 // CancelRealTimeBars cancels realtime bars.
 func (c *EClient) CancelRealTimeBars(reqID int64) {
 
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
 	const VERSION = 1
 
 	msg := makeFields(CANCEL_REAL_TIME_BARS, VERSION, reqID)
@@ -2578,15 +2914,20 @@ func (c *EClient) CancelRealTimeBars(reqID int64) {
 //	CalendarReport (company calendar)
 func (c *EClient) ReqFundamentalData(reqID int64, contract *Contract, reportType string, fundamentalDataOptions []TagValue) {
 
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
 	const VERSION = 2
 
 	if c.serverVersion < MIN_SERVER_VER_FUNDAMENTAL_DATA {
-		c.wrapper.Error(NO_VALID_ID, UPDATE_TWS.Code, UPDATE_TWS.Msg+"  It does not support fundamental data request.", "")
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+"  It does not support fundamental data request.", "")
 		return
 	}
 
 	if c.serverVersion < MIN_SERVER_VER_TRADING_CLASS {
-		c.wrapper.Error(NO_VALID_ID, UPDATE_TWS.Code, UPDATE_TWS.Msg+"  It does not support conId parameter in reqFundamentalData.", "")
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+"  It does not support conId parameter in reqFundamentalData.", "")
 		return
 	}
 
@@ -2622,8 +2963,14 @@ func (c *EClient) ReqFundamentalData(reqID int64, contract *Contract, reportType
 
 // CancelFundamentalData cancels fundamental data.
 func (c *EClient) CancelFundamentalData(reqID int64) {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
 	if c.serverVersion < MIN_SERVER_VER_FUNDAMENTAL_DATA {
-		c.wrapper.Error(NO_VALID_ID, UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support fundamental data request.", "")
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support fundamental data request.", "")
 		return
 	}
 
@@ -2641,8 +2988,14 @@ func (c *EClient) CancelFundamentalData(reqID int64) {
 
 // ReqNewsProviders request news providers.
 func (c *EClient) ReqNewsProviders() {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
 	if c.serverVersion < MIN_SERVER_VER_REQ_NEWS_PROVIDERS {
-		c.wrapper.Error(NO_VALID_ID, UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support news providers request.", "")
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support news providers request.", "")
 		return
 	}
 
@@ -2653,8 +3006,14 @@ func (c *EClient) ReqNewsProviders() {
 
 // ReqNewsArticle request news article.
 func (c *EClient) ReqNewsArticle(reqID int64, providerCode string, articleID string, newsArticleOptions []TagValue) {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
 	if c.serverVersion < MIN_SERVER_VER_REQ_NEWS_ARTICLE {
-		c.wrapper.Error(NO_VALID_ID, UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support news article request.", "")
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support news article request.", "")
 		return
 	}
 
@@ -2680,8 +3039,14 @@ func (c *EClient) ReqNewsArticle(reqID int64, providerCode string, articleID str
 
 // ReqHistoricalNews request historical news.
 func (c *EClient) ReqHistoricalNews(reqID int64, contractID int64, providerCode string, startDateTime string, endDateTime string, totalResults int64, historicalNewsOptions []TagValue) {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
 	if c.serverVersion < MIN_SERVER_VER_REQ_HISTORICAL_NEWS {
-		c.wrapper.Error(NO_VALID_ID, UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support historical news request.", "")
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support historical news request.", "")
 		return
 	}
 
@@ -2714,8 +3079,14 @@ func (c *EClient) ReqHistoricalNews(reqID int64, contractID int64, providerCode 
 
 // QueryDisplayGroups request the display groups in TWS.
 func (c *EClient) QueryDisplayGroups(reqID int64) {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
 	if c.serverVersion < MIN_SERVER_VER_LINKING {
-		c.wrapper.Error(NO_VALID_ID, UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support queryDisplayGroups request.", "")
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support queryDisplayGroups request.", "")
 		return
 	}
 
@@ -2730,8 +3101,14 @@ func (c *EClient) QueryDisplayGroups(reqID int64) {
 // reqId is the unique number associated with the notification.
 // groupId is the ID of the group, currently it is a number from 1 to 7.
 func (c *EClient) SubscribeToGroupEvents(reqID int64, groupID int) {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
 	if c.serverVersion < MIN_SERVER_VER_LINKING {
-		c.wrapper.Error(NO_VALID_ID, UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support subscribeToGroupEvents request.", "")
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support subscribeToGroupEvents request.", "")
 		return
 	}
 
@@ -2752,8 +3129,14 @@ func (c *EClient) SubscribeToGroupEvents(reqID int64, groupID int) {
 //		Examples: 8314@SMART for IBM SMART; 8314@ARCA for IBM @ARCA.
 //	combo = if any combo is selected.
 func (c *EClient) UpdateDisplayGroup(reqID int64, contractInfo string) {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
 	if c.serverVersion < MIN_SERVER_VER_LINKING {
-		c.wrapper.Error(NO_VALID_ID, UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support updateDisplayGroup request.", "")
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support updateDisplayGroup request.", "")
 		return
 	}
 
@@ -2766,8 +3149,14 @@ func (c *EClient) UpdateDisplayGroup(reqID int64, contractInfo string) {
 
 // UnsubscribeFromGroupEvents unsubcribes the display group events.
 func (c *EClient) UnsubscribeFromGroupEvents(reqID int64) {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
 	if c.serverVersion < MIN_SERVER_VER_LINKING {
-		c.wrapper.Error(NO_VALID_ID, UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support unsubscribeFromGroupEvents request.", "")
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support unsubscribeFromGroupEvents request.", "")
 		return
 	}
 
@@ -2781,13 +3170,19 @@ func (c *EClient) UnsubscribeFromGroupEvents(reqID int64) {
 // VerifyRequest is just for IB's internal use.
 // Allows to provide means of verification between the TWS and third party programs.
 func (c *EClient) VerifyRequest(apiName string, apiVersion string) {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
 	if c.serverVersion < MIN_SERVER_VER_LINKING {
-		c.wrapper.Error(NO_VALID_ID, UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support verification request.", "")
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support verification request.", "")
 		return
 	}
 
 	if c.extraAuth {
-		c.wrapper.Error(NO_VALID_ID, BAD_MESSAGE.Code, BAD_MESSAGE.Msg+
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), BAD_MESSAGE.Code, BAD_MESSAGE.Msg+
 			" Intent to authenticate needs to be expressed during initial connect request.", "")
 		return
 	}
@@ -2802,8 +3197,14 @@ func (c *EClient) VerifyRequest(apiName string, apiVersion string) {
 // VerifyMessage is just for IB's internal use.
 // Allows to provide means of verification between the TWS and third party programs.
 func (c *EClient) VerifyMessage(apiData string) {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
 	if c.serverVersion < MIN_SERVER_VER_LINKING {
-		c.wrapper.Error(NO_VALID_ID, UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support verification request.", "")
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support verification request.", "")
 		return
 	}
 
@@ -2817,13 +3218,19 @@ func (c *EClient) VerifyMessage(apiData string) {
 // VerifyAndAuthRequest is just for IB's internal use.
 // Allows to provide means of verification between the TWS and third party programs.
 func (c *EClient) VerifyAndAuthRequest(apiName string, apiVersion string, opaqueIsvKey string) {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
 	if c.serverVersion < MIN_SERVER_VER_LINKING {
-		c.wrapper.Error(NO_VALID_ID, UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support verification request.", "")
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support verification request.", "")
 		return
 	}
 
 	if c.extraAuth {
-		c.wrapper.Error(NO_VALID_ID, BAD_MESSAGE.Code, BAD_MESSAGE.Msg+
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), BAD_MESSAGE.Code, BAD_MESSAGE.Msg+
 			" Intent to authenticate needs to be expressed during initial connect request.", "")
 		return
 	}
@@ -2838,8 +3245,14 @@ func (c *EClient) VerifyAndAuthRequest(apiName string, apiVersion string, opaque
 // VerifyAndAuthMessage is just for IB's internal use.
 // Allows to provide means of verification between the TWS and third party programs.
 func (c *EClient) VerifyAndAuthMessage(apiData string, xyzResponse string) {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
 	if c.serverVersion < MIN_SERVER_VER_LINKING {
-		c.wrapper.Error(NO_VALID_ID, UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support verification request.", "")
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support verification request.", "")
 		return
 	}
 
@@ -2857,8 +3270,14 @@ func (c *EClient) VerifyAndAuthMessage(apiData string, xyzResponse string) {
 // underlyingConId is the contract ID of the underlying security.
 // Response comes via wrapper.SecurityDefinitionOptionParameter().
 func (c *EClient) ReqSecDefOptParams(reqID int64, underlyingSymbol string, futFopExchange string, underlyingSecurityType string, underlyingContractID int64) {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
 	if c.serverVersion < MIN_SERVER_VER_SEC_DEF_OPT_PARAMS_REQ {
-		c.wrapper.Error(NO_VALID_ID, UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support security definition option request.", "")
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support security definition option request.", "")
 		return
 	}
 
@@ -2872,6 +3291,11 @@ func (c *EClient) ReqSecDefOptParams(reqID int64, underlyingSymbol string, futFo
 // who have configured Soft Dollar Tiers in Account Management.
 func (c *EClient) ReqSoftDollarTiers(reqID int64) {
 
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
 	msg := makeFields(REQ_SOFT_DOLLAR_TIERS, reqID)
 
 	c.reqChan <- msg
@@ -2879,8 +3303,14 @@ func (c *EClient) ReqSoftDollarTiers(reqID int64) {
 
 // ReqFamilyCodes requests family codes.
 func (c *EClient) ReqFamilyCodes() {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
 	if c.serverVersion < MIN_SERVER_VER_REQ_FAMILY_CODES {
-		c.wrapper.Error(NO_VALID_ID, UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support family codes request.", "")
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support family codes request.", "")
 		return
 	}
 
@@ -2891,8 +3321,14 @@ func (c *EClient) ReqFamilyCodes() {
 
 // ReqMatchingSymbols requests matching symbols.
 func (c *EClient) ReqMatchingSymbols(reqID int64, pattern string) {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
 	if c.serverVersion < MIN_SERVER_VER_REQ_MATCHING_SYMBOLS {
-		c.wrapper.Error(NO_VALID_ID, UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support matching symbols request.", "")
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support matching symbols request.", "")
 		return
 	}
 
@@ -2906,6 +3342,11 @@ func (c *EClient) ReqMatchingSymbols(reqID int64, pattern string) {
 // Result will be delivered via wrapper.CompletedOrder().
 func (c *EClient) ReqCompletedOrders(apiOnly bool) {
 
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
 	msg := makeFields(REQ_COMPLETED_ORDERS, apiOnly)
 
 	c.reqChan <- msg
@@ -2913,8 +3354,14 @@ func (c *EClient) ReqCompletedOrders(apiOnly bool) {
 
 // ReqWshMetaData requests WSHE Meta data.
 func (c *EClient) ReqWshMetaData(reqID int64) {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
 	if c.serverVersion < MIN_SERVER_VER_WSHE_CALENDAR {
-		c.wrapper.Error(NO_VALID_ID, UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support WSHE Calendar API.", "")
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support WSHE Calendar API.", "")
 		return
 	}
 
@@ -2925,8 +3372,14 @@ func (c *EClient) ReqWshMetaData(reqID int64) {
 
 // CancelWshMetaData cancels WSHE Meta data.
 func (c *EClient) CancelWshMetaData(reqID int64) {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
 	if c.serverVersion < MIN_SERVER_VER_WSHE_CALENDAR {
-		c.wrapper.Error(NO_VALID_ID, UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support WSHE Calendar API.", "")
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support WSHE Calendar API.", "")
 		return
 	}
 
@@ -2937,18 +3390,24 @@ func (c *EClient) CancelWshMetaData(reqID int64) {
 
 // ReqWshEventData requests WSHE Event data.
 func (c *EClient) ReqWshEventData(reqID int64, wshEventData WshEventData) {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
 	if c.serverVersion < MIN_SERVER_VER_WSHE_CALENDAR {
-		c.wrapper.Error(NO_VALID_ID, UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support WSHE Calendar API.", "")
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support WSHE Calendar API.", "")
 		return
 	}
 	if c.serverVersion < MIN_SERVER_VER_WSH_EVENT_DATA_FILTERS &&
 		(wshEventData.Filter != "" || wshEventData.FillWatchList || wshEventData.FillPortfolio) {
-		c.wrapper.Error(NO_VALID_ID, UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support WSHE event data filters.", "")
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support WSHE event data filters.", "")
 		return
 	}
 	if c.serverVersion < MIN_SERVER_VER_WSH_EVENT_DATA_FILTERS_DATE &&
 		(wshEventData.StartDate != "" || wshEventData.EndDate != "" || wshEventData.TotalLimit != UNSET_INT) {
-		c.wrapper.Error(NO_VALID_ID, UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support WSHE event data date filters.", "")
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support WSHE event data date filters.", "")
 		return
 	}
 	fields := make([]interface{}, 0, 10)
@@ -2979,8 +3438,14 @@ func (c *EClient) ReqWshEventData(reqID int64, wshEventData WshEventData) {
 
 // CancelWshEventData cancels WSHE Event data.
 func (c *EClient) CancelWshEventData(reqID int64) {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
 	if c.serverVersion < MIN_SERVER_VER_WSHE_CALENDAR {
-		c.wrapper.Error(NO_VALID_ID, UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support WSHE Calendar API.", "")
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support WSHE Calendar API.", "")
 		return
 	}
 
@@ -2991,8 +3456,14 @@ func (c *EClient) CancelWshEventData(reqID int64) {
 
 // ReqUserInfo requests user info.
 func (c *EClient) ReqUserInfo(reqID int64) {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
 	if c.serverVersion < MIN_SERVER_VER_USER_INFO {
-		c.wrapper.Error(NO_VALID_ID, UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support user info requests.", "")
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support user info requests.", "")
 		return
 	}
 
