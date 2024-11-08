@@ -108,13 +108,15 @@ func (c Contract) String() string {
 		c.Description,
 		c.IssuerID,
 	)
-	s += "combo:" + c.ComboLegsDescrip
-	for _, leg := range c.ComboLegs {
-		s += fmt.Sprint(leg)
+	if len(c.ComboLegs) > 1 {
+		s += ", combo:" + c.ComboLegsDescrip
+		for _, leg := range c.ComboLegs {
+			s += fmt.Sprintf("; %s", leg)
+		}
 	}
 
 	if c.DeltaNeutralContract != nil {
-		s += fmt.Sprint(c.DeltaNeutralContract)
+		s += fmt.Sprintf("; %s", c.DeltaNeutralContract)
 	}
 
 	return s
