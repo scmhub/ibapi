@@ -7,7 +7,8 @@ import (
 )
 
 const (
-	UNSET_INT       int64   = math.MaxInt64
+	UNSET_INT       int64   = math.MaxInt32
+	UNSET_LONG      int64   = math.MaxInt64
 	UNSET_FLOAT     float64 = math.MaxFloat64
 	INFINITY_STRING string  = "Infinity"
 )
@@ -80,7 +81,7 @@ func NewBar() Bar {
 
 func (b Bar) String() string {
 	return fmt.Sprintf("Date: %s, Open: %f, High: %f, Low: %f, Close: %f, Volume: %s, WAP: %s, BarCount: %d",
-		b.Date, b.Open, b.High, b.Low, b.Close, decimalMaxString(b.Volume), decimalMaxString(b.Wap), b.BarCount)
+		b.Date, b.Open, b.High, b.Low, b.Close, DecimalMaxString(b.Volume), DecimalMaxString(b.Wap), b.BarCount)
 }
 
 // RealTimeBar .
@@ -105,7 +106,7 @@ func NewRealTimeBar() RealTimeBar {
 
 func (rb RealTimeBar) String() string {
 	return fmt.Sprintf("Time: %d, Open: %f, High: %f, Low: %f, Close: %f, Volume: %s, Wap: %s, Count: %d",
-		rb.Time, rb.Open, rb.High, rb.Low, rb.Close, decimalMaxString(rb.Volume), decimalMaxString(rb.Wap), rb.Count)
+		rb.Time, rb.Open, rb.High, rb.Low, rb.Close, DecimalMaxString(rb.Volume), DecimalMaxString(rb.Wap), rb.Count)
 }
 
 // HistogramData .
@@ -156,7 +157,7 @@ func NewDepthMktDataDescription() DepthMktDataDescription {
 // DepthMktDataDescription .
 func (d DepthMktDataDescription) String() string {
 	return fmt.Sprintf("Exchange: %s, SecType: %s, ListingExchange: %s, ServiceDataType: %s, AggGroup: %s",
-		d.Exchange, d.SecType, d.ListingExch, d.ServiceDataType, intMaxString(d.AggGroup))
+		d.Exchange, d.SecType, d.ListingExch, d.ServiceDataType, IntMaxString(d.AggGroup))
 }
 
 // SmartComponent .
@@ -260,7 +261,7 @@ func NewHistoricalTick() HistoricalTick {
 }
 
 func (h HistoricalTick) String() string {
-	return fmt.Sprintf("Time: %d, Price: %f, Size: %s", h.Time, h.Price, decimalMaxString(h.Size))
+	return fmt.Sprintf("Time: %d, Price: %f, Size: %s", h.Time, h.Price, DecimalMaxString(h.Size))
 }
 
 // HistoricalTickBidAsk is the historical tick's description.
@@ -283,7 +284,7 @@ func NewHistoricalTickBidAsk() HistoricalTickBidAsk {
 
 func (h HistoricalTickBidAsk) String() string {
 	return fmt.Sprintf("Time: %d, TickAttriBidAsk: %s, PriceBid: %f, PriceAsk: %f, SizeBid: %s, SizeAsk: %s",
-		h.Time, h.TickAttirbBidAsk, h.PriceBid, h.PriceAsk, decimalMaxString(h.SizeBid), decimalMaxString(h.SizeAsk))
+		h.Time, h.TickAttirbBidAsk, h.PriceBid, h.PriceAsk, DecimalMaxString(h.SizeBid), DecimalMaxString(h.SizeAsk))
 }
 
 // HistoricalTickLast is the historical last tick's description.
@@ -305,7 +306,7 @@ func NewHistoricalTickLast() HistoricalTickLast {
 
 func (h HistoricalTickLast) String() string {
 	return fmt.Sprintf("Time: %d, TickAttribLast: %s, Price: %f, Size: %s, Exchange: %s, SpecialConditions: %s",
-		h.Time, h.TickAttribLast, h.Price, decimalMaxString(h.Size), h.Exchange, h.SpecialConditions)
+		h.Time, h.TickAttribLast, h.Price, DecimalMaxString(h.Size), h.Exchange, h.SpecialConditions)
 }
 
 func (h HistoricalTickLast) Timestamp() time.Time {
@@ -348,5 +349,5 @@ func NewWshEventData() WshEventData {
 
 func (w WshEventData) String() string {
 	return fmt.Sprintf("WshEventData. ConId: %s, Filter: %s, Fill Watchlist: %t, Fill Portfolio: %t, Fill Competitors: %t",
-		intMaxString(w.ConID), w.Filter, w.FillWatchList, w.FillPortfolio, w.FillCompetitors)
+		IntMaxString(w.ConID), w.Filter, w.FillWatchList, w.FillPortfolio, w.FillCompetitors)
 }

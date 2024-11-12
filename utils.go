@@ -250,35 +250,42 @@ func handleEmpty(d interface{}) string {
 	}
 }
 
-func floatMaxString(val float64) string {
+func FloatMaxString(val float64) string {
 	if val == UNSET_FLOAT {
 		return ""
 	}
 	return strconv.FormatFloat(val, 'g', 10, 64)
 }
 
-func intMaxString(val int64) string {
+func LongMaxString(val int64) string {
+	if val == UNSET_LONG {
+		return ""
+	}
+	return strconv.FormatInt(val, 10)
+}
+
+func IntMaxString(val int64) string {
 	if val == UNSET_INT {
 		return ""
 	}
 	return strconv.FormatInt(val, 10)
 }
 
-func decimalMaxString(val Decimal) string {
+func DecimalMaxString(val Decimal) string {
 	if val == UNSET_DECIMAL {
 		return ""
 	}
 	return DecimalToString(val)
 }
 
-// currentTimeMillis returns the current time in milliseconds.
+// CurrentTimeMillis returns the current time in milliseconds.
 func currentTimeMillis() int64 {
 	return time.Now().UnixNano() / int64(time.Millisecond)
 }
 
-// getTimeStrFromMillis converts a timestamp in milliseconds to a formatted string.
+// GetTimeStrFromMillis converts a timestamp in milliseconds to a formatted string.
 // Returns an empty string if the input time is less than or equal to zero.
-func getTimeStrFromMillis(timestamp int64) string {
+func GetTimeStrFromMillis(timestamp int64) string {
 	if timestamp > 0 {
 		return time.Unix(0, timestamp*int64(time.Millisecond)).Format("20060102-15:04:05")
 	}

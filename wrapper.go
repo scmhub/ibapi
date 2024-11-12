@@ -287,19 +287,19 @@ type Wrapper struct {
 }
 
 func (w Wrapper) TickPrice(reqID TickerID, tickType TickType, price float64, attrib TickAttrib) {
-	log.Info().Int64("reqID", reqID).Int64("tickType", tickType).Float64("price", price).Msg("<TickPrice>")
+	log.Info().Int64("reqID", reqID).Int64("tickType", tickType).Str("price", FloatMaxString(price)).Bool("CanAutoExecute", attrib.CanAutoExecute).Bool("PastLimit", attrib.PastLimit).Bool("PreOpen", attrib.PreOpen).Msg("<TickPrice>")
 }
 
 func (w Wrapper) TickSize(reqID TickerID, tickType TickType, size Decimal) {
-	log.Info().Int64("reqID", reqID).Int64("tickType", tickType).Stringer("size", size).Msg("<TickSize>")
+	log.Info().Int64("reqID", reqID).Int64("tickType", tickType).Str("size", DecimalMaxString(size)).Msg("<TickSize>")
 }
 
 func (w Wrapper) TickOptionComputation(reqID TickerID, tickType TickType, tickAttrib int64, impliedVol float64, delta float64, optPrice float64, pvDividend float64, gamma float64, vega float64, theta float64, undPrice float64) {
-	log.Info().Int64("reqID", reqID).Int64("tickType", tickType).Int64("tickAttrib", tickAttrib).Float64("delta", delta).Float64("optPrice", optPrice).Float64("pvDiviedn", pvDividend).Float64("gamma", gamma).Float64("vega", vega).Float64("theta", theta).Float64("undPrice", undPrice).Msg("<TickOptionComputation>")
+	log.Info().Int64("reqID", reqID).Int64("tickType", tickType).Str("tickAttrib", IntMaxString(tickAttrib)).Str("delta", FloatMaxString(delta)).Str("optPrice", FloatMaxString(optPrice)).Str("pvDiviedn", FloatMaxString(pvDividend)).Str("gamma", FloatMaxString(gamma)).Str("vega", FloatMaxString(vega)).Str("theta", FloatMaxString(theta)).Str("undPrice", FloatMaxString(undPrice)).Msg("<TickOptionComputation>")
 }
 
 func (w Wrapper) TickGeneric(reqID TickerID, tickType TickType, value float64) {
-	log.Info().Int64("reqID", reqID).Int64("tickType", tickType).Float64("value", value).Msg("<TickGeneric>")
+	log.Info().Int64("reqID", reqID).Int64("tickType", tickType).Str("value", FloatMaxString(value)).Msg("<TickGeneric>")
 }
 
 func (w Wrapper) TickString(reqID TickerID, tickType TickType, value string) {
@@ -335,7 +335,7 @@ func (w Wrapper) UpdateAccountValue(tag string, value string, currency string, a
 }
 
 func (w Wrapper) UpdatePortfolio(contract *Contract, position Decimal, marketPrice float64, marketValue float64, averageCost float64, unrealizedPNL float64, realizedPNL float64, accountName string) {
-	log.Info().Stringer("contract", contract).Stringer("position", position).Float64("marketPrice", marketPrice).Float64("marketValue", marketValue).Float64("averageCost", averageCost).Float64("unrealizedPNL", unrealizedPNL).Float64("realizedPNL", realizedPNL).Str("accountName", accountName).Msg("<UpdatePortfolio>")
+	log.Info().Str("Symbol", contract.Symbol).Str("secType", contract.SecType).Str("exchange", contract.Exchange).Discard().Str("position", DecimalMaxString(position)).Str("marketPrice", FloatMaxString(marketPrice)).Str("marketValue", FloatMaxString(marketValue)).Str("averageCost", FloatMaxString(averageCost)).Str("unrealizedPNL", FloatMaxString(unrealizedPNL)).Str("realizedPNL", FloatMaxString(realizedPNL)).Str("accountName", accountName).Msg("<UpdatePortfolio>")
 }
 
 func (w Wrapper) UpdateAccountTime(timeStamp string) {
@@ -379,11 +379,11 @@ func (w Wrapper) Error(reqID TickerID, errorTime int64, errCode int64, errString
 }
 
 func (w Wrapper) UpdateMktDepth(TickerID TickerID, position int64, operation int64, side int64, price float64, size Decimal) {
-	log.Info().Int64("TickerID", TickerID).Int64("position", position).Int64("operation", operation).Int64("side", side).Float64("price", price).Stringer("size", size).Msg("<UpdateMktDepth>")
+	log.Info().Int64("TickerID", TickerID).Int64("position", position).Int64("operation", operation).Int64("side", side).Str("price", FloatMaxString(price)).Str("size", DecimalMaxString(size)).Msg("<UpdateMktDepth>")
 }
 
 func (w Wrapper) UpdateMktDepthL2(TickerID TickerID, position int64, marketMaker string, operation int64, side int64, price float64, size Decimal, isSmartDepth bool) {
-	log.Info().Int64("TickerID", TickerID).Int64("position", position).Str("marketMaker", marketMaker).Int64("operation", operation).Int64("side", side).Float64("price", price).Stringer("size", size).Bool("isSmartDepth", isSmartDepth).Msg("<UpdateMktDepthL2>")
+	log.Info().Int64("TickerID", TickerID).Int64("position", position).Str("marketMaker", marketMaker).Int64("operation", operation).Int64("side", side).Str("price", FloatMaxString(price)).Str("size", DecimalMaxString(size)).Bool("isSmartDepth", isSmartDepth).Msg("<UpdateMktDepthL2>")
 }
 
 func (w Wrapper) UpdateNewsBulletin(msgID int64, msgType int64, newsMessage string, originExch string) {
@@ -419,7 +419,7 @@ func (w Wrapper) ScannerDataEnd(reqID int64) {
 }
 
 func (w Wrapper) RealtimeBar(reqID int64, time int64, open float64, high float64, low float64, close float64, volume Decimal, wap Decimal, count int64) {
-	log.Info().Int64("reqID", reqID).Int64("time", time).Float64("open", open).Float64("high", high).Float64("low", low).Float64("close", close).Stringer("volume", volume).Stringer("wap", wap).Int64("count", count).Msg("<RealtimeBar>")
+	log.Info().Int64("reqID", reqID).Int64("bar time", time).Float64("open", open).Float64("high", high).Float64("low", low).Float64("close", close).Stringer("volume", volume).Stringer("wap", wap).Int64("count", count).Msg("<RealtimeBar>")
 }
 
 func (w Wrapper) CurrentTime(t int64) {
@@ -447,7 +447,7 @@ func (w Wrapper) CommissionReport(commissionReport CommissionReport) {
 }
 
 func (w Wrapper) Position(account string, contract *Contract, position Decimal, avgCost float64) {
-	log.Info().Str("account", account).Stringer("contract", contract).Stringer("position", position).Float64("avgCost", avgCost).Msg("<Position>")
+	log.Info().Str("account", account).Stringer("contract", contract).Str("position", DecimalMaxString(position)).Str("avgCost", FloatMaxString(avgCost)).Msg("<Position>")
 }
 
 func (w Wrapper) PositionEnd() {
@@ -491,7 +491,7 @@ func (w Wrapper) ConnectAck() {
 }
 
 func (w Wrapper) PositionMulti(reqID int64, account string, modelCode string, contract *Contract, pos Decimal, avgCost float64) {
-	log.Info().Int64("reqID", reqID).Str("account", account).Str("modelCode", modelCode).Stringer("contract", contract).Stringer("pos", pos).Float64("avgCost", avgCost).Msg("<PositionMulti>")
+	log.Info().Int64("reqID", reqID).Str("account", account).Str("modelCode", modelCode).Stringer("contract", contract).Str("position", DecimalMaxString(pos)).Str("avgCost", FloatMaxString(avgCost)).Msg("<PositionMulti>")
 }
 
 func (w Wrapper) PositionMultiEnd(reqID int64) {
@@ -507,7 +507,7 @@ func (w Wrapper) AccountUpdateMultiEnd(reqID int64) {
 }
 
 func (w Wrapper) SecurityDefinitionOptionParameter(reqID int64, exchange string, underlyingConID int64, tradingClass string, multiplier string, expirations []string, strikes []float64) {
-	log.Info().Int64("reqID", reqID).Str("exchange", exchange).Int64("underlyingConID", underlyingConID).Str("tradingClass", tradingClass).Str("multiplier", multiplier).Strs("expirations", expirations).Msg("<SecurityDefinitionOptionParameter>")
+	log.Info().Int64("reqID", reqID).Str("exchange", exchange).Str("underlyingConID", IntMaxString(underlyingConID)).Str("tradingClass", tradingClass).Str("multiplier", multiplier).Strs("expirations", expirations).Floats64("strikes", strikes).Msg("<SecurityDefinitionOptionParameter>")
 }
 
 func (w Wrapper) SecurityDefinitionOptionParameterEnd(reqID int64) {
@@ -538,7 +538,7 @@ func (w Wrapper) MktDepthExchanges(depthMktDataDescriptions []DepthMktDataDescri
 }
 
 func (w Wrapper) TickNews(TickerID TickerID, timeStamp int64, providerCode string, articleID string, headline string, extraData string) {
-	log.Info().Int64("TickerID", TickerID).Int64("timeStamp", timeStamp).Str("providerCode", providerCode).Str("articleID", articleID).Str("headline", headline).Str("extraData", extraData).Msg("<TickNews>")
+	log.Info().Int64("TickerID", TickerID).Str("timeStamp", IntMaxString(timeStamp)).Str("providerCode", providerCode).Str("articleID", articleID).Str("headline", headline).Str("extraData", extraData).Msg("<TickNews>")
 }
 
 func (w Wrapper) SmartComponents(reqID int64, smartComponents []SmartComponent) {
@@ -549,7 +549,7 @@ func (w Wrapper) SmartComponents(reqID int64, smartComponents []SmartComponent) 
 }
 
 func (w Wrapper) TickReqParams(TickerID TickerID, minTick float64, bboExchange string, snapshotPermissions int64) {
-	log.Info().Int64("TickerID", TickerID).Float64("minTick", minTick).Str("bboExchange", bboExchange).Int64("snapshotPermissions", snapshotPermissions).Msg("<TickReqParams>")
+	log.Info().Int64("TickerID", TickerID).Str("minTick", FloatMaxString(minTick)).Str("bboExchange", bboExchange).Str("snapshotPermissions", IntMaxString(snapshotPermissions)).Msg("<TickReqParams>")
 }
 
 func (w Wrapper) NewsProviders(newsProviders []NewsProvider) {
@@ -563,7 +563,7 @@ func (w Wrapper) NewsArticle(requestID int64, articleType int64, articleText str
 }
 
 func (w Wrapper) HistoricalNews(requestID int64, time string, providerCode string, articleID string, headline string) {
-	log.Info().Int64("requestID", requestID).Str("time", time).Str("providerCode", providerCode).Str("providerCode", providerCode).Str("headline", headline).Msg("<HistoricalNews>")
+	log.Info().Int64("requestID", requestID).Str("news time", time).Str("providerCode", providerCode).Str("providerCode", providerCode).Str("headline", headline).Msg("<HistoricalNews>")
 }
 
 func (w Wrapper) HistoricalNewsEnd(requestID int64, hasMore bool) {
@@ -595,11 +595,11 @@ func (w Wrapper) MarketRule(marketRuleID int64, priceIncrements []PriceIncrement
 }
 
 func (w Wrapper) Pnl(reqID int64, dailyPnL float64, unrealizedPnL float64, realizedPnL float64) {
-	log.Info().Int64("reqID", reqID).Float64("dailyPnL", dailyPnL).Float64("unrealizedPnL", unrealizedPnL).Float64("realizedPnL", realizedPnL).Msg("<Pnl>")
+	log.Info().Int64("reqID", reqID).Str("dailyPnL", FloatMaxString(dailyPnL)).Str("unrealizedPnL", FloatMaxString(unrealizedPnL)).Str("realizedPnL", FloatMaxString(realizedPnL)).Msg("<Pnl>")
 }
 
 func (w Wrapper) PnlSingle(reqID int64, pos Decimal, dailyPnL float64, unrealizedPnL float64, realizedPnL float64, value float64) {
-	log.Info().Int64("reqID", reqID).Stringer("pos", pos).Float64("dailyPnL", dailyPnL).Float64("unrealizedPnL", unrealizedPnL).Float64("realizedPnL", realizedPnL).Float64("value", value).Msg("<PnlSingle>")
+	log.Info().Int64("reqID", reqID).Str("position", DecimalMaxString(pos)).Str("dailyPnL", FloatMaxString(dailyPnL)).Str("unrealizedPnL", FloatMaxString(unrealizedPnL)).Str("realizedPnL", FloatMaxString(realizedPnL)).Str("value", FloatMaxString(value)).Msg("<PnlSingle>")
 }
 
 func (w Wrapper) HistoricalTicks(reqID int64, ticks []HistoricalTick, done bool) {
@@ -615,23 +615,26 @@ func (w Wrapper) HistoricalTicksLast(reqID int64, ticks []HistoricalTickLast, do
 }
 
 func (w Wrapper) TickByTickAllLast(reqID int64, tickType int64, time int64, price float64, size Decimal, tickAttribLast TickAttribLast, exchange string, specialConditions string) {
-	log.Info().Int64("reqID", reqID).Int64("tickType", tickType).Int64("time", time).Float64("price", price).Stringer("size", size).Stringer("tickAttribLast", tickAttribLast).Str("exchange", exchange).Str("specialConditions", specialConditions).Msg("<TickByTickAllLast>")
+	log.Info().Int64("reqID", reqID).Int64("tickType", tickType).Int64("tick time", time).Str("price", FloatMaxString(price)).Str("size", DecimalMaxString(size)).Bool("PastLimit", tickAttribLast.PastLimit).Bool("Unreported", tickAttribLast.Unreported).Str("exchange", exchange).Str("specialConditions", specialConditions).Msg("<TickByTickAllLast>")
 }
 
 func (w Wrapper) TickByTickBidAsk(reqID int64, time int64, bidPrice float64, askPrice float64, bidSize Decimal, askSize Decimal, tickAttribBidAsk TickAttribBidAsk) {
-	log.Info().Int64("reqID", reqID).Int64("time", time).Float64("bidPrice", bidPrice).Float64("askPrice", askPrice).Stringer("bidSize", bidSize).Stringer("askSize", askSize).Msg("<TickByTickBidAsk>")
+	log.Info().Int64("reqID", reqID).Int64("tick time", time).Str("bidPrice", FloatMaxString(bidPrice)).Str("askPrice", FloatMaxString(askPrice)).Str("bidSize", DecimalMaxString(bidSize)).Str("askSize", DecimalMaxString(askSize)).Bool("AskPastHigh", tickAttribBidAsk.AskPastHigh).Bool("BidPastLow", tickAttribBidAsk.BidPastLow).Msg("<TickByTickBidAsk>")
 }
 
 func (w Wrapper) TickByTickMidPoint(reqID int64, time int64, midPoint float64) {
-	log.Info().Int64("reqID", reqID).Int64("time", time).Float64("midPoint", midPoint).Msg("<TickByTickMidPoint>")
+	log.Info().Int64("reqID", reqID).Int64("tick time", time).Str("midPoint", FloatMaxString(midPoint)).Msg("<TickByTickMidPoint>")
 }
 
 func (w Wrapper) OrderBound(permID int64, clientID int64, orderID int64) {
-	log.Info().Int64("permID", permID).Int64("clientID", clientID).Int64("apiOrderID", orderID).Msg("<OrderBound>")
+	log.Info().Str("permID", LongMaxString(permID)).Str("clientID", IntMaxString(clientID)).Str("OrderID", IntMaxString(orderID)).Msg("<OrderBound>")
 }
 
 func (w Wrapper) CompletedOrder(contract *Contract, order *Order, orderState *OrderState) {
-	log.Info().Stringer("contract", contract).Stringer("order", order).Stringer("orderState", orderState).Msg("<CompletedOrder>")
+	logger := log.Info().Str("account", order.Account).Str("PermID", LongMaxString(order.PermID)).Str("parentPermID", LongMaxString(order.ParentPermID)).Str("symbol", contract.Symbol).Str("secType", contract.SecType).Str("exchange", contract.Exchange).Str("action", order.Action).Str("orderType", order.OrderType).Str("totalQuantity", DecimalMaxString(order.TotalQuantity))
+	logger = logger.Str("cashQty", FloatMaxString(order.CashQty)).Str("filledQuantity", DecimalMaxString(order.FilledQuantity)).Str("lmtPrice", FloatMaxString(order.LmtPrice)).Str("auxPrice", FloatMaxString(order.AuxPrice)).Str("Status", orderState.Status)
+	logger = logger.Str("completedTime", orderState.CompletedTime).Str("CompletedStatus", orderState.CompletedStatus).Str("MinTradeQty", IntMaxString(order.MinTradeQty)).Str("MinCompeteSize", IntMaxString(order.MinCompeteSize))
+	logger.Msg("<CompletedOrder>")
 }
 
 func (w Wrapper) CompletedOrdersEnd() {

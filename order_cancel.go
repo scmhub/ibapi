@@ -16,5 +16,5 @@ func NewOrderCancel() OrderCancel {
 }
 
 func (o OrderCancel) String() string {
-	return fmt.Sprintf("ManualOrderCancelTime: %s, ManualOrderIndicator: %s", o.ManualOrderCancelTime, intMaxString(o.ManualOrderIndicator))
+	return fmt.Sprintf("ManualOrderCancelTime: %s, ManualOrderIndicator: %s", o.ManualOrderCancelTime, IntMaxString(o.ManualOrderIndicator))
 }

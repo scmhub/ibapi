@@ -26,7 +26,7 @@ func NewOrderComboLeg() OrderComboLeg {
 }
 
 func (o OrderComboLeg) String() string {
-	return fmt.Sprintf("%s ", floatMaxString(o.Price))
+	return fmt.Sprintf("%s ", FloatMaxString(o.Price))
 }
 
 // Order .
@@ -290,13 +290,13 @@ func NewOrder() *Order {
 
 func (o Order) String() string {
 	s := fmt.Sprintf("%s, %s, %s: %s %s %s@%s %s",
-		intMaxString(o.OrderID),
-		intMaxString(o.ClientID),
-		intMaxString(o.PermID),
+		IntMaxString(o.OrderID),
+		IntMaxString(o.ClientID),
+		LongMaxString(o.PermID),
 		o.OrderType,
 		o.Action,
-		decimalMaxString(o.TotalQuantity),
-		floatMaxString(o.LmtPrice),
+		DecimalMaxString(o.TotalQuantity),
+		FloatMaxString(o.LmtPrice),
 		o.TIF,
 	)
 

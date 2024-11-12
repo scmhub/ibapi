@@ -39,7 +39,7 @@ func NewOrderState() *OrderState {
 func (os OrderState) String() string {
 	return fmt.Sprintf("Status: %s, Commission: %s, Commission currency %s, CompletedTime: %s, CompletedStatus: %s",
 		os.Status,
-		floatMaxString(os.Commission),
+		FloatMaxString(os.Commission),
 		os.CommissionCurrency,
 		os.CompletedTime,
 		os.CompletedStatus)

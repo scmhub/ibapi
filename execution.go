@@ -30,8 +30,8 @@ type Execution struct {
 
 func (e Execution) String() string {
 	return fmt.Sprintf("ExecId: %s, Time: %s, Account: %s, Exchange: %s, Side: %s, Shares: %s, Price: %s, PermId: %s, ClientId: %s, OrderId: %s, Liquidation: %s, CumQty: %s, AvgPrice: %s, OrderRef: %s, EvRule: %s, EvMultiplier: %s, ModelCode: %s, LastLiquidity: %s,  PendingPriceRevision: %s",
-		e.ExecID, e.Time, e.AcctNumber, e.Exchange, e.Side, decimalMaxString(e.Shares), floatMaxString(e.Price), intMaxString(e.PermID), intMaxString(e.ClientID), intMaxString(e.OrderID), intMaxString(e.Liquidation), decimalMaxString(e.CumQty), floatMaxString(e.AvgPrice),
-		e.OrderRef, e.EVRule, floatMaxString(e.EVMultiplier), e.ModelCode, intMaxString(e.LastLiquidity), strconv.FormatBool(e.PendingPriceRevision))
+		e.ExecID, e.Time, e.AcctNumber, e.Exchange, e.Side, DecimalMaxString(e.Shares), FloatMaxString(e.Price), LongMaxString(e.PermID), IntMaxString(e.ClientID), IntMaxString(e.OrderID), IntMaxString(e.Liquidation), DecimalMaxString(e.CumQty), FloatMaxString(e.AvgPrice),
+		e.OrderRef, e.EVRule, FloatMaxString(e.EVMultiplier), e.ModelCode, IntMaxString(e.LastLiquidity), strconv.FormatBool(e.PendingPriceRevision))
 }
 
 func NewExecution() *Execution {
