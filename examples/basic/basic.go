@@ -8,8 +8,8 @@ import (
 )
 
 const (
-	host = "10.74.0.9" //"localhost"
-	port = 4002        // 7496
+	host = "localhost"
+	port = 7496
 )
 
 var orderID int64
@@ -106,10 +106,14 @@ func main() {
 	// time.Sleep(4 * time.Second)
 	// ib.ReqGlobalCancel()
 	// Real time bars
-	whatToShow := "MIDPOINT" // "TRADES", "MIDPOINT", "BID" or "ASK"
-	ib.ReqRealTimeBars(id, eurusd, 5, whatToShow, true, nil)
 
-	time.Sleep(20 * time.Second)
+	duration := "60 S"
+	barSize := "5 secs"
+	whatToShow := "MIDPOINT" // "TRADES", "MIDPOINT", "BID" or "ASK"
+	ib.ReqHistoricalData(id, eurusd, "", duration, barSize, whatToShow, true, 1, true, nil)
+
+	time.Sleep(30 * time.Second)
+	ib.CancelHistoricalData(id)
 	err := ib.Disconnect()
 	if err != nil {
 		log.Error().Err(err).Msg("Disconnect")

@@ -55,6 +55,13 @@ func (m *MsgBuffer) decodeInt64() int64 {
 	return i
 }
 
+func (m *MsgBuffer) decode() {
+	_, m.err = m.ReadBytes(delim)
+	if m.err != nil {
+		log.Panic().Err(m.err).Msg("decode read error")
+	}
+}
+
 func (m *MsgBuffer) decodeDecimal() Decimal {
 	m.bs, m.err = m.ReadBytes(delim)
 	if m.err != nil {

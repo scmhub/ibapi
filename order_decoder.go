@@ -108,7 +108,7 @@ func (d *OrderDecoder) decodeGoodAfterTime(msgBuf *MsgBuffer) {
 }
 
 func (d *OrderDecoder) skipSharesAllocation(msgBuf *MsgBuffer) {
-	_ = msgBuf.decodeString()
+	msgBuf.decode()
 }
 
 func (d *OrderDecoder) decodeFAParams(msgBuf *MsgBuffer) {
@@ -116,7 +116,7 @@ func (d *OrderDecoder) decodeFAParams(msgBuf *MsgBuffer) {
 	d.order.FAMethod = msgBuf.decodeString()
 	d.order.FAPercentage = msgBuf.decodeString()
 	if d.serverVersion < MIN_SERVER_VER_FA_PROFILE_DESUPPORT {
-		_ = msgBuf.decodeString() // skip deprecated FAProfile
+		msgBuf.decode() // skip deprecated FAProfile
 	}
 }
 
@@ -146,7 +146,7 @@ func (d *OrderDecoder) decodeShortSaleParams(msgBuf *MsgBuffer) {
 	d.order.ShortSaleSlot = msgBuf.decodeInt64()
 	d.order.DesignatedLocation = msgBuf.decodeString()
 	if d.serverVersion == MIN_SERVER_VER_SSHORTX_OLD {
-		_ = msgBuf.decodeString()
+		msgBuf.decode()
 	} else if d.version >= 23 {
 		d.order.ExemptCode = msgBuf.decodeInt64()
 	}

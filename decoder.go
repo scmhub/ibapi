@@ -198,7 +198,7 @@ func (d *EDecoder) interpret(msgBytes []byte) {
 
 func (d *EDecoder) processTickPriceMsg(msgBuf *MsgBuffer) {
 
-	_ = msgBuf.decodeString()
+	msgBuf.decode()
 
 	reqID := msgBuf.decodeInt64()
 	tickType := msgBuf.decodeInt64()
@@ -244,7 +244,7 @@ func (d *EDecoder) processTickPriceMsg(msgBuf *MsgBuffer) {
 
 func (d *EDecoder) processTickSizeMsg(msgBuf *MsgBuffer) {
 
-	_ = msgBuf.decodeString()
+	msgBuf.decode()
 
 	reqID := msgBuf.decodeInt64()
 	sizeTickType := msgBuf.decodeInt64()
@@ -322,7 +322,7 @@ func (d *EDecoder) processTickOptionComputationMsg(msgBuf *MsgBuffer) {
 
 func (d *EDecoder) processTickGenericMsg(msgBuf *MsgBuffer) {
 
-	_ = msgBuf.decodeString()
+	msgBuf.decode()
 
 	reqID := msgBuf.decodeInt64()
 	tickType := msgBuf.decodeInt64()
@@ -333,7 +333,7 @@ func (d *EDecoder) processTickGenericMsg(msgBuf *MsgBuffer) {
 
 func (d *EDecoder) processTickStringMsg(msgBuf *MsgBuffer) {
 
-	_ = msgBuf.decodeString()
+	msgBuf.decode()
 
 	reqID := msgBuf.decodeInt64()
 	tickType := msgBuf.decodeInt64()
@@ -344,7 +344,7 @@ func (d *EDecoder) processTickStringMsg(msgBuf *MsgBuffer) {
 
 func (d *EDecoder) processTickEfpMsg(msgBuf *MsgBuffer) {
 
-	_ = msgBuf.decodeString()
+	msgBuf.decode()
 
 	reqID := msgBuf.decodeInt64()
 	tickType := msgBuf.decodeInt64()
@@ -362,7 +362,7 @@ func (d *EDecoder) processTickEfpMsg(msgBuf *MsgBuffer) {
 func (d *EDecoder) processOrderStatusMsg(msgBuf *MsgBuffer) {
 
 	if d.serverVersion < MIN_SERVER_VER_MARKET_CAP_PRICE {
-		_ = msgBuf.decodeString()
+		msgBuf.decode()
 	}
 
 	orderID := msgBuf.decodeInt64()
@@ -388,7 +388,7 @@ func (d *EDecoder) processOrderStatusMsg(msgBuf *MsgBuffer) {
 func (d *EDecoder) processErrMsg(msgBuf *MsgBuffer) {
 
 	if d.serverVersion < MIN_SERVER_VER_ERROR_TIME {
-		_ = msgBuf.decodeString()
+		msgBuf.decode()
 	}
 
 	reqID := msgBuf.decodeInt64()
@@ -506,7 +506,7 @@ func (d *EDecoder) processOpenOrderMsg(msgBuf *MsgBuffer) {
 
 func (d *EDecoder) processAcctValueMsg(msgBuf *MsgBuffer) {
 
-	_ = msgBuf.decodeString()
+	msgBuf.decode()
 
 	tag := msgBuf.decodeString()
 	val := msgBuf.decodeString()
@@ -559,7 +559,7 @@ func (d *EDecoder) processPortfolioValueMsg(msgBuf *MsgBuffer) {
 
 func (d *EDecoder) processAcctUpdateTimeMsg(msgBuf *MsgBuffer) {
 
-	_ = msgBuf.decodeString()
+	msgBuf.decode()
 
 	timeStamp := msgBuf.decodeString()
 
@@ -568,7 +568,7 @@ func (d *EDecoder) processAcctUpdateTimeMsg(msgBuf *MsgBuffer) {
 
 func (d *EDecoder) processNextValidIdMsg(msgBuf *MsgBuffer) {
 
-	_ = msgBuf.decodeString()
+	msgBuf.decode()
 
 	reqID := msgBuf.decodeInt64()
 
@@ -882,7 +882,7 @@ func (d *EDecoder) processExecutionDetailsMsg(msgBuf *MsgBuffer) {
 
 func (d *EDecoder) processMarketDepthMsg(msgBuf *MsgBuffer) {
 
-	_ = msgBuf.decodeString()
+	msgBuf.decode()
 
 	tickerID := msgBuf.decodeInt64()
 
@@ -897,7 +897,7 @@ func (d *EDecoder) processMarketDepthMsg(msgBuf *MsgBuffer) {
 
 func (d *EDecoder) processMarketDepthL2Msg(msgBuf *MsgBuffer) {
 
-	_ = msgBuf.decodeString()
+	msgBuf.decode()
 
 	tickerID := msgBuf.decodeInt64()
 
@@ -918,7 +918,7 @@ func (d *EDecoder) processMarketDepthL2Msg(msgBuf *MsgBuffer) {
 
 func (d *EDecoder) processNewsBulletinsMsg(msgBuf *MsgBuffer) {
 
-	_ = msgBuf.decodeString()
+	msgBuf.decode()
 
 	msgID := msgBuf.decodeInt64()
 	msgType := msgBuf.decodeInt64()
@@ -930,7 +930,7 @@ func (d *EDecoder) processNewsBulletinsMsg(msgBuf *MsgBuffer) {
 
 func (d *EDecoder) processManagedAcctsMsg(msgBuf *MsgBuffer) {
 
-	_ = msgBuf.decodeString()
+	msgBuf.decode()
 
 	accountsNames := msgBuf.decodeString()
 	accountsList := strings.Split(accountsNames, ",")
@@ -940,7 +940,7 @@ func (d *EDecoder) processManagedAcctsMsg(msgBuf *MsgBuffer) {
 
 func (d *EDecoder) processReceiveFaMsg(msgBuf *MsgBuffer) {
 
-	_ = msgBuf.decodeString()
+	msgBuf.decode()
 
 	faDataType := FaDataType(msgBuf.decodeInt64())
 	cxml := msgBuf.decodeString()
@@ -951,7 +951,7 @@ func (d *EDecoder) processReceiveFaMsg(msgBuf *MsgBuffer) {
 func (d *EDecoder) processHistoricalDataMsg(msgBuf *MsgBuffer) {
 
 	if d.serverVersion < MIN_SERVER_VER_SYNT_REALTIME_BARS {
-		_ = msgBuf.decodeString()
+		msgBuf.decode()
 	}
 
 	reqID := msgBuf.decodeInt64()
@@ -972,7 +972,7 @@ func (d *EDecoder) processHistoricalDataMsg(msgBuf *MsgBuffer) {
 		bar.Wap = msgBuf.decodeDecimal()
 
 		if d.serverVersion < MIN_SERVER_VER_SYNT_REALTIME_BARS {
-			_ = msgBuf.decodeString()
+			msgBuf.decode()
 		}
 
 		bar.BarCount = msgBuf.decodeInt64()
@@ -985,7 +985,7 @@ func (d *EDecoder) processHistoricalDataMsg(msgBuf *MsgBuffer) {
 
 func (d *EDecoder) processScannerDataMsg(msgBuf *MsgBuffer) {
 
-	_ = msgBuf.decodeString()
+	msgBuf.decode()
 
 	reqID := msgBuf.decodeInt64()
 
@@ -1022,7 +1022,7 @@ func (d *EDecoder) processScannerDataMsg(msgBuf *MsgBuffer) {
 
 func (d *EDecoder) processScannerParametersMsg(msgBuf *MsgBuffer) {
 
-	_ = msgBuf.decodeString()
+	msgBuf.decode()
 
 	xml := msgBuf.decodeString()
 
@@ -1031,7 +1031,7 @@ func (d *EDecoder) processScannerParametersMsg(msgBuf *MsgBuffer) {
 
 func (d *EDecoder) processCurrentTimeMsg(msgBuf *MsgBuffer) {
 
-	_ = msgBuf.decodeString()
+	msgBuf.decode()
 
 	t := msgBuf.decodeInt64()
 
@@ -1040,7 +1040,7 @@ func (d *EDecoder) processCurrentTimeMsg(msgBuf *MsgBuffer) {
 
 func (d *EDecoder) processRealTimeBarsMsg(msgBuf *MsgBuffer) {
 
-	_ = msgBuf.decodeString()
+	msgBuf.decode()
 
 	reqID := msgBuf.decodeInt64()
 
@@ -1059,7 +1059,7 @@ func (d *EDecoder) processRealTimeBarsMsg(msgBuf *MsgBuffer) {
 
 func (d *EDecoder) processFundamentalDataMsg(msgBuf *MsgBuffer) {
 
-	_ = msgBuf.decodeString()
+	msgBuf.decode()
 
 	reqID := msgBuf.decodeInt64()
 	data := msgBuf.decodeString()
@@ -1069,7 +1069,7 @@ func (d *EDecoder) processFundamentalDataMsg(msgBuf *MsgBuffer) {
 
 func (d *EDecoder) processContractDataEndMsg(msgBuf *MsgBuffer) {
 
-	_ = msgBuf.decodeString()
+	msgBuf.decode()
 
 	reqID := msgBuf.decodeInt64()
 
@@ -1083,7 +1083,7 @@ func (d *EDecoder) processOpenOrderEndMsg(*MsgBuffer) {
 
 func (d *EDecoder) processAcctDownloadEndMsg(msgBuf *MsgBuffer) {
 
-	_ = msgBuf.decodeString()
+	msgBuf.decode()
 
 	accountName := msgBuf.decodeString()
 
@@ -1092,7 +1092,7 @@ func (d *EDecoder) processAcctDownloadEndMsg(msgBuf *MsgBuffer) {
 
 func (d *EDecoder) processExecutionDetailsEndMsg(msgBuf *MsgBuffer) {
 
-	_ = msgBuf.decodeString()
+	msgBuf.decode()
 
 	reqID := msgBuf.decodeInt64()
 
@@ -1101,7 +1101,7 @@ func (d *EDecoder) processExecutionDetailsEndMsg(msgBuf *MsgBuffer) {
 
 func (d *EDecoder) processDeltaNeutralValidationMsg(msgBuf *MsgBuffer) {
 
-	_ = msgBuf.decodeString()
+	msgBuf.decode()
 
 	reqID := msgBuf.decodeInt64()
 
@@ -1116,7 +1116,7 @@ func (d *EDecoder) processDeltaNeutralValidationMsg(msgBuf *MsgBuffer) {
 
 func (d *EDecoder) processTickSnapshotEndMsg(msgBuf *MsgBuffer) {
 
-	_ = msgBuf.decodeString()
+	msgBuf.decode()
 
 	reqID := msgBuf.decodeInt64()
 
@@ -1125,7 +1125,7 @@ func (d *EDecoder) processTickSnapshotEndMsg(msgBuf *MsgBuffer) {
 
 func (d *EDecoder) processMarketDataTypeMsg(msgBuf *MsgBuffer) {
 
-	_ = msgBuf.decodeString()
+	msgBuf.decode()
 
 	reqID := msgBuf.decodeInt64()
 	marketDataType := msgBuf.decodeInt64()
@@ -1135,7 +1135,7 @@ func (d *EDecoder) processMarketDataTypeMsg(msgBuf *MsgBuffer) {
 
 func (d *EDecoder) processCommissionReportMsg(msgBuf *MsgBuffer) {
 
-	_ = msgBuf.decodeString()
+	msgBuf.decode()
 
 	commissionReport := NewCommissionReport()
 	commissionReport.ExecID = msgBuf.decodeString()
@@ -1187,7 +1187,7 @@ func (d *EDecoder) processPositionEndMsg(*MsgBuffer) {
 
 func (d *EDecoder) processAccountSummaryMsg(msgBuf *MsgBuffer) {
 
-	_ = msgBuf.decodeString()
+	msgBuf.decode()
 
 	reqID := msgBuf.decodeInt64()
 	account := msgBuf.decodeString()
@@ -1200,7 +1200,7 @@ func (d *EDecoder) processAccountSummaryMsg(msgBuf *MsgBuffer) {
 
 func (d *EDecoder) processAccountSummaryEndMsg(msgBuf *MsgBuffer) {
 
-	_ = msgBuf.decodeString()
+	msgBuf.decode()
 
 	reqID := msgBuf.decodeInt64()
 
@@ -1209,7 +1209,7 @@ func (d *EDecoder) processAccountSummaryEndMsg(msgBuf *MsgBuffer) {
 
 func (d *EDecoder) processVerifyMessageApiMsg(msgBuf *MsgBuffer) {
 
-	_ = msgBuf.decodeString()
+	msgBuf.decode()
 
 	apiData := msgBuf.decodeString()
 
@@ -1218,7 +1218,7 @@ func (d *EDecoder) processVerifyMessageApiMsg(msgBuf *MsgBuffer) {
 
 func (d *EDecoder) processVerifyCompletedMsg(msgBuf *MsgBuffer) {
 
-	_ = msgBuf.decodeString()
+	msgBuf.decode()
 
 	isSuccessful := msgBuf.decodeBool()
 	errorText := msgBuf.decodeString()
@@ -1228,7 +1228,7 @@ func (d *EDecoder) processVerifyCompletedMsg(msgBuf *MsgBuffer) {
 
 func (d *EDecoder) processDisplayGroupListMsg(msgBuf *MsgBuffer) {
 
-	_ = msgBuf.decodeString()
+	msgBuf.decode()
 
 	reqID := msgBuf.decodeInt64()
 	groups := msgBuf.decodeString()
@@ -1238,7 +1238,7 @@ func (d *EDecoder) processDisplayGroupListMsg(msgBuf *MsgBuffer) {
 
 func (d *EDecoder) processDisplayGroupUpdatedMsg(msgBuf *MsgBuffer) {
 
-	_ = msgBuf.decodeString()
+	msgBuf.decode()
 
 	reqID := msgBuf.decodeInt64()
 	contractInfo := msgBuf.decodeString()
@@ -1248,7 +1248,7 @@ func (d *EDecoder) processDisplayGroupUpdatedMsg(msgBuf *MsgBuffer) {
 
 func (d *EDecoder) processVerifyAndAuthMessageApiMsg(msgBuf *MsgBuffer) {
 
-	_ = msgBuf.decodeString()
+	msgBuf.decode()
 
 	apiData := msgBuf.decodeString()
 	xyzChallange := msgBuf.decodeString()
@@ -1258,7 +1258,7 @@ func (d *EDecoder) processVerifyAndAuthMessageApiMsg(msgBuf *MsgBuffer) {
 
 func (d *EDecoder) processVerifyAndAuthCompletedMsg(msgBuf *MsgBuffer) {
 
-	_ = msgBuf.decodeString()
+	msgBuf.decode()
 
 	isSuccessful := msgBuf.decodeBool()
 	errorText := msgBuf.decodeString()
@@ -1268,7 +1268,7 @@ func (d *EDecoder) processVerifyAndAuthCompletedMsg(msgBuf *MsgBuffer) {
 
 func (d *EDecoder) processPositionMultiMsg(msgBuf *MsgBuffer) {
 
-	_ = msgBuf.decodeString()
+	msgBuf.decode()
 
 	reqID := msgBuf.decodeInt64()
 	account := msgBuf.decodeString()
@@ -1297,7 +1297,7 @@ func (d *EDecoder) processPositionMultiMsg(msgBuf *MsgBuffer) {
 
 func (d *EDecoder) processPositionMultiEndMsg(msgBuf *MsgBuffer) {
 
-	_ = msgBuf.decodeString()
+	msgBuf.decode()
 
 	reqID := msgBuf.decodeInt64()
 
@@ -1306,7 +1306,7 @@ func (d *EDecoder) processPositionMultiEndMsg(msgBuf *MsgBuffer) {
 
 func (d *EDecoder) processAccountUpdateMultiMsg(msgBuf *MsgBuffer) {
 
-	_ = msgBuf.decodeString()
+	msgBuf.decode()
 
 	reqID := msgBuf.decodeInt64()
 	account := msgBuf.decodeString()
@@ -1320,7 +1320,7 @@ func (d *EDecoder) processAccountUpdateMultiMsg(msgBuf *MsgBuffer) {
 
 func (d *EDecoder) processAccountUpdateMultiEndMsg(msgBuf *MsgBuffer) {
 
-	_ = msgBuf.decodeString()
+	msgBuf.decode()
 
 	reqID := msgBuf.decodeInt64()
 
@@ -1671,7 +1671,7 @@ func (d *EDecoder) processHistoricalTicks(msgBuf *MsgBuffer) {
 	for i = 0; i < tickCount; i++ {
 		historicalTick := NewHistoricalTick()
 		historicalTick.Time = msgBuf.decodeInt64()
-		_ = msgBuf.decodeString()
+		msgBuf.decode()
 		historicalTick.Price = msgBuf.decodeFloat64()
 		historicalTick.Size = msgBuf.decodeDecimal()
 		ticks = append(ticks, historicalTick)
