@@ -1,7 +1,6 @@
 package main
 
 import (
-	"strings"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -9,8 +8,8 @@ import (
 )
 
 const (
-	host = "localhost"
-	port = 7496
+	host = "10.74.0.9" //"localhost"
+	port = 4002        // 7496
 )
 
 var orderID int64
@@ -62,25 +61,25 @@ func main() {
 	// ib.ReqPositions()
 	// ib.ReqCompletedOrders(false)
 
-	tags := []string{"AccountType", "NetLiquidation", "TotalCashValue", "SettledCash",
-		"sAccruedCash", "BuyingPower", "EquityWithLoanValue",
-		"PreviousEquityWithLoanValue", "GrossPositionValue", "ReqTEquity",
-		"ReqTMargin", "SMA", "InitMarginReq", "MaintMarginReq", "AvailableFunds",
-		"ExcessLiquidity", "Cushion", "FullInitMarginReq", "FullMaintMarginReq",
-		"FullAvailableFunds", "FullExcessLiquidity", "LookAheadNextChange",
-		"LookAheadInitMarginReq", "LookAheadMaintMarginReq",
-		"LookAheadAvailableFunds", "LookAheadExcessLiquidity",
-		"HighestSeverity", "DayTradesRemaining", "Leverage", "$LEDGER:ALL"}
+	// tags := []string{"AccountType", "NetLiquidation", "TotalCashValue", "SettledCash",
+	// 	"sAccruedCash", "BuyingPower", "EquityWithLoanValue",
+	// 	"PreviousEquityWithLoanValue", "GrossPositionValue", "ReqTEquity",
+	// 	"ReqTMargin", "SMA", "InitMarginReq", "MaintMarginReq", "AvailableFunds",
+	// 	"ExcessLiquidity", "Cushion", "FullInitMarginReq", "FullMaintMarginReq",
+	// 	"FullAvailableFunds", "FullExcessLiquidity", "LookAheadNextChange",
+	// 	"LookAheadInitMarginReq", "LookAheadMaintMarginReq",
+	// 	"LookAheadAvailableFunds", "LookAheadExcessLiquidity",
+	// 	"HighestSeverity", "DayTradesRemaining", "Leverage", "$LEDGER:ALL"}
 	id := nextID()
-	ib.ReqAccountSummary(id, "All", strings.Join(tags, ","))
-	time.Sleep(10 * time.Second)
-	ib.CancelAccountSummary(id)
+	// ib.ReqAccountSummary(id, "All", strings.Join(tags, ","))
+	// time.Sleep(10 * time.Second)
+	// ib.CancelAccountSummary(id)
 
 	// ib.ReqFamilyCodes()
 	// ib.ReqScannerParameters()
 
 	// ########## market data ##########
-	// eurusd := &ibapi.Contract{Symbol: "EUR", SecType: "CASH", Currency: "USD", Exchange: "IDEALPRO"}
+	eurusd := &ibapi.Contract{Symbol: "EUR", SecType: "CASH", Currency: "USD", Exchange: "IDEALPRO"}
 	// id := nextID()
 	// ib.ReqMktData(id, eurusd, "", false, false, nil)
 	// time.Sleep(4 * time.Second)
@@ -106,8 +105,11 @@ func main() {
 	// ib.CancelOrder(id, ibapi.NewOrderCancel())
 	// time.Sleep(4 * time.Second)
 	// ib.ReqGlobalCancel()
+	// Real time bars
+	whatToShow := "MIDPOINT" // "TRADES", "MIDPOINT", "BID" or "ASK"
+	ib.ReqRealTimeBars(id, eurusd, 5, whatToShow, true, nil)
 
-	time.Sleep(4 * time.Second)
+	time.Sleep(20 * time.Second)
 	err := ib.Disconnect()
 	if err != nil {
 		log.Error().Err(err).Msg("Disconnect")

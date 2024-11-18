@@ -1044,6 +1044,7 @@ func (d *EDecoder) processRealTimeBarsMsg(msgBuf *MsgBuffer) {
 
 	reqID := msgBuf.decodeInt64()
 
+	time := msgBuf.decodeInt64()
 	open := msgBuf.decodeFloat64()
 	high := msgBuf.decodeFloat64()
 	low := msgBuf.decodeFloat64()
@@ -1051,7 +1052,6 @@ func (d *EDecoder) processRealTimeBarsMsg(msgBuf *MsgBuffer) {
 	volume := msgBuf.decodeDecimal()
 	wap := msgBuf.decodeDecimal()
 	count := msgBuf.decodeInt64()
-	time := msgBuf.decodeInt64()
 
 	d.wrapper.RealtimeBar(reqID, time, open, high, low, close, volume, wap, count)
 
