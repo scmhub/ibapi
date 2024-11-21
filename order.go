@@ -288,6 +288,13 @@ func NewOrder() *Order {
 	return order
 }
 
+func (o *Order) HasSameID(other *Order) bool {
+	if o.PermID != 0 && other.PermID != 0 {
+		return o.PermID == other.PermID
+	}
+	return o.OrderID == other.OrderID && o.ClientID == other.ClientID
+}
+
 func (o Order) String() string {
 	s := fmt.Sprintf("%s, %s, %s: %s %s %s@%s %s",
 		IntMaxString(o.OrderID),

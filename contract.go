@@ -87,6 +87,22 @@ func NewContract() *Contract {
 	return &Contract{}
 }
 
+func (c *Contract) Equal(other *Contract) bool {
+	if c.ConID != 0 && other.ConID != 0 {
+		return c.ConID == other.ConID
+	}
+	if c.SecIDType != "" && other.SecIDType != "" && c.SecIDType == other.SecIDType {
+		return c.SecID == other.SecID
+	}
+	return c.Symbol == other.Symbol &&
+		c.SecType == other.SecType &&
+		c.Exchange == other.Exchange &&
+		c.Currency == other.Currency &&
+		c.LastTradeDate == other.LastTradeDate &&
+		c.Strike == other.Strike &&
+		c.Right == other.Right
+}
+
 func (c Contract) String() string {
 	s := fmt.Sprintf("%d, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %t, %s, %s, %s, %s",
 		c.ConID,
