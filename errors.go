@@ -14,6 +14,10 @@ func (cmp CodeMsgPair) Error() string {
 	return cmp.Msg
 }
 
+func (cmp CodeMsgPair) Equal(other CodeMsgPair) bool {
+	return cmp.Code != 0 && other.Code != 0 && cmp.Code == other.Code
+}
+
 var (
 	ALREADY_CONNECTED        = CodeMsgPair{501, "Already connected."}
 	CONNECT_FAIL             = CodeMsgPair{502, "Couldn't connect to TWS. Confirm that 'Enable ActiveX and Socket EClients' is enabled and connection port is the same as 'Socket Port' on the TWS 'Edit->Global Configuration...->API->Settings' menu. Live Trading ports: TWS: 7496; IB Gateway: 4001. Simulated Trading ports for new installations of version 954.1 or newer:  TWS: 7497; IB Gateway: 4002"}
