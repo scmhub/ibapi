@@ -141,10 +141,11 @@ const (
 	MIN_SERVER_VER_CME_TAGGING_FIELDS                 Version = 192
 	MIN_SERVER_VER_CME_TAGGING_FIELDS_IN_OPEN_ORDER   Version = 193
 	MIN_SERVER_VER_ERROR_TIME                         Version = 194
+	MIN_SERVER_VER_FULL_ORDER_PREVIEW_FIELDS          Version = 195
 
 	// 100+ messaging
 	// 100 = enhanced handshake, msg length prefixes
 
 	MIN_CLIENT_VER = 100
-	MAX_CLIENT_VER = MIN_SERVER_VER_ERROR_TIME
+	MAX_CLIENT_VER = MIN_SERVER_VER_FULL_ORDER_PREVIEW_FIELDS
 )

@@ -398,6 +398,38 @@ func (d *OrderDecoder) decodeWhatIfInfoAndCommission(msgBuf *MsgBuffer) {
 	d.orderState.MinCommission = msgBuf.decodeFloat64ShowUnset()
 	d.orderState.MaxCommission = msgBuf.decodeFloat64ShowUnset()
 	d.orderState.CommissionCurrency = msgBuf.decodeString()
+
+	if d.serverVersion >= MIN_SERVER_VER_FULL_ORDER_PREVIEW_FIELDS {
+		d.orderState.MarginCurrency = msgBuf.decodeString()
+		d.orderState.InitMarginBeforeOutsideRTH = msgBuf.decodeFloat64ShowUnset()
+		d.orderState.MaintMarginBeforeOutsideRTH = msgBuf.decodeFloat64ShowUnset()
+		d.orderState.EquityWithLoanBeforeOutsideRTH = msgBuf.decodeFloat64ShowUnset()
+		d.orderState.InitMarginChangeOutsideRTH = msgBuf.decodeFloat64ShowUnset()
+		d.orderState.MaintMarginChangeOutsideRTH = msgBuf.decodeFloat64ShowUnset()
+		d.orderState.EquityWithLoanChangeOutsideRTH = msgBuf.decodeFloat64ShowUnset()
+		d.orderState.InitMarginAfterOutsideRTH = msgBuf.decodeFloat64ShowUnset()
+		d.orderState.MaintMarginAfterOutsideRTH = msgBuf.decodeFloat64ShowUnset()
+		d.orderState.EquityWithLoanAfterOutsideRTH = msgBuf.decodeFloat64ShowUnset()
+		d.orderState.SuggestedSize = msgBuf.decodeDecimal()
+		d.orderState.RejectReason = msgBuf.decodeString()
+
+		accountsCount := msgBuf.decodeInt64()
+		if accountsCount > 0 {
+			var i int64
+			for i = 0; i < accountsCount; i++ {
+				oa := NewOrderAllocation()
+				oa.Account = msgBuf.decodeString()
+				oa.Position = msgBuf.decodeDecimal()
+				oa.PositionDesired = msgBuf.decodeDecimal()
+				oa.PositionAfter = msgBuf.decodeDecimal()
+				oa.DesiredAllocQty = msgBuf.decodeDecimal()
+				oa.AllowedAllocQty = msgBuf.decodeDecimal()
+				oa.IsMonetary = msgBuf.decodeBool()
+				d.orderState.OrderAllocations = append(d.orderState.OrderAllocations, oa)
+			}
+		}
+	}
+
 	d.orderState.WarningText = msgBuf.decodeString()
 }
 

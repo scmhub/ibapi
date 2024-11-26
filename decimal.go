@@ -45,7 +45,7 @@ func StringToDecimal(s string) Decimal {
 }
 
 func StringToDecimalErr(s string) (Decimal, error) {
-	if s == "" || s == "2147483647" || s == "9223372036854775807" || s == "1.7976931348623157E308" {
+	if s == "" || s == "2147483647" || s == "9223372036854775807" || s == "1.7976931348623157E308" || s == "-9223372036854775808" {
 		return UNSET_DECIMAL, errors.New("unset decimal")
 	}
 	f, err := fixed.NewSErr(s)
