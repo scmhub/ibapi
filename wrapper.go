@@ -295,7 +295,7 @@ func (w Wrapper) TickSize(reqID TickerID, tickType TickType, size Decimal) {
 }
 
 func (w Wrapper) TickOptionComputation(reqID TickerID, tickType TickType, tickAttrib int64, impliedVol float64, delta float64, optPrice float64, pvDividend float64, gamma float64, vega float64, theta float64, undPrice float64) {
-	log.Info().Int64("reqID", reqID).Int64("tickType", tickType).Str("tickAttrib", IntMaxString(tickAttrib)).Str("delta", FloatMaxString(delta)).Str("optPrice", FloatMaxString(optPrice)).Str("pvDiviedn", FloatMaxString(pvDividend)).Str("gamma", FloatMaxString(gamma)).Str("vega", FloatMaxString(vega)).Str("theta", FloatMaxString(theta)).Str("undPrice", FloatMaxString(undPrice)).Msg("<TickOptionComputation>")
+	log.Info().Int64("reqID", reqID).Int64("tickType", tickType).Str("tickAttrib", IntMaxString(tickAttrib)).Str("impliedVol", FloatMaxString(impliedVol)).Str("delta", FloatMaxString(delta)).Str("optPrice", FloatMaxString(optPrice)).Str("pvDividend", FloatMaxString(pvDividend)).Str("gamma", FloatMaxString(gamma)).Str("vega", FloatMaxString(vega)).Str("theta", FloatMaxString(theta)).Str("undPrice", FloatMaxString(undPrice)).Msg("<TickOptionComputation>")
 }
 
 func (w Wrapper) TickGeneric(reqID TickerID, tickType TickType, value float64) {
