@@ -42,7 +42,7 @@ const (
 	DELTA_NEUTRAL_VALIDATION                 IN = 56
 	TICK_SNAPSHOT_END                        IN = 57
 	MARKET_DATA_TYPE                         IN = 58
-	COMMISSION_REPORT                        IN = 59
+	COMMISSION_AND_FEES_REPORT               IN = 59
 	POSITION_DATA                            IN = 61
 	POSITION_END                             IN = 62
 	ACCOUNT_SUMMARY                          IN = 63

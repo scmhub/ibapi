@@ -378,7 +378,7 @@ func (d *OrderDecoder) decodeSolicited(msgBuf *MsgBuffer) {
 
 }
 
-func (d *OrderDecoder) decodeWhatIfInfoAndCommission(msgBuf *MsgBuffer) {
+func (d *OrderDecoder) decodeWhatIfInfoAndCommissionAndFees(msgBuf *MsgBuffer) {
 	d.order.WhatIf = msgBuf.decodeBool()
 	d.decodeOrderStatus(msgBuf)
 	if d.serverVersion >= MIN_SERVER_VER_WHAT_IF_EXT_FIELDS {
@@ -394,10 +394,10 @@ func (d *OrderDecoder) decodeWhatIfInfoAndCommission(msgBuf *MsgBuffer) {
 	d.orderState.MaintMarginAfter = msgBuf.decodeString()
 	d.orderState.EquityWithLoanAfter = msgBuf.decodeString()
 
-	d.orderState.Commission = msgBuf.decodeFloat64ShowUnset()
-	d.orderState.MinCommission = msgBuf.decodeFloat64ShowUnset()
-	d.orderState.MaxCommission = msgBuf.decodeFloat64ShowUnset()
-	d.orderState.CommissionCurrency = msgBuf.decodeString()
+	d.orderState.CommissionAndFees = msgBuf.decodeFloat64ShowUnset()
+	d.orderState.MinCommissionAndFees = msgBuf.decodeFloat64ShowUnset()
+	d.orderState.MaxCommissionAndFees = msgBuf.decodeFloat64ShowUnset()
+	d.orderState.CommissionAndFeesCurrency = msgBuf.decodeString()
 
 	if d.serverVersion >= MIN_SERVER_VER_FULL_ORDER_PREVIEW_FIELDS {
 		d.orderState.MarginCurrency = msgBuf.decodeString()

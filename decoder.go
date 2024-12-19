@@ -95,8 +95,8 @@ func (d *EDecoder) interpret(msgBytes []byte) {
 		d.processTickSnapshotEndMsg(msgBuf)
 	case MARKET_DATA_TYPE:
 		d.processMarketDataTypeMsg(msgBuf)
-	case COMMISSION_REPORT:
-		d.processCommissionReportMsg(msgBuf)
+	case COMMISSION_AND_FEES_REPORT:
+		d.processCommissionAndFeesReportMsg(msgBuf)
 	case POSITION_DATA:
 		d.processPositionDataMsg(msgBuf)
 	case POSITION_END:
@@ -480,7 +480,7 @@ func (d *EDecoder) processOpenOrderMsg(msgBuf *MsgBuffer) {
 	orderDecoder.decodeDeltaNeutral(msgBuf)
 	orderDecoder.decodeAlgoParams(msgBuf)
 	orderDecoder.decodeSolicited(msgBuf)
-	orderDecoder.decodeWhatIfInfoAndCommission(msgBuf)
+	orderDecoder.decodeWhatIfInfoAndCommissionAndFees(msgBuf)
 	orderDecoder.decodeVolRandomizeFlags(msgBuf)
 	orderDecoder.decodePegBenchParams(msgBuf)
 	orderDecoder.decodeConditions(msgBuf)
@@ -1133,19 +1133,19 @@ func (d *EDecoder) processMarketDataTypeMsg(msgBuf *MsgBuffer) {
 	d.wrapper.MarketDataType(reqID, marketDataType)
 }
 
-func (d *EDecoder) processCommissionReportMsg(msgBuf *MsgBuffer) {
+func (d *EDecoder) processCommissionAndFeesReportMsg(msgBuf *MsgBuffer) {
 
 	msgBuf.decode()
 
-	commissionReport := NewCommissionReport()
-	commissionReport.ExecID = msgBuf.decodeString()
-	commissionReport.Commission = msgBuf.decodeFloat64()
-	commissionReport.Currency = msgBuf.decodeString()
-	commissionReport.RealizedPNL = msgBuf.decodeFloat64()
-	commissionReport.Yield = msgBuf.decodeFloat64()
-	commissionReport.YieldRedemptionDate = msgBuf.decodeInt64()
+	commissionAndFeesReport := NewCommissionAndFeesReport()
+	commissionAndFeesReport.ExecID = msgBuf.decodeString()
+	commissionAndFeesReport.CommissionAndFees = msgBuf.decodeFloat64()
+	commissionAndFeesReport.Currency = msgBuf.decodeString()
+	commissionAndFeesReport.RealizedPNL = msgBuf.decodeFloat64()
+	commissionAndFeesReport.Yield = msgBuf.decodeFloat64()
+	commissionAndFeesReport.YieldRedemptionDate = msgBuf.decodeInt64()
 
-	d.wrapper.CommissionReport(commissionReport)
+	d.wrapper.CommissionAndFeesReport(commissionAndFeesReport)
 }
 
 func (d *EDecoder) processPositionDataMsg(msgBuf *MsgBuffer) {

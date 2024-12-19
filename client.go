@@ -2148,7 +2148,7 @@ func (c *EClient) ReqMktDepthExchanges() {
 // The market depth will be returned by the updateMktDepth() and updateMktDepthL2() events.
 // Requests the contract's market depth (order book). Note this request must be direct-routed to an exchange and not smart-routed.
 // The number of simultaneous market depth requests allowed in an account is calculated based on a formula
-// that looks at an accounts equity, commissions, and quote booster packs.
+// that looks at an accounts equity, commissions and fees, and quote booster packs.
 // reqId is the ticker id. It must be a unique value. When the market depth data returns, it will be identified by this tag.
 // This is also used when canceling the market depth
 // contract contains a description of the contract for which market depth data is being requested.

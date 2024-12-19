@@ -53,7 +53,7 @@ type EWrapper interface {
 	// orderID: OrderId - The order ID assigned by TWS. Use to cancel or update TWS order.
 	// contract: Contract - The Contract class attributes describe the contract.
 	// order: Order - The Order class gives the details of the open order.
-	// orderState: OrderState - The orderState class includes attributes Used for both pre and post trade margin and commission data.
+	// orderState: OrderState - The orderState class includes attributes Used for both pre and post trade margin and commission and fees data.
 	OpenOrder(orderID OrderID, contract *Contract, order *Order, orderState *OrderState)
 	// OpenOrderEnd is called at the end of a given request for open orders.
 	OpenOrderEnd()
@@ -164,8 +164,8 @@ type EWrapper interface {
 	// MarketDataType is called when market data switches between real-time and frozen.
 	// The marketDataType( ) callback accepts a reqId parameter and is sent per every subscription because different contracts can generally trade on a different schedule
 	MarketDataType(reqID TickerID, marketDataType int64)
-	// CommissionReport is called immediately after a trade execution or by calling reqExecutions().
-	CommissionReport(commissionReport CommissionReport)
+	// CommissionAndFeesReport is called immediately after a trade execution or by calling reqExecutions().
+	CommissionAndFeesReport(commissionAndFeesReport CommissionAndFeesReport)
 	// Position returns real-time positions for all accounts in response to the reqPositions() method.
 	Position(account string, contract *Contract, position Decimal, avgCost float64)
 	// PositionEnd is called once all position data for a given request are received and functions as an end marker for the position() data.
@@ -442,8 +442,8 @@ func (w Wrapper) MarketDataType(reqID int64, marketDataType int64) {
 	log.Info().Int64("reqID", reqID).Int64("marketDataType", marketDataType).Msg("<MarketDataType>")
 }
 
-func (w Wrapper) CommissionReport(commissionReport CommissionReport) {
-	log.Info().Stringer("commissionReport", commissionReport).Msg("<CommissionReport>")
+func (w Wrapper) CommissionAndFeesReport(commissionAndFeesReport CommissionAndFeesReport) {
+	log.Info().Stringer("commissionAndFeesReport", commissionAndFeesReport).Msg("<CommissionAndFeesReport>")
 }
 
 func (w Wrapper) Position(account string, contract *Contract, position Decimal, avgCost float64) {

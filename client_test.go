@@ -1,19 +1,32 @@
 package ibapi
 
 import (
+	"flag"
 	"math/rand"
+	"os"
 	"testing"
 	"time"
 )
 
 const (
-	host    = "localhost"
-	port    = 7496
-	account = "DU000001"
+	host    = "10.74.0.9" // "localhost"
+	port    = 4002        //7496
+	account = "DU5352527" // "DU000001"
 )
 
 var clientID = rand.Int63n(999999)
 var orderID int64
+
+var prettyFlag bool
+var logLevel int
+
+func init() {
+	testing.Init()
+	flag.IntVar(&logLevel, "logLevel", 1, "log Level: -1:trace, 0:debug, 1:info, 2:warning, 3:error, 4:fatal, 5:panic")
+	flag.BoolVar(&prettyFlag, "pretty", false, "enable pretty printing")
+}
+
+var globalIB *EClient // Global Eclient for batch testing
 
 func nextID() int64 {
 	orderID++
@@ -21,17 +34,43 @@ func nextID() int64 {
 }
 
 func setupIBClient(t *testing.T) *EClient {
-	ib := NewEClient(nil)
-	if err := ib.Connect(host, port, clientID); err != nil {
+	if globalIB != nil {
+		return globalIB
+	}
+
+	globalIB := NewEClient(nil)
+	if err := globalIB.Connect(host, port, clientID); err != nil {
 		t.Fatalf("Couldn't connect EClient: %v", err)
 	}
-	t.Cleanup(func() {
-		time.Sleep(1 * time.Second)
-		if err := ib.Disconnect(); err != nil {
-			t.Errorf("Failed to disconnect EClient: %v", err)
+
+	return globalIB
+}
+
+// TestMain handles setup and teardown for the entire test suite.
+func TestMain(m *testing.M) {
+	// Parse flags first
+	flag.Parse()
+
+	// Log level
+	SetLogLevel(logLevel)
+
+	// Pretty
+	if prettyFlag {
+		SetConsoleWriter()
+	}
+
+	// Run the tests
+	code := m.Run()
+
+	// Teardown phase
+	if globalIB != nil {
+		if err := globalIB.Disconnect(); err != nil {
+			panic("Failed to disconnect IB client: " + err.Error())
 		}
-	})
-	return ib
+	}
+
+	// Exit with the test result code
+	os.Exit(code)
 }
 
 func TestClient(t *testing.T) {

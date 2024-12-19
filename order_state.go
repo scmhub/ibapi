@@ -51,10 +51,10 @@ type OrderState struct {
 	MaintMarginAfter     string
 	EquityWithLoanAfter  string
 
-	Commission                     float64 // UNSET_FLOAT
-	MinCommission                  float64 // UNSET_FLOAT
-	MaxCommission                  float64 // UNSET_FLOAT
-	CommissionCurrency             string
+	CommissionAndFees              float64 // UNSET_FLOAT
+	MinCommissionAndFees           float64 // UNSET_FLOAT
+	MaxCommissionAndFees           float64 // UNSET_FLOAT
+	CommissionAndFeesCurrency      string
 	MarginCurrency                 string
 	InitMarginBeforeOutsideRTH     float64 // UNSET_FLOAT
 	MaintMarginBeforeOutsideRTH    float64 // UNSET_FLOAT
@@ -76,9 +76,9 @@ type OrderState struct {
 
 func NewOrderState() *OrderState {
 	os := &OrderState{}
-	os.Commission = UNSET_FLOAT
-	os.MinCommission = UNSET_FLOAT
-	os.MaxCommission = UNSET_FLOAT
+	os.CommissionAndFees = UNSET_FLOAT
+	os.MinCommissionAndFees = UNSET_FLOAT
+	os.MaxCommissionAndFees = UNSET_FLOAT
 	os.InitMarginBeforeOutsideRTH = UNSET_FLOAT
 	os.MaintMarginBeforeOutsideRTH = UNSET_FLOAT
 	os.EquityWithLoanBeforeOutsideRTH = UNSET_FLOAT
@@ -105,10 +105,10 @@ func (os OrderState) String() string {
 		", InitMarginAfter: ", os.InitMarginAfter,
 		", MaintMarginAfter: ", os.MaintMarginAfter,
 		", EquityWithLoanAfter: ", os.EquityWithLoanAfter,
-		", Commission: ", FloatMaxString(os.Commission),
-		", MinCommission: ", FloatMaxString(os.MinCommission),
-		", MaxCommission: ", FloatMaxString(os.MaxCommission),
-		", CommissionCurrency: ", os.CommissionCurrency,
+		", CommissionAndFees: ", FloatMaxString(os.CommissionAndFees),
+		", MinCommissionAndFees: ", FloatMaxString(os.MinCommissionAndFees),
+		", MaxCommissionAndFees: ", FloatMaxString(os.MaxCommissionAndFees),
+		", CommissionAndFeesCurrency: ", os.CommissionAndFeesCurrency,
 		", MarginCurrency: ", os.MarginCurrency,
 		", InitMarginBeforeOutsideRTH: ", FloatMaxString(os.InitMarginBeforeOutsideRTH),
 		", MaintMarginBeforeOutsideRTH: ", FloatMaxString(os.MaintMarginBeforeOutsideRTH),
