@@ -191,6 +191,8 @@ func (d *EDecoder) interpret(msgBytes []byte) {
 		d.processHistoricalSchedule(msgBuf)
 	case USER_INFO:
 		d.processUserInfo(msgBuf)
+	case HISTORICAL_DATA_END:
+		d.processHistoricalDataEndMsg(msgBuf)
 	default:
 		d.wrapper.Error(NO_VALID_ID, currentTimeMillis(), BAD_MESSAGE.Code, BAD_MESSAGE.Msg, "")
 	}
@@ -955,8 +957,12 @@ func (d *EDecoder) processHistoricalDataMsg(msgBuf *MsgBuffer) {
 	}
 
 	reqID := msgBuf.decodeInt64()
-	startDateStr := msgBuf.decodeString()
-	endDateStr := msgBuf.decodeString()
+
+	var startDateStr, endDateStr string
+	if d.serverVersion < MIN_SERVER_VER_HISTORICAL_DATA_END {
+		startDateStr = msgBuf.decodeString()
+		endDateStr = msgBuf.decodeString()
+	}
 
 	itemCount := msgBuf.decodeInt64()
 
@@ -979,6 +985,19 @@ func (d *EDecoder) processHistoricalDataMsg(msgBuf *MsgBuffer) {
 
 		d.wrapper.HistoricalData(reqID, &bar)
 	}
+
+	if d.serverVersion < MIN_SERVER_VER_HISTORICAL_DATA_END {
+		d.wrapper.HistoricalDataEnd(reqID, startDateStr, endDateStr)
+	}
+}
+
+func (d *EDecoder) processHistoricalDataEndMsg(msgBuf *MsgBuffer) {
+
+	msgBuf.decode()
+
+	reqID := msgBuf.decodeInt64()
+	startDateStr := msgBuf.decodeString()
+	endDateStr := msgBuf.decodeString()
 
 	d.wrapper.HistoricalDataEnd(reqID, startDateStr, endDateStr)
 }

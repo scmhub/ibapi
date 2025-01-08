@@ -678,8 +678,7 @@ func TestMarketRuleOperations(t *testing.T) {
 func TestContinuousFuturesOperations(t *testing.T) {
 	ib := setupIBClient(t)
 	ib.ReqContractDetails(18001, ContFut())
-	queryTime := time.Now().Format("20060102-15:04:05")
-	ib.ReqHistoricalData(18002, ContFut(), queryTime, "1 Y", "1 month", "TRADES", false, 1, false, nil)
+	ib.ReqHistoricalData(18002, ContFut(), "", "1 Y", "1 month", "TRADES", false, 1, false, nil)
 	time.Sleep(10 * time.Second)
 	ib.CancelHistoricalData(18002)
 }

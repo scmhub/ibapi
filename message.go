@@ -90,6 +90,7 @@ const (
 	WSH_EVENT_DATA                           IN = 105
 	HISTORICAL_SCHEDULE                      IN = 106
 	USER_INFO                                IN = 107
+	HISTORICAL_DATA_END                      IN = 108
 )
 
 // OUT is the outgoing msg id's.
