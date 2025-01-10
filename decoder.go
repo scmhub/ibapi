@@ -193,6 +193,8 @@ func (d *EDecoder) interpret(msgBytes []byte) {
 		d.processUserInfo(msgBuf)
 	case HISTORICAL_DATA_END:
 		d.processHistoricalDataEndMsg(msgBuf)
+	case CURRENT_TIME_IN_MILLIS:
+		d.processCurrentTimeInMillisMsg(msgBuf)
 	default:
 		d.wrapper.Error(NO_VALID_ID, currentTimeMillis(), BAD_MESSAGE.Code, BAD_MESSAGE.Msg, "")
 	}
@@ -1944,6 +1946,13 @@ func (d *EDecoder) processUserInfo(msgBuf *MsgBuffer) {
 	whiteBrandingId := msgBuf.decodeString()
 
 	d.wrapper.UserInfo(reqID, whiteBrandingId)
+}
+
+func (d *EDecoder) processCurrentTimeInMillisMsg(msgBuf *MsgBuffer) {
+
+	timeInMillis := msgBuf.decodeInt64()
+
+	d.wrapper.CurrentTimeInMillis(timeInMillis)
 }
 
 //

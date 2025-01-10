@@ -254,15 +254,15 @@ type EWrapper interface {
 	HistoricalTicks(reqID int64, ticks []HistoricalTick, done bool)
 	// HistoricalTicksBidAsk returns historical tick data when whatToShow=BID_ASK.
 	HistoricalTicksBidAsk(reqID int64, ticks []HistoricalTickBidAsk, done bool)
-	// HistoricalTicksLast returns historical tick data when whatToShow=TRADES
+	// HistoricalTicksLast returns historical tick data when whatToShow=TRADES.
 	HistoricalTicksLast(reqID int64, ticks []HistoricalTickLast, done bool)
-	// TickByTickAllLast returns tick-by-tick data for tickType = "Last" or "AllLast"
+	// TickByTickAllLast returns tick-by-tick data for tickType = "Last" or "AllLast".
 	TickByTickAllLast(reqID int64, tickType int64, time int64, price float64, size Decimal, tickAttribLast TickAttribLast, exchange string, specialConditions string)
 	// TickByTickBidAsk .
 	TickByTickBidAsk(reqID int64, time int64, bidPrice float64, askPrice float64, bidSize Decimal, askSize Decimal, tickAttribBidAsk TickAttribBidAsk)
 	// TickByTickMidPoint .
 	TickByTickMidPoint(reqID int64, time int64, midPoint float64)
-	// OrderBound returns orderBound notification .
+	// OrderBound returns orderBound notification.
 	OrderBound(permID int64, clientID int64, orderID int64)
 	// CompletedOrder is called to feed in completed orders.
 	CompletedOrder(contract *Contract, order *Order, orderState *OrderState)
@@ -274,10 +274,12 @@ type EWrapper interface {
 	WshMetaData(reqID int64, dataJson string)
 	// WshEventData .
 	WshEventData(reqID int64, dataJson string)
-	// HistoricalSchedule returns historical schedule for historical data request with whatToShow=SCHEDULE
+	// HistoricalSchedule returns historical schedule for historical data request with whatToShow=SCHEDULE.
 	HistoricalSchedule(reqID int64, startDarteTime, endDateTime, timeZone string, sessions []HistoricalSession)
 	// UserInfo returns user info.
 	UserInfo(reqID int64, whiteBrandingId string)
+	// CurrentTimeInMillis returns IB server's current time in milliseconds after the invocation of reqCurrentTimeInMillis.
+	CurrentTimeInMillis(timeInMillis int64)
 }
 
 var _ EWrapper = (*Wrapper)(nil)
@@ -659,4 +661,8 @@ func (w Wrapper) HistoricalSchedule(reqID int64, startDarteTime, endDateTime, ti
 
 func (w Wrapper) UserInfo(reqID int64, whiteBrandingId string) {
 	log.Info().Int64("reqID", reqID).Str("whiteBrandingId", whiteBrandingId).Msg("<UserInfo>")
+}
+
+func (w Wrapper) CurrentTimeInMillis(timeInMillis int64) {
+	log.Info().Int64("timeInMillis", timeInMillis).Msg("<CurrentTimeInMillis>")
 }

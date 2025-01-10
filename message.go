@@ -91,6 +91,7 @@ const (
 	HISTORICAL_SCHEDULE                      IN = 106
 	USER_INFO                                IN = 107
 	HISTORICAL_DATA_END                      IN = 108
+	CURRENT_TIME_IN_MILLIS                   IN = 109
 )
 
 // OUT is the outgoing msg id's.
@@ -177,4 +178,5 @@ const (
 	REQ_WSH_EVENT_DATA            OUT = 102
 	CANCEL_WSH_EVENT_DATA         OUT = 103
 	REQ_USER_INFO                 OUT = 104
+	REQ_CURRENT_TIME_IN_MILLIS    OUT = 105
 )

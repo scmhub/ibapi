@@ -3471,3 +3471,21 @@ func (c *EClient) ReqUserInfo(reqID int64) {
 
 	c.reqChan <- msg
 }
+
+// ReqCurrentTimeInMillis requests the current system time in milliseconds on the server side.
+func (c *EClient) ReqCurrentTimeInMillis() {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
+	if c.serverVersion < MIN_SERVER_VER_CURRENT_TIME_IN_MILLIS {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support current time in millis requests", "")
+		return
+	}
+
+	msg := makeFields(REQ_CURRENT_TIME_IN_MILLIS)
+
+	c.reqChan <- msg
+}

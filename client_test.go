@@ -98,6 +98,7 @@ func TestClient(t *testing.T) {
 func TestReqCurrentTime(t *testing.T) {
 	ib := setupIBClient(t)
 	ib.ReqCurrentTime()
+	time.Sleep(3 * time.Second)
 }
 
 func TestPnlSingleOperation(t *testing.T) {
@@ -576,7 +577,9 @@ func TestMiscellaneous(t *testing.T) {
 	// Request TWS' current time
 	ib.ReqCurrentTime()
 	// Setting TWS logging level
-	ib.SetServerLogLevel(5)
+	ib.SetServerLogLevel(1)
+	time.Sleep(3 * time.Second)
+	ib.ReqCurrentTimeInMillis()
 }
 
 func TestReqFamilyCodes(t *testing.T) {
