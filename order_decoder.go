@@ -625,3 +625,9 @@ func (d *OrderDecoder) decodeCMETaggingFields(msgBuf *MsgBuffer) {
 		d.order.ManualOrderIndicator = msgBuf.decodeInt64ShowUnset()
 	}
 }
+
+func (d *OrderDecoder) decodeSubmitter(msgBuf *MsgBuffer) {
+	if d.serverVersion >= MIN_SERVER_VER_SUBMITTER {
+		d.order.Submitter = msgBuf.decodeString()
+	}
+}

@@ -144,9 +144,11 @@ const (
 	MIN_SERVER_VER_FULL_ORDER_PREVIEW_FIELDS          Version = 195
 	MIN_SERVER_VER_HISTORICAL_DATA_END                Version = 196
 	MIN_SERVER_VER_CURRENT_TIME_IN_MILLIS             Version = 197
+	MIN_SERVER_VER_SUBMITTER                          Version = 198
+
 	// 100+ messaging
 	// 100 = enhanced handshake, msg length prefixes
 
 	MIN_CLIENT_VER = 100
-	MAX_CLIENT_VER = MIN_SERVER_VER_CURRENT_TIME_IN_MILLIS
+	MAX_CLIENT_VER = MIN_SERVER_VER_SUBMITTER
 )

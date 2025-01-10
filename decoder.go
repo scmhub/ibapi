@@ -504,6 +504,7 @@ func (d *EDecoder) processOpenOrderMsg(msgBuf *MsgBuffer) {
 	orderDecoder.decodeBondAccruedInterest(msgBuf)
 	orderDecoder.decodeIncludeOvernight(msgBuf)
 	orderDecoder.decodeCMETaggingFields(msgBuf)
+	orderDecoder.decodeSubmitter(msgBuf)
 
 	d.wrapper.OpenOrder(order.OrderID, contract, order, orderState)
 }
@@ -877,8 +878,13 @@ func (d *EDecoder) processExecutionDetailsMsg(msgBuf *MsgBuffer) {
 	if d.serverVersion >= MIN_SERVER_VER_LAST_LIQUIDITY {
 		execution.LastLiquidity = msgBuf.decodeInt64()
 	}
+
 	if d.serverVersion >= MIN_SERVER_VER_PENDING_PRICE_REVISION {
 		execution.PendingPriceRevision = msgBuf.decodeBool()
+	}
+
+	if d.serverVersion >= MIN_SERVER_VER_SUBMITTER {
+		execution.Submitter = msgBuf.decodeString()
 	}
 
 	d.wrapper.ExecDetails(reqID, contract, execution)
@@ -1888,6 +1894,7 @@ func (d *EDecoder) processCompletedOrderMsg(msgBuf *MsgBuffer) {
 	orderDecoder.decodePegBestPegMidOrderAttributes(msgBuf)
 	orderDecoder.decodeCustomerAccount(msgBuf)
 	orderDecoder.decodeProfessionalCustomer(msgBuf)
+	orderDecoder.decodeSubmitter(msgBuf)
 
 	d.wrapper.CompletedOrder(contract, order, orderState)
 }

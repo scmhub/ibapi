@@ -26,12 +26,13 @@ type Execution struct {
 	ModelCode            string
 	LastLiquidity        int64
 	PendingPriceRevision bool
+	Submitter            string
 }
 
 func (e Execution) String() string {
-	return fmt.Sprintf("ExecId: %s, Time: %s, Account: %s, Exchange: %s, Side: %s, Shares: %s, Price: %s, PermId: %s, ClientId: %s, OrderId: %s, Liquidation: %s, CumQty: %s, AvgPrice: %s, OrderRef: %s, EvRule: %s, EvMultiplier: %s, ModelCode: %s, LastLiquidity: %s,  PendingPriceRevision: %s",
+	return fmt.Sprintf("ExecId: %s, Time: %s, Account: %s, Exchange: %s, Side: %s, Shares: %s, Price: %s, PermId: %s, ClientId: %s, OrderId: %s, Liquidation: %s, CumQty: %s, AvgPrice: %s, OrderRef: %s, EvRule: %s, EvMultiplier: %s, ModelCode: %s, LastLiquidity: %s,  PendingPriceRevision: %s, Submitter: %s",
 		e.ExecID, e.Time, e.AcctNumber, e.Exchange, e.Side, DecimalMaxString(e.Shares), FloatMaxString(e.Price), LongMaxString(e.PermID), IntMaxString(e.ClientID), IntMaxString(e.OrderID), IntMaxString(e.Liquidation), DecimalMaxString(e.CumQty), FloatMaxString(e.AvgPrice),
-		e.OrderRef, e.EVRule, FloatMaxString(e.EVMultiplier), e.ModelCode, IntMaxString(e.LastLiquidity), strconv.FormatBool(e.PendingPriceRevision))
+		e.OrderRef, e.EVRule, FloatMaxString(e.EVMultiplier), e.ModelCode, IntMaxString(e.LastLiquidity), strconv.FormatBool(e.PendingPriceRevision), e.Submitter)
 }
 
 func NewExecution() *Execution {

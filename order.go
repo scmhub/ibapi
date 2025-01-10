@@ -224,6 +224,7 @@ type Order struct {
 	BondAccruedInterest      string
 	IncludeOvernight         bool
 	ManualOrderIndicator     int64 `default:"UNSET_INT"`
+	Submitter                string
 }
 
 // NewOrder creates a default Order.
