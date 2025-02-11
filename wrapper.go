@@ -336,7 +336,7 @@ func (w Wrapper) OpenOrder(orderID OrderID, contract *Contract, order *Order, or
 	}
 	logger = logger.Str("MidOffsetAtWhole", FloatMaxString(order.MidOffsetAtWhole)).Str("MidOffsetAtHalf", FloatMaxString(order.MidOffsetAtHalf))
 	logger = logger.Str("FAGroup", order.FAGroup).Str("CustomerAccount", order.CustomerAccount).Bool("ProfessionalCustomer", order.ProfessionalCustomer)
-	logger = logger.Str("ManualOrderIndicator", IntMaxString(order.ManualOrderIndicator)).Str("Submitter", order.Submitter)
+	logger = logger.Str("ManualOrderIndicator", IntMaxString(order.ManualOrderIndicator)).Str("Submitter", order.Submitter).Bool("ImbalanceOnly", order.ImbalanceOnly)
 	logger.Msg("<OpenOrder>")
 }
 
@@ -664,7 +664,7 @@ func (w Wrapper) CompletedOrder(contract *Contract, order *Order, orderState *Or
 		logger = logger.Str("CompeteAgainstBestOffset", FloatMaxString(order.CompeteAgainstBestOffset))
 	}
 	logger = logger.Str("MidOffsetAtWhole", FloatMaxString(order.MidOffsetAtWhole)).Str("MidOffsetAtHalf", FloatMaxString(order.MidOffsetAtHalf)).Str("CustomerAccount", order.CustomerAccount)
-	logger = logger.Bool("ProfessionalCustomer", order.ProfessionalCustomer).Str("Submitter", order.Submitter)
+	logger = logger.Bool("ProfessionalCustomer", order.ProfessionalCustomer).Str("Submitter", order.Submitter).Bool("ImbalanceOnly", order.ImbalanceOnly)
 	logger.Msg("<CompletedOrder>")
 }
 

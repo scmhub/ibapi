@@ -547,8 +547,10 @@ func (d *OrderDecoder) decodeShareholder(msgBuf *MsgBuffer) {
 	d.order.Shareholder = msgBuf.decodeString()
 }
 
-func (d *OrderDecoder) decodeImbalanceOnly(msgBuf *MsgBuffer) {
-	d.order.ImbalanceOnly = msgBuf.decodeBool()
+func (d *OrderDecoder) decodeImbalanceOnly(msgBuf *MsgBuffer, minVersionImbalanceOnly Version) {
+	if d.serverVersion >= minVersionImbalanceOnly {
+		d.order.ImbalanceOnly = msgBuf.decodeBool()
+	}
 }
 
 func (d *OrderDecoder) decodeRouteMarketableToBbo(msgBuf *MsgBuffer) {

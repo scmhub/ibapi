@@ -1095,3 +1095,12 @@ func OrderCancelWithCmeTaggingFields(extOperator string, manualOrderIndicator in
 
 	return orderCancel
 }
+
+// OrderCancelWithCmeTaggingFields .
+func LimitOnCloseOrderWithImbalanceOnly(action string, quantity Decimal, limitPrice float64) *Order {
+
+	order := LimitOnClose(action, quantity, limitPrice)
+	order.ImbalanceOnly = true
+
+	return order
+}

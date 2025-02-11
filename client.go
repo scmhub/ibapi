@@ -1103,6 +1103,11 @@ func (c *EClient) PlaceOrder(orderID OrderID, contract *Contract, order *Order) 
 		return
 	}
 
+	if c.serverVersion < MIN_SERVER_VER_IMBALANCE_ONLY && order.ImbalanceOnly {
+		c.wrapper.Error(orderID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support imbalance only parameter", "")
+		return
+	}
+
 	var VERSION int
 	if c.serverVersion < MIN_SERVER_VER_NOT_HELD {
 		VERSION = 27
@@ -1555,6 +1560,10 @@ func (c *EClient) PlaceOrder(orderID OrderID, contract *Contract, order *Order) 
 
 	if c.serverVersion >= MIN_SERVER_VER_CME_TAGGING_FIELDS {
 		fields = append(fields, order.ManualOrderIndicator)
+	}
+
+	if c.serverVersion >= MIN_SERVER_VER_IMBALANCE_ONLY {
+		fields = append(fields, order.ImbalanceOnly)
 	}
 
 	msg := makeFields(fields...)

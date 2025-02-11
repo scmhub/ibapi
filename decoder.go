@@ -505,6 +505,7 @@ func (d *EDecoder) processOpenOrderMsg(msgBuf *MsgBuffer) {
 	orderDecoder.decodeIncludeOvernight(msgBuf)
 	orderDecoder.decodeCMETaggingFields(msgBuf)
 	orderDecoder.decodeSubmitter(msgBuf)
+	orderDecoder.decodeImbalanceOnly(msgBuf, MIN_SERVER_VER_IMBALANCE_ONLY)
 
 	d.wrapper.OpenOrder(order.OrderID, contract, order, orderState)
 }
@@ -1886,7 +1887,7 @@ func (d *EDecoder) processCompletedOrderMsg(msgBuf *MsgBuffer) {
 	orderDecoder.decodeRefFuturesConId(msgBuf)
 	orderDecoder.decodeAutoCancelParent(msgBuf, MIN_CLIENT_VER)
 	orderDecoder.decodeShareholder(msgBuf)
-	orderDecoder.decodeImbalanceOnly(msgBuf)
+	orderDecoder.decodeImbalanceOnly(msgBuf, MIN_CLIENT_VER)
 	orderDecoder.decodeRouteMarketableToBbo(msgBuf)
 	orderDecoder.decodeParentPermId(msgBuf)
 	orderDecoder.decodeCompletedTime(msgBuf)

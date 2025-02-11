@@ -416,6 +416,9 @@ func TestOrderOperations(t *testing.T) {
 	ib.PlaceOrder(nextID(), SimpleFuture(), LimitOrderWithCmeTaggingFields("BUY", StringToDecimal("1"), 5333, "CDEF", 0))
 	time.Sleep(5 * time.Second)
 	ib.CancelOrder(nextID(), OrderCancelWithCmeTaggingFields("DEFG", 1))
+
+	// Imbalance only order
+	ib.PlaceOrder(nextID(), USStockAtSmart(), LimitOnCloseOrderWithImbalanceOnly("BUY", StringToDecimal("100"), 44.44))
 }
 
 func TestOcaSamples(t *testing.T) {
