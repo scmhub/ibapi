@@ -62,6 +62,9 @@ func main() {
 		return
 	}
 	defer ib.Disconnect()
+	// Add a short delay to allow the connection to stabilize
+	time.Sleep(100 * time.Millisecond)
+	log.Info().Msg("Waited for connection to stabilize")
 
 	// Request servert current time
 	t := ib.ReqCurrentTime()

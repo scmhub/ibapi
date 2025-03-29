@@ -14,6 +14,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"os"
 	"os/signal"
@@ -48,24 +49,25 @@ func (cs ConnState) String() string {
 
 // EClient is the main struct to use from API user's point of view.
 type EClient struct {
-	host           string
-	port           int
-	clientID       int64
-	connectOptions string
-	conn           *Connection
-	serverVersion  Version
-	connTime       string
-	connState      ConnState
-	writer         *bufio.Writer
-	scanner        *bufio.Scanner
-	wrapper        EWrapper
-	decoder        *EDecoder
-	reqChan        chan []byte
-	Ctx            context.Context
-	Cancel         context.CancelFunc
-	extraAuth      bool
-	wg             sync.WaitGroup
-	err            error
+	host                 string
+	port                 int
+	clientID             int64
+	connectOptions       string
+	optionalCapabilities string
+	conn                 *Connection
+	serverVersion        Version
+	connTime             string
+	connState            ConnState
+	writer               *bufio.Writer
+	scanner              *bufio.Scanner
+	wrapper              EWrapper
+	decoder              *EDecoder
+	reqChan              chan []byte
+	Ctx                  context.Context
+	Cancel               context.CancelFunc
+	extraAuth            bool
+	wg                   sync.WaitGroup
+	err                  error
 }
 
 // NewEClient returns a new Eclient.
@@ -84,6 +86,8 @@ func (c *EClient) reset() {
 	c.host = ""
 	c.port = -1
 	c.clientID = -1
+	c.connectOptions = ""
+	c.optionalCapabilities = ""
 	c.extraAuth = false
 	c.conn = &Connection{}
 	c.serverVersion = -1
@@ -143,6 +147,18 @@ func (c *EClient) request() {
 		}
 	}
 }
+func (c *EClient) validateInvalidSymbols(host string) error {
+	if host != "" && !isASCIIPrintable(host) {
+		return errors.New(host)
+	}
+	if c.connectOptions != "" && !isASCIIPrintable(c.connectOptions) {
+		return errors.New(c.connectOptions)
+	}
+	if c.optionalCapabilities != "" && !isASCIIPrintable(c.optionalCapabilities) {
+		return errors.New(c.optionalCapabilities)
+	}
+	return nil
+}
 
 // startAPI initiates the message exchange between the client application and the TWS/IB Gateway.
 func (c *EClient) startAPI() error {
@@ -157,7 +173,7 @@ func (c *EClient) startAPI() error {
 	const VERSION = 2
 
 	if c.serverVersion >= MIN_SERVER_VER_OPTIONAL_CAPABILITIES {
-		msg = makeFields(START_API, VERSION, c.clientID, "")
+		msg = makeFields(START_API, VERSION, c.clientID, c.optionalCapabilities)
 	} else {
 		msg = makeFields(START_API, VERSION, c.clientID)
 	}
@@ -174,11 +190,19 @@ func (c *EClient) startAPI() error {
 
 // Connect must be called before any other.
 // There is no feedback for a successful connection, but a subsequent attempt to connect will return the message "Already connected.".
+// You should wait for the connection to be established and NextValidID to be returned before calling any other function. If you don't wait, you will get a broken pipe error.
 func (c *EClient) Connect(host string, port int, clientID int64) error {
+
+	if err := c.validateInvalidSymbols(host); err != nil {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), INVALID_SYMBOL.Code, INVALID_SYMBOL.Msg+err.Error(), "")
+		return err
+	}
+
 	c.host = host
 	c.port = port
 	c.clientID = clientID
 
+	// Connecting to IB server
 	log.Info().Str("host", host).Int("port", port).Int64("clientID", clientID).Msg("Connecting to IB server")
 	if err := c.conn.connect(c.host, c.port); err != nil {
 		log.Error().Err(CONNECT_FAIL).Msg("Connection fail")
@@ -188,7 +212,7 @@ func (c *EClient) Connect(host string, port int, clientID int64) error {
 	}
 
 	// HandShake with the TWS or GateWay to ensure the version,
-	log.Debug().Msg("HandShake with TWS or GateWay")
+	log.Debug().Msg("Handshake with TWS or GateWay")
 
 	head := []byte("API\x00")
 
@@ -197,7 +221,7 @@ func (c *EClient) Connect(host string, port int, clientID int64) error {
 		connectOptions = " " + c.connectOptions
 	}
 	sizeofCV := make([]byte, 4)
-	clientVersion := []byte(fmt.Sprintf("v%d..%d%s", MIN_CLIENT_VER, MAX_CLIENT_VER, connectOptions))
+	clientVersion := fmt.Appendf(nil, "v%d..%d%s", MIN_CLIENT_VER, MAX_CLIENT_VER, connectOptions)
 
 	binary.BigEndian.PutUint32(sizeofCV, uint32(len(clientVersion)))
 
@@ -206,7 +230,7 @@ func (c *EClient) Connect(host string, port int, clientID int64) error {
 	msg.Write(sizeofCV)
 	msg.Write(clientVersion)
 
-	log.Debug().Bytes("header", msg.Bytes()).Msg("send handShake header")
+	log.Debug().Bytes("header", msg.Bytes()).Msg("Sending handshake header")
 
 	if _, err := c.writer.Write(msg.Bytes()); err != nil {
 		return err
@@ -216,7 +240,7 @@ func (c *EClient) Connect(host string, port int, clientID int64) error {
 		return err
 	}
 
-	log.Debug().Msg("recv handShake Info")
+	log.Debug().Msg("Receiving handshake Info")
 
 	// scan once to get server info
 	if !c.scanner.Scan() {
@@ -292,9 +316,19 @@ func (c *EClient) IsConnected() bool {
 	return c.conn.IsConnected() && c.connState == CONNECTED
 }
 
+// OptionalCapabilities returns the Optional Capabilities.
+func (c *EClient) OptionalCapabilities() string {
+	return c.optionalCapabilities
+}
+
+// SetOptionalCapabilities setup the Optional Capabilities.
+func (c *EClient) SetOptionalCapabilities(optCapts string) {
+	c.optionalCapabilities = optCapts
+}
+
 // SetConnectionOptions setup the Connection Options.
-func (c *EClient) SetConnectionOptions(opts string) {
-	c.connectOptions = opts
+func (c *EClient) SetConnectionOptions(connectOptions string) {
+	c.connectOptions = connectOptions
 }
 
 // ReqCurrentTime asks the current system time on the server side.

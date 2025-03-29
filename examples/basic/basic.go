@@ -9,7 +9,7 @@ import (
 
 const (
 	host = "localhost"
-	port = 7496
+	port = 7497
 )
 
 var orderID int64
@@ -34,6 +34,10 @@ func main() {
 		return
 	}
 
+	// Add a short delay to allow the connection to stabilize
+	time.Sleep(100 * time.Millisecond)
+	log.Info().Msg("Waited for connection to stabilize")
+
 	// ib.SetConnectionOptions("+PACEAPI")
 
 	// Logger test
@@ -49,7 +53,7 @@ func main() {
 	// log.Print("TWS Connection time: ", ib.TWSConnectionTime())
 
 	// time.Sleep(1 * time.Second)
-	ib.ReqCurrentTime()
+	// ib.ReqCurrentTime()
 
 	// ########## account ##########
 	ib.ReqManagedAccts()

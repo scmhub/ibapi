@@ -43,6 +43,9 @@ func setupIBClient(t *testing.T) *EClient {
 		t.Fatalf("Couldn't connect EClient: %v", err)
 	}
 
+	// Add a short delay to allow the connection to stabilize
+	time.Sleep(100 * time.Millisecond)
+
 	return globalIB
 }
 

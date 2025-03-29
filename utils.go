@@ -298,3 +298,13 @@ func GetTimeStrFromMillis(timestamp int64) string {
 	}
 	return ""
 }
+
+// isASCIIPrintable checks if all characters in the given string are ASCII printable characters.
+func isASCIIPrintable(s string) bool {
+	for _, r := range s {
+		if r == '\t' || r == '\n' || r == '\r' || r < 32 || r > 126 {
+			return false
+		}
+	}
+	return true
+}
