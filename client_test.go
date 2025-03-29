@@ -9,8 +9,8 @@ import (
 )
 
 const (
-	host    = "10.74.0.9" // "localhost"
-	port    = 4002        //7496
+	host    = "localhost" // "localhost"
+	port    = 7497        //7496
 	account = "DU5352527" // "DU000001"
 )
 

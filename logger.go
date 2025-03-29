@@ -29,7 +29,7 @@ func SetLogLevel(logLevel int) {
 // SetConsoleWriter will send pretty log to the console.
 func SetConsoleWriter() {
 	output := zerolog.ConsoleWriter{Out: os.Stdout}
-	output.FormatMessage = func(i interface{}) string {
+	output.FormatMessage = func(i any) string {
 		return fmt.Sprintf("| IB | %s", i)
 	}
 	log = log.Output(output)

@@ -29,7 +29,7 @@ const (
 type OrderCondition interface {
 	Type() OrderConditionType
 	decode(*MsgBuffer)
-	makeFields() []interface{}
+	makeFields() []any
 }
 
 var _ OrderCondition = (*orderCondition)(nil)
@@ -48,11 +48,11 @@ func (oc *orderCondition) decode(msgBuf *MsgBuffer) {
 	oc.IsConjunctionConnection = connector == "a"
 }
 
-func (oc orderCondition) makeFields() []interface{} {
+func (oc orderCondition) makeFields() []any {
 	if oc.IsConjunctionConnection {
-		return []interface{}{"a"}
+		return []any{"a"}
 	}
-	return []interface{}{"o"}
+	return []any{"o"}
 }
 
 func (oc orderCondition) String() string {
@@ -78,7 +78,7 @@ func (ec *ExecutionCondition) decode(msgBuf *MsgBuffer) { // 4 fields
 	ec.Symbol = msgBuf.decodeString()
 }
 
-func (ec ExecutionCondition) makeFields() []interface{} {
+func (ec ExecutionCondition) makeFields() []any {
 	return append(ec.orderCondition.makeFields(), ec.SecType, ec.Exchange, ec.Symbol)
 }
 
@@ -98,7 +98,7 @@ func (oc *OperatorCondition) decode(msgBuf *MsgBuffer) { // 2 fields
 	oc.IsMore = msgBuf.decodeBool()
 }
 
-func (oc OperatorCondition) makeFields() []interface{} {
+func (oc OperatorCondition) makeFields() []any {
 	return append(oc.orderCondition.makeFields(), oc.IsMore)
 }
 
@@ -112,7 +112,7 @@ func (mc *MarginCondition) decode(msgBuf *MsgBuffer) { // 3 fields
 	mc.Percent = msgBuf.decodeInt64()
 }
 
-func (mc MarginCondition) makeFields() []interface{} {
+func (mc MarginCondition) makeFields() []any {
 	return append(mc.OperatorCondition.makeFields(), mc.Percent)
 }
 
@@ -127,7 +127,7 @@ func (tc *TimeCondition) decode(msgBuf *MsgBuffer) { // 3 fields
 	tc.Time = msgBuf.decodeString()
 }
 
-func (tc TimeCondition) makeFields() []interface{} {
+func (tc TimeCondition) makeFields() []any {
 	return append(tc.OperatorCondition.makeFields(), tc.Time)
 }
 
@@ -143,7 +143,7 @@ func (cc *ContractCondition) decode(msgBuf *MsgBuffer) { // 4 fields
 	cc.Exchange = msgBuf.decodeString()
 }
 
-func (cc ContractCondition) makeFields() []interface{} {
+func (cc ContractCondition) makeFields() []any {
 	return append(cc.OperatorCondition.makeFields(), cc.ConID, cc.Exchange)
 }
 
@@ -161,7 +161,7 @@ func (pc *PriceCondition) decode(msgBuf *MsgBuffer) { // 6 fields
 	pc.TriggerMethod = msgBuf.decodeInt64()
 }
 
-func (pc PriceCondition) makeFields() []interface{} {
+func (pc PriceCondition) makeFields() []any {
 	return append(pc.ContractCondition.makeFields(), pc.Price, pc.TriggerMethod)
 }
 
@@ -175,7 +175,7 @@ func (vc *VolumeCondition) decode(msgBuf *MsgBuffer) { // 5 fields
 	vc.Volume = msgBuf.decodeInt64()
 }
 
-func (vc VolumeCondition) makeFields() []interface{} {
+func (vc VolumeCondition) makeFields() []any {
 	return append(vc.ContractCondition.makeFields(), vc.Volume)
 }
 
@@ -189,7 +189,7 @@ func (pcc *PercentChangeCondition) decode(msgBuf *MsgBuffer) { // 5 fields
 	pcc.ChangePercent = msgBuf.decodeFloat64()
 }
 
-func (pcc PercentChangeCondition) makeFields() []interface{} {
+func (pcc PercentChangeCondition) makeFields() []any {
 	return append(pcc.ContractCondition.makeFields(), pcc.ChangePercent)
 }
 

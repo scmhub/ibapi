@@ -412,7 +412,7 @@ func (c *EClient) ReqMktData(reqID TickerID, contract *Contract, genericTickList
 
 	const VERSION = 11
 
-	fields := make([]interface{}, 0, 30)
+	fields := make([]any, 0, 30)
 	fields = append(fields,
 		REQ_MKT_DATA,
 		VERSION,
@@ -595,7 +595,7 @@ func (c *EClient) ReqTickByTickData(reqID int64, contract *Contract, tickType st
 		return
 	}
 
-	fields := make([]interface{}, 0, 17)
+	fields := make([]any, 0, 17)
 	fields = append(fields, REQ_TICK_BY_TICK_DATA,
 		reqID,
 		contract.ConID,
@@ -664,7 +664,7 @@ func (c *EClient) CalculateImpliedVolatility(reqID int64, contract *Contract, op
 
 	const VERSION = 3
 
-	fields := make([]interface{}, 0, 19)
+	fields := make([]any, 0, 19)
 	fields = append(fields,
 		REQ_CALC_IMPLIED_VOLAT,
 		VERSION,
@@ -747,7 +747,7 @@ func (c *EClient) CalculateOptionPrice(reqID int64, contract *Contract, volatili
 
 	const VERSION = 3
 
-	fields := make([]interface{}, 0, 19)
+	fields := make([]any, 0, 19)
 	fields = append(fields,
 		REQ_CALC_OPTION_PRICE,
 		VERSION,
@@ -854,7 +854,7 @@ func (c *EClient) ExerciseOptions(reqID TickerID, contract *Contract, exerciseAc
 
 	const VERSION = 2
 
-	fields := make([]interface{}, 0, 17)
+	fields := make([]any, 0, 17)
 
 	fields = append(fields, EXERCISE_OPTIONS, VERSION, reqID)
 
@@ -1150,7 +1150,7 @@ func (c *EClient) PlaceOrder(orderID OrderID, contract *Contract, order *Order) 
 	}
 
 	// send place order msg
-	fields := make([]interface{}, 0, 150)
+	fields := make([]any, 0, 150)
 	fields = append(fields, PLACE_ORDER)
 
 	if c.serverVersion < MIN_SERVER_VER_ORDER_CONTAINER {
@@ -1625,7 +1625,7 @@ func (c *EClient) CancelOrder(orderID OrderID, orderCancel OrderCancel) {
 
 	const VERSION = 1
 
-	fields := make([]interface{}, 0, 9)
+	fields := make([]any, 0, 9)
 	fields = append(fields, CANCEL_ORDER)
 
 	if c.serverVersion < MIN_SERVER_VER_CME_TAGGING_FIELDS {
@@ -1723,7 +1723,7 @@ func (c *EClient) ReqGlobalCancel(orderCancel OrderCancel) {
 
 	const VERSION = 1
 
-	fields := make([]interface{}, 0, 4)
+	fields := make([]any, 0, 4)
 	fields = append(fields, REQ_GLOBAL_CANCEL)
 
 	if c.serverVersion < MIN_SERVER_VER_CME_TAGGING_FIELDS {
@@ -2063,9 +2063,14 @@ func (c *EClient) ReqExecutions(reqID int64, execFilter ExecutionFilter) {
 		return
 	}
 
+	if c.serverVersion < MIN_SERVER_VER_PARAMETRIZED_DAYS_OF_EXECUTIONS && (execFilter.LastNDays != UNSET_INT || execFilter.SpecificDates != nil) {
+		c.wrapper.Error(reqID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support last N days and specific dates parameters.", "")
+		return
+	}
+
 	const VERSION = 3
 
-	fields := make([]interface{}, 0, 10)
+	fields := make([]any, 0, 10)
 	fields = append(fields, REQ_EXECUTIONS, VERSION)
 
 	if c.serverVersion >= MIN_SERVER_VER_EXECUTION_DATA_CHAIN {
@@ -2080,6 +2085,16 @@ func (c *EClient) ReqExecutions(reqID int64, execFilter ExecutionFilter) {
 		execFilter.SecType,
 		execFilter.Exchange,
 		execFilter.Side)
+
+	if c.serverVersion >= MIN_SERVER_VER_PARAMETRIZED_DAYS_OF_EXECUTIONS {
+		fields = append(fields, execFilter.LastNDays)
+		specificDatesCount := len(execFilter.SpecificDates)
+		fields = append(fields, specificDatesCount)
+		for _, date := range execFilter.SpecificDates {
+			fields = append(fields, date)
+		}
+	}
+
 	msg := makeFields(fields...)
 
 	c.reqChan <- msg
@@ -2120,7 +2135,7 @@ func (c *EClient) ReqContractDetails(reqID int64, contract *Contract) {
 
 	const VERSION = 8
 
-	fields := make([]interface{}, 0, 21)
+	fields := make([]any, 0, 21)
 	fields = append(fields, REQ_CONTRACT_DATA, VERSION)
 
 	if c.serverVersion >= MIN_SERVER_VER_CONTRACT_DATA_CHAIN {
@@ -2224,7 +2239,7 @@ func (c *EClient) ReqMktDepth(reqID int64, contract *Contract, numRows int, isSm
 
 	const VERSION = 5
 
-	fields := make([]interface{}, 0, 17)
+	fields := make([]any, 0, 17)
 	fields = append(fields, REQ_MKT_DEPTH, VERSION, reqID)
 
 	if c.serverVersion >= MIN_SERVER_VER_TRADING_CLASS {
@@ -2287,7 +2302,7 @@ func (c *EClient) CancelMktDepth(reqID int64, isSmartDepth bool) {
 
 	const VERSION = 1
 
-	fields := make([]interface{}, 0, 4)
+	fields := make([]any, 0, 4)
 	fields = append(fields, CANCEL_MKT_DEPTH, VERSION, reqID)
 
 	if c.serverVersion >= MIN_SERVER_VER_SMART_DEPTH {
@@ -2399,7 +2414,7 @@ func (c *EClient) ReplaceFA(reqID int64, faDataType FaDataType, cxml string) {
 
 	const VERSION = 1
 
-	fields := make([]interface{}, 0, 5)
+	fields := make([]any, 0, 5)
 	fields = append(fields,
 		REPLACE_FA,
 		VERSION,
@@ -2483,7 +2498,7 @@ func (c *EClient) ReqHistoricalData(reqID int64, contract *Contract, endDateTime
 
 	const VERSION = 6
 
-	fields := make([]interface{}, 0, 30)
+	fields := make([]any, 0, 30)
 	fields = append(fields, REQ_HISTORICAL_DATA)
 
 	if c.serverVersion <= MIN_SERVER_VER_SYNT_REALTIME_BARS {
@@ -2582,7 +2597,7 @@ func (c *EClient) ReqHeadTimeStamp(reqID int64, contract *Contract, whatToShow s
 		return
 	}
 
-	fields := make([]interface{}, 0, 18)
+	fields := make([]any, 0, 18)
 
 	fields = append(fields,
 		REQ_HEAD_TIMESTAMP,
@@ -2640,7 +2655,7 @@ func (c *EClient) ReqHistogramData(reqID int64, contract *Contract, useRTH bool,
 		return
 	}
 
-	fields := make([]interface{}, 0, 18)
+	fields := make([]any, 0, 18)
 	fields = append(fields,
 		REQ_HISTOGRAM_DATA,
 		reqID,
@@ -2696,7 +2711,7 @@ func (c *EClient) ReqHistoricalTicks(reqID int64, contract *Contract, startDateT
 		return
 	}
 
-	fields := make([]interface{}, 0, 22)
+	fields := make([]any, 0, 22)
 	fields = append(fields,
 		REQ_HISTORICAL_TICKS,
 		reqID,
@@ -2768,7 +2783,7 @@ func (c *EClient) ReqScannerSubscription(reqID int64, subscription *ScannerSubsc
 
 	const VERSION = 4
 
-	fields := make([]interface{}, 0, 25)
+	fields := make([]any, 0, 25)
 	fields = append(fields, REQ_SCANNER_SUBSCRIPTION)
 
 	if c.serverVersion < MIN_SERVER_VER_SCANNER_GENERIC_OPTS {
@@ -2880,7 +2895,7 @@ func (c *EClient) ReqRealTimeBars(reqID int64, contract *Contract, barSize int, 
 
 	const VERSION = 3
 
-	fields := make([]interface{}, 0, 19)
+	fields := make([]any, 0, 19)
 	fields = append(fields, REQ_REAL_TIME_BARS, VERSION, reqID)
 
 	if c.serverVersion >= MIN_SERVER_VER_TRADING_CLASS {
@@ -2974,7 +2989,7 @@ func (c *EClient) ReqFundamentalData(reqID int64, contract *Contract, reportType
 		return
 	}
 
-	fields := make([]interface{}, 0, 12)
+	fields := make([]any, 0, 12)
 	fields = append(fields, REQ_FUNDAMENTAL_DATA, VERSION, reqID)
 
 	if c.serverVersion >= MIN_SERVER_VER_TRADING_CLASS {
@@ -3060,7 +3075,7 @@ func (c *EClient) ReqNewsArticle(reqID int64, providerCode string, articleID str
 		return
 	}
 
-	fields := make([]interface{}, 0, 5)
+	fields := make([]any, 0, 5)
 	fields = append(fields,
 		REQ_NEWS_ARTICLE,
 		reqID,
@@ -3093,7 +3108,7 @@ func (c *EClient) ReqHistoricalNews(reqID int64, contractID int64, providerCode 
 		return
 	}
 
-	fields := make([]interface{}, 0, 8)
+	fields := make([]any, 0, 8)
 	fields = append(fields,
 		REQ_HISTORICAL_NEWS,
 		reqID,
@@ -3453,7 +3468,7 @@ func (c *EClient) ReqWshEventData(reqID int64, wshEventData WshEventData) {
 		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support WSHE event data date filters.", "")
 		return
 	}
-	fields := make([]interface{}, 0, 10)
+	fields := make([]any, 0, 10)
 	fields = append(fields,
 		REQ_WSH_EVENT_DATA,
 		reqID,

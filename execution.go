@@ -44,11 +44,19 @@ func NewExecution() *Execution {
 
 // ExecutionFilter .
 type ExecutionFilter struct {
-	ClientID int64
-	AcctCode string
-	Time     string
-	Symbol   string
-	SecType  string
-	Exchange string
-	Side     string
+	ClientID      int64
+	AcctCode      string
+	Time          string
+	Symbol        string
+	SecType       string
+	Exchange      string
+	Side          string
+	LastNDays     int64
+	SpecificDates []int64
+}
+
+func NewExecutionFilter() *ExecutionFilter {
+	ef := &ExecutionFilter{}
+	ef.LastNDays = UNSET_INT
+	return ef
 }

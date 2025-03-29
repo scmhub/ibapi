@@ -195,7 +195,7 @@ func scanFields(data []byte, atEOF bool) (advance int, token []byte, err error) 
 
 // makeFields is a universal way to make the request ,but not an efficient way
 // TODO: do some test and improve!!!
-func makeFields(fields ...interface{}) []byte {
+func makeFields(fields ...any) []byte {
 
 	msgBytes := make([]byte, 4, 8*len(fields)+4) // pre alloc memory
 
@@ -237,7 +237,7 @@ func splitMsgBytes(data []byte) [][]byte {
 	return fields[:len(fields)-1]
 }
 
-func handleEmpty(d interface{}) string {
+func handleEmpty(d any) string {
 	switch v := d.(type) {
 	case int64:
 		if v == UNSET_INT {

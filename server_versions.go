@@ -146,10 +146,11 @@ const (
 	MIN_SERVER_VER_CURRENT_TIME_IN_MILLIS             Version = 197
 	MIN_SERVER_VER_SUBMITTER                          Version = 198
 	MIN_SERVER_VER_IMBALANCE_ONLY                     Version = 199
+	MIN_SERVER_VER_PARAMETRIZED_DAYS_OF_EXECUTIONS    Version = 200
 
 	// 100+ messaging
 	// 100 = enhanced handshake, msg length prefixes
 
 	MIN_CLIENT_VER = 100
-	MAX_CLIENT_VER = MIN_SERVER_VER_IMBALANCE_ONLY
+	MAX_CLIENT_VER = MIN_SERVER_VER_PARAMETRIZED_DAYS_OF_EXECUTIONS
 )
