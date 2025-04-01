@@ -5,6 +5,7 @@ go 1.23
 require (
 	github.com/robaho/fixed v0.0.0-20240822193421-08ddb66c3dd0
 	github.com/rs/zerolog v1.33.0
+	google.golang.org/protobuf v1.36.6
 )
 
 require (

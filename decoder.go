@@ -6,6 +6,9 @@ package ibapi
 
 import (
 	"strings"
+
+	"github.com/scmhub/ibapi/protobuf"
+	"google.golang.org/protobuf/proto"
 )
 
 // EDecoder transforms a message's payload into higher level IB message.
@@ -17,14 +20,25 @@ type EDecoder struct {
 func (d *EDecoder) interpret(msgBytes []byte) {
 
 	msgBuf := NewMsgBuffer(msgBytes)
-	log.Warn()
+
 	if msgBuf.Len() == 0 {
-		log.Debug().Msg("no fields")
+		log.Warn().Msg("message has no fields")
 		return
 	}
 
 	// read the msg type
-	msgID := msgBuf.decodeInt64()
+	var msgID int64
+	if d.serverVersion >= MIN_SERVER_VER_PROTOBUF {
+		msgID = msgBuf.decodeRawInt64()
+	} else {
+		msgID = msgBuf.decodeInt64()
+	}
+
+	var useProtoBuf bool
+	if msgID >= PROTOBUF_MSG_ID {
+		useProtoBuf = true
+		msgID -= PROTOBUF_MSG_ID
+	}
 
 	switch msgID {
 	case TICK_PRICE:
@@ -58,7 +72,11 @@ func (d *EDecoder) interpret(msgBytes []byte) {
 	case BOND_CONTRACT_DATA:
 		d.processBondContractDataMsg(msgBuf)
 	case EXECUTION_DATA:
-		d.processExecutionDetailsMsg(msgBuf)
+		if useProtoBuf {
+			d.processExecutionDetailsMsgProtoBuf(msgBuf)
+		} else {
+			d.processExecutionDetailsMsg(msgBuf)
+		}
 	case MARKET_DEPTH:
 		d.processMarketDepthMsg(msgBuf)
 	case MARKET_DEPTH_L2:
@@ -88,7 +106,11 @@ func (d *EDecoder) interpret(msgBytes []byte) {
 	case ACCT_DOWNLOAD_END:
 		d.processAcctDownloadEndMsg(msgBuf)
 	case EXECUTION_DATA_END:
-		d.processExecutionDetailsEndMsg(msgBuf)
+		if useProtoBuf {
+			d.processExecutionDetailsEndMsgProtoBuf(msgBuf)
+		} else {
+			d.processExecutionDetailsEndMsg(msgBuf)
+		}
 	case DELTA_NEUTRAL_VALIDATION:
 		d.processDeltaNeutralValidationMsg(msgBuf)
 	case TICK_SNAPSHOT_END:
@@ -891,6 +913,29 @@ func (d *EDecoder) processExecutionDetailsMsg(msgBuf *MsgBuffer) {
 	d.wrapper.ExecDetails(reqID, contract, execution)
 }
 
+func (d *EDecoder) processExecutionDetailsMsgProtoBuf(msgBuf *MsgBuffer) {
+
+	var executionDetailsProto protobuf.ExecutionDetails
+	err := proto.Unmarshal(msgBuf.Bytes(), &executionDetailsProto)
+	if err != nil {
+		log.Panic().Err(err).Msg("processExecutionDetailsMsgProtoBuf unmarshal error")
+	}
+
+	var reqID int64 = int64(executionDetailsProto.GetReqId())
+
+	var contract *Contract
+	if executionDetailsProto.Contract != nil {
+		contract = decodeContract(executionDetailsProto.GetContract())
+	}
+
+	var execution *Execution
+	if executionDetailsProto.Execution != nil {
+		execution = decodeExecution(executionDetailsProto.GetExecution())
+	}
+
+	d.wrapper.ExecDetails(reqID, contract, execution)
+}
+
 func (d *EDecoder) processMarketDepthMsg(msgBuf *MsgBuffer) {
 
 	msgBuf.decode() // version
@@ -1123,6 +1168,19 @@ func (d *EDecoder) processExecutionDetailsEndMsg(msgBuf *MsgBuffer) {
 	msgBuf.decode() // version
 
 	reqID := msgBuf.decodeInt64()
+
+	d.wrapper.ExecDetailsEnd(reqID)
+}
+
+func (d *EDecoder) processExecutionDetailsEndMsgProtoBuf(msgBuf *MsgBuffer) {
+
+	var executionDetailsEndProto protobuf.ExecutionDetailsEnd
+	err := proto.Unmarshal(msgBuf.Bytes(), &executionDetailsEndProto)
+	if err != nil {
+		log.Panic().Err(err).Msg("processExecutionDetailsEndMsgProtoBuf unmarshal error")
+	}
+
+	var reqID int64 = int64(executionDetailsEndProto.GetReqId())
 
 	d.wrapper.ExecDetailsEnd(reqID)
 }

@@ -12,12 +12,12 @@ const (
 	port = 7497
 )
 
-var orderID int64
+// var orderID int64
 
-func nextID() int64 {
-	orderID++
-	return orderID
-}
+// func nextID() int64 {
+// 	orderID++
+// 	return orderID
+// }
 
 func main() {
 	// We set logger for pretty logs to console
@@ -52,11 +52,11 @@ func main() {
 	// log.Print("Server Version: ", ib.ServerVersion())
 	// log.Print("TWS Connection time: ", ib.TWSConnectionTime())
 
-	// time.Sleep(1 * time.Second)
-	// ib.ReqCurrentTime()
+	time.Sleep(1 * time.Second)
+	ib.ReqCurrentTime()
 
 	// ########## account ##########
-	ib.ReqManagedAccts()
+	// ib.ReqManagedAccts()
 
 	// ib.ReqAutoOpenOrders(false) // Only from clientID = 0
 	// ib.ReqAutoOpenOrders(false)
@@ -74,16 +74,18 @@ func main() {
 	// 	"LookAheadInitMarginReq", "LookAheadMaintMarginReq",
 	// 	"LookAheadAvailableFunds", "LookAheadExcessLiquidity",
 	// 	"HighestSeverity", "DayTradesRemaining", "Leverage", "$LEDGER:ALL"}
-	id := nextID()
+	// id := nextID()
 	// ib.ReqAccountSummary(id, "All", strings.Join(tags, ","))
 	// time.Sleep(10 * time.Second)
 	// ib.CancelAccountSummary(id)
 
-	// ib.ReqFamilyCodes()
-	// ib.ReqScannerParameters()
+	time.Sleep(1 * time.Second)
+	ib.ReqFamilyCodes()
+	time.Sleep(1 * time.Second)
+	ib.ReqScannerParameters()
 
 	// ########## market data ##########
-	eurusd := &ibapi.Contract{Symbol: "EUR", SecType: "CASH", Currency: "USD", Exchange: "IDEALPRO"}
+	// eurusd := &ibapi.Contract{Symbol: "EUR", SecType: "CASH", Currency: "USD", Exchange: "IDEALPRO"}
 	// id := nextID()
 	// ib.ReqMktData(id, eurusd, "", false, false, nil)
 	// time.Sleep(4 * time.Second)
@@ -111,13 +113,13 @@ func main() {
 	// ib.ReqGlobalCancel()
 	// Real time bars
 
-	duration := "60 S"
-	barSize := "5 secs"
-	whatToShow := "MIDPOINT" // "TRADES", "MIDPOINT", "BID" or "ASK"
-	ib.ReqHistoricalData(id, eurusd, "", duration, barSize, whatToShow, true, 1, true, nil)
+	// duration := "60 S"
+	// barSize := "5 secs"
+	// whatToShow := "MIDPOINT" // "TRADES", "MIDPOINT", "BID" or "ASK"
+	// ib.ReqHistoricalData(id, eurusd, "", duration, barSize, whatToShow, true, 1, true, nil)
 
-	time.Sleep(30 * time.Second)
-	ib.CancelHistoricalData(id)
+	time.Sleep(10 * time.Second)
+	//ib.CancelHistoricalData(id)
 	err := ib.Disconnect()
 	if err != nil {
 		log.Error().Err(err).Msg("Disconnect")

@@ -13,7 +13,30 @@ const (
 	delim byte = '\x00'
 	// MAX_MSG_LEN is the max length that receiver could take.
 	MAX_MSG_LEN int = 0xFFFFFF // 16Mb - 1byte
+	RAW_INT_LEN int = 4
 )
+
+// scanFields defines how to unpack the buf
+func scanFields(data []byte, atEOF bool) (advance int, token []byte, err error) {
+	if atEOF {
+		return 0, nil, io.EOF
+	}
+
+	if len(data) < 4 {
+		return 0, nil, nil // will try to read more data
+	}
+
+	totalSize := int(binary.BigEndian.Uint32(data[:4])) + 4
+
+	if totalSize > len(data) {
+		return 0, nil, nil
+	}
+
+	// msgBytes := make([]byte, totalSize-4, totalSize-4)
+	// copy(msgBytes, data[4:totalSize])
+	// not copy here, copied by callee more reasonable
+	return totalSize, data[4:totalSize], nil
+}
 
 // MsgBuffer is the buffer that contains a whole msg.
 type MsgBuffer struct {
@@ -27,11 +50,11 @@ func NewMsgBuffer(bs []byte) *MsgBuffer {
 	return &MsgBuffer{*bytes.NewBuffer(bs), nil, nil}
 }
 
-// Reset reset buffer, []byte, err.
-func (m *MsgBuffer) Reset() {
-	m.Buffer.Reset()
-	m.bs = m.bs[:0]
-	m.err = nil
+func (m *MsgBuffer) decode() {
+	_, m.err = m.ReadBytes(delim)
+	if m.err != nil {
+		log.Panic().Err(m.err).Msg("decode read error")
+	}
 }
 
 func (m *MsgBuffer) decodeInt64() int64 {
@@ -55,11 +78,27 @@ func (m *MsgBuffer) decodeInt64() int64 {
 	return i
 }
 
-func (m *MsgBuffer) decode() {
-	_, m.err = m.ReadBytes(delim)
-	if m.err != nil {
-		log.Panic().Err(m.err).Msg("decode read error")
+func (m *MsgBuffer) decodeRawInt64() int64 {
+	// Ensure there's enough data in the buffer
+	if m.Len() < RAW_INT_LEN {
+		log.Panic().Err(m.err).Msg("decode raw int64 read error")
 	}
+
+	// Ensure m.bs has sufficient capacity
+	if cap(m.bs) < RAW_INT_LEN {
+		m.bs = make([]byte, RAW_INT_LEN)
+	} else {
+		m.bs = m.bs[:RAW_INT_LEN]
+	}
+
+	// Read RAW_INT_LEN bytes into m.bs
+	_, m.err = m.Read(m.bs)
+	if m.err != nil {
+		log.Panic().Err(m.err).Msg("decode raw int64 read error")
+	}
+
+	// Convert bytes directly to int64 using Uint32
+	return int64(binary.BigEndian.Uint32(m.bs))
 }
 
 func (m *MsgBuffer) decodeDecimal() Decimal {
@@ -68,10 +107,7 @@ func (m *MsgBuffer) decodeDecimal() Decimal {
 		log.Panic().Err(m.err).Msg("decode decimal read error")
 	}
 
-	d, err := StringToDecimalErr(string(m.bs[:len(m.bs)-1]))
-	if err != nil {
-		log.Panic().Err(err).Msg("decode decimal parse error")
-	}
+	d := StringToDecimal(string(m.bs[:len(m.bs)-1]))
 	return d
 }
 
@@ -171,90 +207,20 @@ func (m *MsgBuffer) decodeStringUnescaped() string {
 	return s
 }
 
-// scanFields defines how to unpack the buf
-func scanFields(data []byte, atEOF bool) (advance int, token []byte, err error) {
-	if atEOF {
-		return 0, nil, io.EOF
-	}
-
-	if len(data) < 4 {
-		return 0, nil, nil // will try to read more data
-	}
-
-	totalSize := int(binary.BigEndian.Uint32(data[:4])) + 4
-
-	if totalSize > len(data) {
-		return 0, nil, nil
-	}
-
-	// msgBytes := make([]byte, totalSize-4, totalSize-4)
-	// copy(msgBytes, data[4:totalSize])
-	// not copy here, copied by callee more reasonable
-	return totalSize, data[4:totalSize], nil
+// Reset reset buffer, []byte, err.
+func (m *MsgBuffer) Reset() {
+	m.Buffer.Reset()
+	m.bs = m.bs[:0]
+	m.err = nil
 }
 
-// makeFields is a universal way to make the request ,but not an efficient way
-// TODO: do some test and improve!!!
-func makeFields(fields ...any) []byte {
-
-	msgBytes := make([]byte, 4, 8*len(fields)+4) // pre alloc memory
-
-	for _, f := range fields {
-		switch v := f.(type) {
-		case int64:
-			msgBytes = strconv.AppendInt(msgBytes, v, 10)
-		case float64:
-			msgBytes = strconv.AppendFloat(msgBytes, v, 'g', 10, 64)
-		case string:
-			msgBytes = append(msgBytes, []byte(v)...)
-		case bool:
-			if v {
-				msgBytes = append(msgBytes, '1')
-			} else {
-				msgBytes = append(msgBytes, '0')
-			}
-		case int:
-			msgBytes = strconv.AppendInt(msgBytes, int64(v), 10)
-		case []byte:
-			msgBytes = append(msgBytes, v...)
-		case Decimal:
-			msgBytes = append(msgBytes, []byte(DecimalToString(v))...)
-		default:
-			log.Panic().Interface("field", f).Msg("failed to covert the field") // never reach here
-		}
-
-		msgBytes = append(msgBytes, delim)
-	}
-
-	// add the size header
-	binary.BigEndian.PutUint32(msgBytes, uint32(len(msgBytes)-4))
-
-	return msgBytes
+func makeField(val any) string {
+	return fmt.Sprintf("%v\x00", val)
 }
 
 func splitMsgBytes(data []byte) [][]byte {
 	fields := bytes.Split(data, []byte{delim})
 	return fields[:len(fields)-1]
-}
-
-func handleEmpty(d any) string {
-	switch v := d.(type) {
-	case int64:
-		if v == UNSET_INT {
-			return ""
-		}
-		return strconv.FormatInt(v, 10)
-
-	case float64:
-		if v == UNSET_FLOAT {
-			return ""
-		}
-		return strconv.FormatFloat(v, 'g', 10, 64)
-
-	default:
-		log.Panic().Interface("val", d).Msg("no handler for such type")
-		return "" // never reach here
-	}
 }
 
 func FloatMaxString(val float64) string {
@@ -307,4 +273,11 @@ func isASCIIPrintable(s string) bool {
 		}
 	}
 	return true
+}
+
+func BoolToInt64(b bool) int64 {
+	if b {
+		return 1
+	}
+	return 0
 }

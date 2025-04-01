@@ -18,9 +18,13 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"slices"
 	"strconv"
 	"sync"
 	"syscall"
+
+	"github.com/scmhub/ibapi/protobuf"
+	"google.golang.org/protobuf/proto"
 )
 
 type ConnState int
@@ -45,6 +49,218 @@ func (cs ConnState) String() string {
 	default:
 		return "unknown connection state"
 	}
+}
+
+// MsgEncoder efficiently encodes messages for IB API
+type MsgEncoder struct {
+	buf           bytes.Buffer
+	serverVersion Version
+}
+
+// NewMsgEncoder creates a new MsgEncoder with an initial number of fields and server version
+func NewMsgEncoder(nFields int, serverVersion Version) *MsgEncoder {
+	me := &MsgEncoder{
+		serverVersion: serverVersion,
+	}
+	me.buf.Grow(8*nFields + 4)
+
+	// Reserve 4 bytes for the message size header
+	me.buf.Write([]byte{0, 0, 0, 0})
+	return me
+}
+
+// encodeMsgID encodes a message ID with appropriate format based on server version
+func (me *MsgEncoder) encodeMsgID(msgID int64) *MsgEncoder {
+	if me.serverVersion >= MIN_SERVER_VER_PROTOBUF {
+		// Encode as raw int (4 bytes, byte-swapped)
+		me.encodeRawInt64(msgID)
+	} else {
+		// Encode as a regular field (string + delimiter)
+		me.encodeInt64(msgID)
+	}
+	return me
+}
+
+// encodeField encodes a value of any supported type
+func (me *MsgEncoder) encodeField(v any) *MsgEncoder {
+	switch val := v.(type) {
+	case int:
+		return me.encodeInt(val)
+	case int64:
+		return me.encodeInt64(val)
+	case float64:
+		return me.encodeFloat64(val)
+	case string:
+		return me.encodeString(val)
+	case bool:
+		return me.encodeBool(val)
+	case []byte:
+		return me.encodeBytes(val)
+	case Decimal:
+		return me.encodeDecimal(val)
+	default:
+		// Convert to string as fallback
+		return me.encodeString(fmt.Sprintf("%v", val))
+	}
+}
+
+// encodeFileds encode many fields
+func (me *MsgEncoder) encodeFields(v ...any) *MsgEncoder {
+	for _, f := range v {
+		me.encodeField(f)
+	}
+	return me
+}
+
+// encodeMax encodes a value that might be UNSET
+func (me *MsgEncoder) encodeMax(v any) *MsgEncoder {
+	switch val := v.(type) {
+	case int64:
+		return me.encodeIntMax(val)
+	case float64:
+		return me.encodeFloatMax(val)
+	// case Decimal:
+	// 	return me.encodeDecimalMax(val)
+	default:
+		return me.encodeField(v)
+	}
+}
+
+// encodeInt adds an int value to the message
+func (me *MsgEncoder) encodeInt(v int) *MsgEncoder {
+	me.buf.WriteString(strconv.Itoa(v))
+	me.buf.WriteByte(delim)
+	return me
+}
+
+// encodeInt64 adds an int64 value to the message
+func (me *MsgEncoder) encodeInt64(v int64) *MsgEncoder {
+	me.buf.WriteString(strconv.FormatInt(v, 10))
+	me.buf.WriteByte(delim)
+	return me
+}
+
+// encodeInt64 adds a raw int64 value to the message
+func (me *MsgEncoder) encodeRawInt64(v int64) *MsgEncoder {
+	var arrayOfBytes [8]byte
+	binary.BigEndian.PutUint64(arrayOfBytes[:], uint64(v))
+	me.buf.Write(arrayOfBytes[:])
+	return me
+}
+
+// encodeFloat64 adds a float64 value to the message
+func (me *MsgEncoder) encodeFloat64(v float64) *MsgEncoder {
+	me.buf.WriteString(strconv.FormatFloat(v, 'f', -1, 64))
+	me.buf.WriteByte(delim)
+	return me
+}
+
+// encodeString adds a string value to the message
+func (me *MsgEncoder) encodeString(v string) *MsgEncoder {
+	me.buf.WriteString(v)
+	me.buf.WriteByte(delim)
+	return me
+}
+
+// encodeBool adds a boolean value to the message
+func (me *MsgEncoder) encodeBool(v bool) *MsgEncoder {
+	if v {
+		me.buf.WriteByte('1')
+	} else {
+		me.buf.WriteByte('0')
+	}
+	me.buf.WriteByte(delim)
+	return me
+}
+
+// encodeBytes adds raw bytes to the message
+func (me *MsgEncoder) encodeBytes(v []byte) *MsgEncoder {
+	me.buf.Write(v)
+	me.buf.WriteByte(delim)
+	return me
+}
+
+// encodeDecimal adds a Decimal value to the message
+func (me *MsgEncoder) encodeDecimal(v Decimal) *MsgEncoder {
+	me.buf.WriteString(DecimalToString(v))
+	me.buf.WriteByte(delim)
+	return me
+}
+
+// encodeTagValues adds a slice of TagValue to the message
+func (me *MsgEncoder) encodeTagValues(v []TagValue) *MsgEncoder {
+	for _, tv := range v {
+		me.buf.WriteString(tv.Tag)
+		me.buf.WriteString("=")
+		me.buf.WriteString(tv.Value)
+		me.buf.WriteString(";")
+	}
+	me.buf.WriteByte(delim)
+	return me
+}
+func (me *MsgEncoder) encodeContract(v *Contract) *MsgEncoder {
+	me.encodeInt64(v.ConID)
+	me.encodeString(v.Symbol)
+	me.encodeString(v.SecType)
+	me.encodeString(v.LastTradeDateOrContractMonth)
+	me.encodeFloat64(v.Strike)
+	me.encodeString(v.Right)
+	me.encodeString(v.Multiplier)
+	me.encodeString(v.Exchange)
+	me.encodeString(v.PrimaryExchange)
+	me.encodeString(v.Currency)
+	me.encodeString(v.LocalSymbol)
+	me.encodeString(v.TradingClass)
+	me.encodeBool(v.IncludeExpired)
+	return me
+}
+
+// encodeIntMax adds an int64 value to the message, handling UNSET_INT
+func (me *MsgEncoder) encodeIntMax(v int64) *MsgEncoder {
+	if v == UNSET_INT {
+		me.buf.WriteByte(delim)
+		return me
+	}
+	return me.encodeInt64(v)
+}
+
+// encodeFloatMax adds a float64 value to the message, handling UNSET_FLOAT
+func (me *MsgEncoder) encodeFloatMax(v float64) *MsgEncoder {
+	if v == UNSET_FLOAT {
+		me.buf.WriteByte(delim)
+		return me
+	}
+	return me.encodeFloat64(v)
+}
+
+// // encodeDecimalMax adds a Decimal value to the message, handling UNSET_DECIMAL
+// func (me *MsgEncoder) encodeDecimalMax(v Decimal) *MsgEncoder {
+// 	if v == UNSET_DECIMAL {
+// 		me.buf.WriteByte(delim)
+// 		return me
+// 	}
+// 	return me.encodeDecimal(v)
+// }
+
+// Bytes finalizes the message by writing the size header and returning the complete message
+func (me *MsgEncoder) Bytes() []byte {
+	// Get the final buffer bytes
+	result := me.buf.Bytes()
+
+	// Calculate message size (excluding the 4-byte header)
+	msgSize := len(result) - 4
+
+	// Write the size back into the header
+	binary.BigEndian.PutUint32(result[:4], uint32(msgSize))
+
+	return result
+}
+
+// Reset resets the buffer for reuse while maintaining its capacity
+func (me *MsgEncoder) Reset() {
+	me.buf.Reset()
+	// Reserve 4 bytes for the message size header
+	me.buf.Write([]byte{0, 0, 0, 0})
 }
 
 // EClient is the main struct to use from API user's point of view.
@@ -130,6 +346,7 @@ func (c *EClient) request() {
 		case <-c.Ctx.Done():
 			return
 		case req := <-c.reqChan:
+			log.Debug().Bytes("req", req).Msg("sending request")
 			if !c.IsConnected() {
 				c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 				break
@@ -160,6 +377,10 @@ func (c *EClient) validateInvalidSymbols(host string) error {
 	return nil
 }
 
+func (c *EClient) useProtoBuf(msgID int64) bool {
+	return c.serverVersion >= MIN_SERVER_VER_PROTOBUF && slices.Contains(PROTOBUF_MSG_IDS, msgID)
+}
+
 // startAPI initiates the message exchange between the client application and the TWS/IB Gateway.
 func (c *EClient) startAPI() error {
 
@@ -168,17 +389,29 @@ func (c *EClient) startAPI() error {
 		return NOT_CONNECTED
 	}
 
-	var msg []byte
-
 	const VERSION = 2
 
+	msg := makeField(VERSION) + makeField(c.clientID)
+
 	if c.serverVersion >= MIN_SERVER_VER_OPTIONAL_CAPABILITIES {
-		msg = makeFields(START_API, VERSION, c.clientID, c.optionalCapabilities)
+		msg += makeField(c.optionalCapabilities)
+	}
+	var payload []byte
+	if c.serverVersion >= MIN_SERVER_VER_PROTOBUF {
+		idBytes := make([]byte, 4)
+		binary.BigEndian.PutUint32(idBytes, uint32(START_API))
+		payload = append(idBytes, []byte(msg)...)
 	} else {
-		msg = makeFields(START_API, VERSION, c.clientID)
+		payload = []byte(makeField(START_API) + msg)
 	}
 
-	if _, err := c.writer.Write(msg); err != nil {
+	msgLen := uint32(len(payload))
+	bs := make([]byte, 4+len(payload))
+	binary.BigEndian.PutUint32(bs[:4], msgLen)
+	copy(bs[4:], payload)
+
+	log.Debug().Bytes("req", bs).Msg("sending startAPI")
+	if _, err := c.writer.Write(bs); err != nil {
 		return err
 	}
 	if err := c.writer.Flush(); err != nil {
@@ -339,11 +572,13 @@ func (c *EClient) ReqCurrentTime() {
 		return
 	}
 
-	const VERSION int64 = 1
+	const VERSION = 1
 
-	msg := makeFields(REQ_CURRENT_TIME, VERSION)
+	me := NewMsgEncoder(2, c.serverVersion)
 
-	c.reqChan <- msg
+	me.encodeMsgID(REQ_CURRENT_TIME).encodeInt(VERSION)
+
+	c.reqChan <- me.Bytes()
 }
 
 // ServerVersion returns the version of the TWS instance to which the API application is connected.
@@ -364,11 +599,14 @@ func (c *EClient) SetServerLogLevel(logLevel int64) {
 		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
 	}
+
 	const VERSION = 1
 
-	msg := makeFields(SET_SERVER_LOGLEVEL, VERSION, logLevel)
+	me := NewMsgEncoder(3, c.serverVersion)
 
-	c.reqChan <- msg
+	me.encodeMsgID(SET_SERVER_LOGLEVEL).encodeInt(VERSION).encodeInt64(logLevel)
+
+	c.reqChan <- me.Bytes()
 }
 
 // ConnectionTime is the time the API application made a connection to TWS.
@@ -412,78 +650,65 @@ func (c *EClient) ReqMktData(reqID TickerID, contract *Contract, genericTickList
 
 	const VERSION = 11
 
-	fields := make([]any, 0, 30)
-	fields = append(fields,
-		REQ_MKT_DATA,
-		VERSION,
-		reqID,
-	)
+	me := NewMsgEncoder(30, c.serverVersion)
+
+	me.encodeMsgID(REQ_MKT_DATA).encodeInt(VERSION).encodeInt64(reqID)
 
 	if c.serverVersion >= MIN_SERVER_VER_REQ_MKT_DATA_CONID {
-		fields = append(fields, contract.ConID)
+		me.encodeInt64(contract.ConID)
 	}
 
-	fields = append(fields,
-		contract.Symbol,
-		contract.SecType,
-		contract.LastTradeDateOrContractMonth,
-		contract.Strike,
-		contract.Right,
-		contract.Multiplier, // srv v15 and above
-		contract.Exchange,
-		contract.PrimaryExchange, // srv v14 and above
-		contract.Currency,
-		contract.LocalSymbol) // srv v2 and above
+	me.encodeString(contract.Symbol)
+	me.encodeString(contract.SecType)
+	me.encodeString(contract.LastTradeDateOrContractMonth)
+	me.encodeFloat64(contract.Strike)
+	me.encodeString(contract.Right)
+	me.encodeString(contract.Multiplier) // srv v15 and above
+	me.encodeString(contract.Exchange)
+	me.encodeString(contract.PrimaryExchange)
+	me.encodeString(contract.Currency)
+	me.encodeString(contract.LocalSymbol)
 
 	if c.serverVersion >= MIN_SERVER_VER_TRADING_CLASS {
-		fields = append(fields, contract.TradingClass)
+		me.encodeString(contract.TradingClass)
 	}
 
 	// Send combo legs for BAG requests (srv v8 and above)
 	if contract.SecType == "BAG" {
 		comboLegsCount := len(contract.ComboLegs)
-		fields = append(fields, comboLegsCount)
+		me.encodeInt(comboLegsCount)
 		for _, comboLeg := range contract.ComboLegs {
-			fields = append(fields,
-				comboLeg.ConID,
-				comboLeg.Ratio,
-				comboLeg.Action,
-				comboLeg.Exchange)
+			me.encodeInt64(comboLeg.ConID)
+			me.encodeInt64(comboLeg.Ratio)
+			me.encodeString(comboLeg.Action)
+			me.encodeString(comboLeg.Exchange)
 		}
 	}
 
 	if c.serverVersion >= MIN_SERVER_VER_DELTA_NEUTRAL {
 		if contract.DeltaNeutralContract != nil {
-			fields = append(fields,
-				true,
-				contract.DeltaNeutralContract.ConID,
-				contract.DeltaNeutralContract.Delta,
-				contract.DeltaNeutralContract.Price)
+			me.encodeBool(true)
+			me.encodeInt64(contract.DeltaNeutralContract.ConID)
+			me.encodeFloat64(contract.DeltaNeutralContract.Delta)
+			me.encodeFloat64(contract.DeltaNeutralContract.Price)
 		} else {
-			fields = append(fields, false)
+			me.encodeBool(false)
 		}
 	}
 
-	fields = append(fields,
-		genericTickList, // srv v31 and above
-		snapshot)        // srv v35 and above
+	me.encodeString(genericTickList)
+	me.encodeBool(snapshot)
 
 	if c.serverVersion >= MIN_SERVER_VER_REQ_SMART_COMPONENTS {
-		fields = append(fields, regulatorySnapshot)
+		me.encodeBool(regulatorySnapshot)
 	}
 
 	// send mktDataOptions parameter
 	if c.serverVersion >= MIN_SERVER_VER_LINKING {
-		//  current doc says this part if for "internal use only" -> won't support it
-		if len(mktDataOptions) > 0 {
-			log.Panic().Msg("not supported")
-		}
-		fields = append(fields, "")
+		me.encodeTagValues(mktDataOptions)
 	}
 
-	msg := makeFields(fields...)
-
-	c.reqChan <- msg
+	c.reqChan <- me.Bytes()
 }
 
 // CancelMktData stops the market data flow for the specified TickerId.
@@ -496,9 +721,11 @@ func (c *EClient) CancelMktData(reqID TickerID) {
 
 	const VERSION = 2
 
-	msg := makeFields(CANCEL_MKT_DATA, VERSION, reqID)
+	me := NewMsgEncoder(3, c.serverVersion)
 
-	c.reqChan <- msg
+	me.encodeMsgID(CANCEL_MKT_DATA).encodeInt(VERSION).encodeInt64(reqID)
+
+	c.reqChan <- me.Bytes()
 }
 
 // ReqMarketDataType changes the market data type.
@@ -532,9 +759,11 @@ func (c *EClient) ReqMarketDataType(marketDataType int64) {
 
 	const VERSION = 1
 
-	msg := makeFields(REQ_MARKET_DATA_TYPE, VERSION, marketDataType)
+	me := NewMsgEncoder(3, c.serverVersion)
 
-	c.reqChan <- msg
+	me.encodeMsgID(REQ_MARKET_DATA_TYPE).encodeInt(VERSION).encodeInt64(marketDataType)
+
+	c.reqChan <- me.Bytes()
 }
 
 // ReqSmartComponents request the smartComponents.
@@ -550,9 +779,11 @@ func (c *EClient) ReqSmartComponents(reqID int64, bboExchange string) {
 		return
 	}
 
-	msg := makeFields(REQ_SMART_COMPONENTS, reqID, bboExchange)
+	me := NewMsgEncoder(3, c.serverVersion)
 
-	c.reqChan <- msg
+	me.encodeMsgID(REQ_SMART_COMPONENTS).encodeInt64(reqID).encodeString(bboExchange)
+
+	c.reqChan <- me.Bytes()
 }
 
 // ReqMarketRule requests the market rule.
@@ -568,9 +799,11 @@ func (c *EClient) ReqMarketRule(marketRuleID int64) {
 		return
 	}
 
-	msg := makeFields(REQ_MARKET_RULE, marketRuleID)
+	me := NewMsgEncoder(2, c.serverVersion)
 
-	c.reqChan <- msg
+	me.encodeMsgID(REQ_MARKET_RULE).encodeInt64(marketRuleID)
+
+	c.reqChan <- me.Bytes()
 }
 
 // ReqTickByTickData request the tick-by-tick data.
@@ -595,30 +828,30 @@ func (c *EClient) ReqTickByTickData(reqID int64, contract *Contract, tickType st
 		return
 	}
 
-	fields := make([]any, 0, 17)
-	fields = append(fields, REQ_TICK_BY_TICK_DATA,
-		reqID,
-		contract.ConID,
-		contract.Symbol,
-		contract.SecType,
-		contract.LastTradeDateOrContractMonth,
-		contract.Strike,
-		contract.Right,
-		contract.Multiplier,
-		contract.Exchange,
-		contract.PrimaryExchange,
-		contract.Currency,
-		contract.LocalSymbol,
-		contract.TradingClass,
-		tickType)
+	me := NewMsgEncoder(17, c.serverVersion)
+
+	me.encodeMsgID(REQ_TICK_BY_TICK_DATA)
+
+	me.encodeInt64(reqID)
+	me.encodeInt64(contract.ConID)
+	me.encodeString(contract.Symbol)
+	me.encodeString(contract.SecType)
+	me.encodeString(contract.LastTradeDateOrContractMonth)
+	me.encodeFloat64(contract.Strike)
+	me.encodeString(contract.Right)
+	me.encodeString(contract.Multiplier)
+	me.encodeString(contract.Exchange)
+	me.encodeString(contract.PrimaryExchange)
+	me.encodeString(contract.Currency)
+	me.encodeString(contract.LocalSymbol)
+	me.encodeString(contract.TradingClass)
+	me.encodeString(tickType)
 
 	if c.serverVersion >= MIN_SERVER_VER_TICK_BY_TICK_IGNORE_SIZE {
-		fields = append(fields, numberOfTicks, ignoreSize)
+		me.encodeInt64(numberOfTicks).encodeBool(ignoreSize)
 	}
 
-	msg := makeFields(fields...)
-
-	c.reqChan <- msg
+	c.reqChan <- me.Bytes()
 }
 
 // CancelTickByTickData cancel the tick-by-tick data
@@ -634,9 +867,11 @@ func (c *EClient) CancelTickByTickData(reqID int64) {
 		return
 	}
 
-	msg := makeFields(CANCEL_TICK_BY_TICK_DATA, reqID)
+	me := NewMsgEncoder(2, c.serverVersion)
 
-	c.reqChan <- msg
+	me.encodeMsgID(CANCEL_TICK_BY_TICK_DATA).encodeInt64(reqID)
+
+	c.reqChan <- me.Bytes()
 }
 
 //	##########################################################################
@@ -664,45 +899,45 @@ func (c *EClient) CalculateImpliedVolatility(reqID int64, contract *Contract, op
 
 	const VERSION = 3
 
-	fields := make([]any, 0, 19)
-	fields = append(fields,
-		REQ_CALC_IMPLIED_VOLAT,
-		VERSION,
-		reqID,
-		contract.ConID,
-		contract.Symbol,
-		contract.SecID,
-		contract.LastTradeDateOrContractMonth,
-		contract.Strike,
-		contract.Right,
-		contract.Multiplier,
-		contract.Exchange,
-		contract.PrimaryExchange,
-		contract.Currency,
-		contract.LocalSymbol)
+	me := NewMsgEncoder(19, c.serverVersion)
+
+	me.encodeMsgID(REQ_CALC_IMPLIED_VOLAT)
+
+	me.encodeInt(VERSION)
+	me.encodeInt64(reqID)
+	me.encodeInt64(contract.ConID)
+	me.encodeString(contract.Symbol)
+	me.encodeString(contract.SecID)
+	me.encodeString(contract.LastTradeDateOrContractMonth)
+	me.encodeFloat64(contract.Strike)
+	me.encodeString(contract.Right)
+	me.encodeString(contract.Multiplier)
+	me.encodeString(contract.Exchange)
+	me.encodeString(contract.PrimaryExchange)
+	me.encodeString(contract.Currency)
+	me.encodeString(contract.LocalSymbol)
 
 	if c.serverVersion >= MIN_SERVER_VER_TRADING_CLASS {
-		fields = append(fields, contract.TradingClass)
+		me.encodeString(contract.TradingClass)
 	}
 
-	fields = append(fields, optionPrice, underPrice)
+	me.encodeFloat64(optionPrice)
+	me.encodeFloat64(underPrice)
 
 	if c.serverVersion >= MIN_SERVER_VER_LINKING {
 		var implVolOptBuffer bytes.Buffer
 		tagValuesCount := len(impVolOptions)
-		fields = append(fields, tagValuesCount)
+		me.encodeInt(tagValuesCount)
 		for _, tv := range impVolOptions {
 			implVolOptBuffer.WriteString(tv.Tag)
 			implVolOptBuffer.WriteString("=")
 			implVolOptBuffer.WriteString(tv.Value)
 			implVolOptBuffer.WriteString(";")
 		}
-		fields = append(fields, implVolOptBuffer.Bytes())
+		me.encodeBytes(implVolOptBuffer.Bytes())
 	}
 
-	msg := makeFields(fields...)
-
-	c.reqChan <- msg
+	c.reqChan <- me.Bytes()
 }
 
 // CancelCalculateImpliedVolatility cancels a request to calculate volatility for a supplied option price and underlying price.
@@ -720,9 +955,14 @@ func (c *EClient) CancelCalculateImpliedVolatility(reqID int64) {
 
 	const VERSION = 1
 
-	msg := makeFields(CANCEL_CALC_IMPLIED_VOLAT, VERSION, reqID)
+	me := NewMsgEncoder(3, c.serverVersion)
 
-	c.reqChan <- msg
+	me.encodeMsgID(CANCEL_CALC_IMPLIED_VOLAT)
+
+	me.encodeInt(VERSION)
+	me.encodeInt64(reqID)
+
+	c.reqChan <- me.Bytes()
 }
 
 // CalculateOptionPrice calculate the price of the option
@@ -747,46 +987,45 @@ func (c *EClient) CalculateOptionPrice(reqID int64, contract *Contract, volatili
 
 	const VERSION = 3
 
-	fields := make([]any, 0, 19)
-	fields = append(fields,
-		REQ_CALC_OPTION_PRICE,
-		VERSION,
-		reqID,
-		contract.ConID,
-		contract.Symbol,
-		contract.SecID,
-		contract.LastTradeDateOrContractMonth,
-		contract.Strike,
-		contract.Right,
-		contract.Multiplier,
-		contract.Exchange,
-		contract.PrimaryExchange,
-		contract.Currency,
-		contract.LocalSymbol)
+	me := NewMsgEncoder(19, c.serverVersion)
+
+	me.encodeMsgID(REQ_CALC_OPTION_PRICE)
+
+	me.encodeInt(VERSION)
+	me.encodeInt64(reqID)
+	me.encodeInt64(contract.ConID)
+	me.encodeString(contract.Symbol)
+	me.encodeString(contract.SecID)
+	me.encodeString(contract.LastTradeDateOrContractMonth)
+	me.encodeFloat64(contract.Strike)
+	me.encodeString(contract.Right)
+	me.encodeString(contract.Multiplier)
+	me.encodeString(contract.Exchange)
+	me.encodeString(contract.PrimaryExchange)
+	me.encodeString(contract.Currency)
+	me.encodeString(contract.LocalSymbol)
 
 	if c.serverVersion >= MIN_SERVER_VER_TRADING_CLASS {
-		fields = append(fields, contract.TradingClass)
+		me.encodeString(contract.TradingClass)
 	}
 
-	fields = append(fields, volatility, underPrice)
+	me.encodeFloat64(volatility)
+	me.encodeFloat64(underPrice)
 
 	if c.serverVersion >= MIN_SERVER_VER_LINKING {
 		var optPrcOptBuffer bytes.Buffer
 		tagValuesCount := len(optPrcOptions)
-		fields = append(fields, tagValuesCount)
+		me.encodeInt(tagValuesCount)
 		for _, tv := range optPrcOptions {
 			optPrcOptBuffer.WriteString(tv.Tag)
 			optPrcOptBuffer.WriteString("=")
 			optPrcOptBuffer.WriteString(tv.Value)
 			optPrcOptBuffer.WriteString(";")
 		}
-
-		fields = append(fields, optPrcOptBuffer.Bytes())
+		me.encodeBytes(optPrcOptBuffer.Bytes())
 	}
 
-	msg := makeFields(fields...)
-
-	c.reqChan <- msg
+	c.reqChan <- me.Bytes()
 }
 
 // CancelCalculateOptionPrice cancels the calculation of option price.
@@ -804,9 +1043,14 @@ func (c *EClient) CancelCalculateOptionPrice(reqID int64) {
 
 	const VERSION = 1
 
-	msg := makeFields(CANCEL_CALC_OPTION_PRICE, VERSION, reqID)
+	me := NewMsgEncoder(3, c.serverVersion)
 
-	c.reqChan <- msg
+	me.encodeMsgID(CANCEL_CALC_OPTION_PRICE)
+
+	me.encodeInt(VERSION)
+	me.encodeInt64(reqID)
+
+	c.reqChan <- me.Bytes()
 }
 
 // ExerciseOptions exercises the option defined by the contract.
@@ -854,50 +1098,49 @@ func (c *EClient) ExerciseOptions(reqID TickerID, contract *Contract, exerciseAc
 
 	const VERSION = 2
 
-	fields := make([]any, 0, 17)
+	me := NewMsgEncoder(17, c.serverVersion)
 
-	fields = append(fields, EXERCISE_OPTIONS, VERSION, reqID)
+	me.encodeMsgID(EXERCISE_OPTIONS)
+
+	me.encodeInt(VERSION)
+	me.encodeInt64(reqID)
 
 	// send contract fields
 	if c.serverVersion >= MIN_SERVER_VER_TRADING_CLASS {
-		fields = append(fields, contract.ConID)
+		me.encodeInt64(contract.ConID)
 	}
 
-	fields = append(fields,
-		contract.Symbol,
-		contract.LastTradeDateOrContractMonth,
-		contract.Strike,
-		contract.Right,
-		contract.Multiplier,
-		contract.Exchange,
-		contract.Currency,
-		contract.LocalSymbol)
+	me.encodeString(contract.Symbol)
+	me.encodeString(contract.LastTradeDateOrContractMonth)
+	me.encodeFloat64(contract.Strike)
+	me.encodeString(contract.Right)
+	me.encodeString(contract.Multiplier)
+	me.encodeString(contract.Exchange)
+	me.encodeString(contract.Currency)
+	me.encodeString(contract.LocalSymbol)
 
 	if c.serverVersion >= MIN_SERVER_VER_TRADING_CLASS {
-		fields = append(fields, contract.TradingClass)
+		me.encodeString(contract.TradingClass)
 	}
 
-	fields = append(fields,
-		exerciseAction,
-		exerciseQuantity,
-		account,
-		override)
+	me.encodeInt(exerciseAction)
+	me.encodeInt(exerciseQuantity)
+	me.encodeString(account)
+	me.encodeInt(override)
 
 	if c.serverVersion >= MIN_SERVER_VER_MANUAL_ORDER_TIME_EXERCISE_OPTIONS {
-		fields = append(fields, manualOrderTime)
+		me.encodeString(manualOrderTime)
 	}
 
 	if c.serverVersion >= MIN_SERVER_VER_CUSTOMER_ACCOUNT {
-		fields = append(fields, customerAccount)
+		me.encodeString(customerAccount)
 	}
 
 	if c.serverVersion >= MIN_SERVER_VER_PROFESSIONAL_CUSTOMER {
-		fields = append(fields, professionalCustomer)
+		me.encodeBool(professionalCustomer)
 	}
 
-	msg := makeFields(fields...)
-
-	c.reqChan <- msg
+	c.reqChan <- me.Bytes()
 }
 
 //	##########################################################################
@@ -1150,102 +1393,105 @@ func (c *EClient) PlaceOrder(orderID OrderID, contract *Contract, order *Order) 
 	}
 
 	// send place order msg
-	fields := make([]any, 0, 150)
-	fields = append(fields, PLACE_ORDER)
+	me := NewMsgEncoder(150, c.serverVersion)
+
+	me.encodeMsgID(PLACE_ORDER)
 
 	if c.serverVersion < MIN_SERVER_VER_ORDER_CONTAINER {
-		fields = append(fields, VERSION)
+		me.encodeInt(VERSION)
 	}
 
-	fields = append(fields, orderID)
+	me.encodeInt64(orderID)
 
 	// send contract fields
 	if c.serverVersion >= MIN_SERVER_VER_PLACE_ORDER_CONID {
-		fields = append(fields, contract.ConID)
+		me.encodeInt64(contract.ConID)
 	}
-	fields = append(fields,
-		contract.Symbol,
-		contract.SecType,
-		contract.LastTradeDateOrContractMonth,
-		contract.Strike,
-		contract.Right,
-		contract.Multiplier, // srv v15 and above
-		contract.Exchange,
-		contract.PrimaryExchange, // srv v14 and above
-		contract.Currency,
-		contract.LocalSymbol) // srv v2 and above
+	me.encodeString(contract.Symbol)
+	me.encodeString(contract.SecType)
+	me.encodeString(contract.LastTradeDateOrContractMonth)
+	me.encodeFloat64(contract.Strike)
+	me.encodeString(contract.Right)
+	me.encodeString(contract.Multiplier) // srv v15 and above
+	me.encodeString(contract.Exchange)
+	me.encodeString(contract.PrimaryExchange) // srv v14 and above
+	me.encodeString(contract.Currency)
+	me.encodeString(contract.LocalSymbol) // srv v2 and above
 
 	if c.serverVersion >= MIN_SERVER_VER_TRADING_CLASS {
-		fields = append(fields, contract.TradingClass)
+		me.encodeString(contract.TradingClass)
 	}
 
 	if c.serverVersion >= MIN_SERVER_VER_SEC_ID_TYPE {
-		fields = append(fields, contract.SecIDType, contract.SecID)
+		me.encodeString(contract.SecIDType)
+		me.encodeString(contract.SecID)
 	}
 
 	// send main order fields
-	fields = append(fields, order.Action)
+	me.encodeString(order.Action)
 
 	if c.serverVersion >= MIN_SERVER_VER_FRACTIONAL_POSITIONS {
-		fields = append(fields, order.TotalQuantity)
+		me.encodeDecimal(order.TotalQuantity)
 	} else {
-		fields = append(fields, order.TotalQuantity.Int())
+		me.encodeDecimal(order.TotalQuantity)
 	}
 
-	fields = append(fields, order.OrderType)
+	me.encodeString(order.OrderType)
 
 	if c.serverVersion < MIN_SERVER_VER_ORDER_COMBO_LEGS_PRICE {
 		if order.LmtPrice != UNSET_FLOAT {
-			fields = append(fields, order.LmtPrice)
+			me.encodeFloat64(order.LmtPrice)
 		} else {
-			fields = append(fields, float64(0))
+			me.encodeFloat64(0)
 		}
 	} else {
-		fields = append(fields, handleEmpty(order.LmtPrice))
+		me.encodeFloatMax(order.LmtPrice)
 	}
 
 	if c.serverVersion < MIN_SERVER_VER_TRAILING_PERCENT {
 		if order.AuxPrice != UNSET_FLOAT {
-			fields = append(fields, order.AuxPrice)
+			me.encodeFloat64(order.AuxPrice)
 		} else {
-			fields = append(fields, float64(0))
+			me.encodeFloat64(0)
 		}
 	} else {
-		fields = append(fields, handleEmpty(order.AuxPrice))
+		me.encodeFloatMax(order.AuxPrice)
 	}
 
 	// send extended order fields
-	fields = append(fields,
-		order.TIF,
-		order.OCAGroup,
-		order.Account,
-		order.OpenClose,
-		order.Origin,
-		order.OrderRef,
-		order.Transmit,
-		order.ParentID,      // srv v4 and above
-		order.BlockOrder,    // srv v5 and above
-		order.SweepToFill,   // srv v5 and above
-		order.DisplaySize,   // srv v5 and above
-		order.TriggerMethod, // srv v5 and above
-		order.OutsideRTH,    // srv v5 and above
-		order.Hidden)        // srv v7 and above
+	me.encodeString(order.TIF)
+	me.encodeString(order.OCAGroup)
+	me.encodeString(order.Account)
+	me.encodeString(order.OpenClose)
+	me.encodeInt64(order.Origin)
+	me.encodeString(order.OrderRef)
+	me.encodeBool(order.Transmit)
+	me.encodeInt64(order.ParentID)
+	// srv v4 and above
+	me.encodeBool(order.BlockOrder)   // srv v5 and above
+	me.encodeBool(order.SweepToFill)  // srv v5 and above
+	me.encodeInt64(order.DisplaySize) // srv v5 and above
+	me.encodeInt64(order.TriggerMethod)
+	// srv v5 and above
+	me.encodeBool(order.OutsideRTH)
+	// srv v5 and above
+	me.encodeBool(order.Hidden) // srv v7 and above
 
 	// Send combo legs for BAG requests (srv v8 and above)
 	if contract.SecType == "BAG" {
 		comboLegsCount := len(contract.ComboLegs)
-		fields = append(fields, comboLegsCount)
+		me.encodeInt(comboLegsCount)
 		for _, comboLeg := range contract.ComboLegs {
-			fields = append(fields,
-				comboLeg.ConID,
-				comboLeg.Ratio,
-				comboLeg.Action,
-				comboLeg.Exchange,
-				comboLeg.OpenClose,
-				comboLeg.ShortSaleSlot,      // srv v35 and above
-				comboLeg.DesignatedLocation) // srv v35 and above
+			me.encodeInt64(comboLeg.ConID)
+			me.encodeInt64(comboLeg.Ratio)
+			me.encodeString(comboLeg.Action)
+			me.encodeString(comboLeg.Exchange)
+			me.encodeInt64(comboLeg.OpenClose)
+
+			me.encodeInt64(comboLeg.ShortSaleSlot)       // srv v35 and above
+			me.encodeString(comboLeg.DesignatedLocation) // srv v35 and above
 			if c.serverVersion >= MIN_SERVER_VER_SSHORTX_OLD {
-				fields = append(fields, comboLeg.ExemptCode)
+				me.encodeInt64(comboLeg.ExemptCode)
 			}
 		}
 	}
@@ -1253,17 +1499,18 @@ func (c *EClient) PlaceOrder(orderID OrderID, contract *Contract, order *Order) 
 	// Send order combo legs for BAG requests
 	if c.serverVersion >= MIN_SERVER_VER_ORDER_COMBO_LEGS_PRICE && contract.SecType == "BAG" {
 		orderComboLegsCount := len(order.OrderComboLegs)
-		fields = append(fields, orderComboLegsCount)
+		me.encodeInt(orderComboLegsCount)
 		for _, orderComboLeg := range order.OrderComboLegs {
-			fields = append(fields, handleEmpty(orderComboLeg.Price))
+			me.encodeFloatMax(orderComboLeg.Price)
 		}
 	}
 
 	if c.serverVersion >= MIN_SERVER_VER_SMART_COMBO_ROUTING_PARAMS && contract.SecType == "BAG" {
 		smartComboRoutingParamsCount := len(order.SmartComboRoutingParams)
-		fields = append(fields, smartComboRoutingParamsCount)
+		me.encodeInt(smartComboRoutingParamsCount)
 		for _, tv := range order.SmartComboRoutingParams {
-			fields = append(fields, tv.Tag, tv.Value)
+			me.encodeString(tv.Tag)
+			me.encodeString(tv.Value)
 		}
 	}
 
@@ -1279,289 +1526,271 @@ func (c *EClient) PlaceOrder(orderID OrderID, contract *Contract, order *Order) 
 	//       #          U101/20,U203/80
 
 	// send deprecated sharesAllocation field
-	fields = append(fields,
-		"",                     // srv v9 and above
-		order.DiscretionaryAmt, //srv v10 and above
-		order.GoodAfterTime,    //srv v11 and above
-		order.GoodTillDate,     //srv v12 and above
+	me.encodeString("")
 
-		order.FAGroup,      //srv v13 and above
-		order.FAMethod,     //srv v13 and above
-		order.FAPercentage, //srv v13 and above
-	)
+	me.encodeFloat64(order.DiscretionaryAmt) //srv v10 and above
+	me.encodeString(order.GoodAfterTime)     //srv v11 and above
+	me.encodeString(order.GoodTillDate)      //srv v12 and above
+
+	me.encodeString(order.FAGroup)      //srv v13 and above
+	me.encodeString(order.FAMethod)     //srv v13 and above
+	me.encodeString(order.FAPercentage) //srv v13 and above
 
 	if c.serverVersion < MIN_SERVER_VER_FA_PROFILE_DESUPPORT {
-		fields = append(fields, "") // send deprecated faProfile field
+		me.encodeString("") // send deprecated faProfile field
 	}
 
 	if c.serverVersion >= MIN_SERVER_VER_MODELS_SUPPORT {
-		fields = append(fields, order.ModelCode)
+		me.encodeString(order.ModelCode)
 	}
 
 	// institutional short saleslot data (srv v18 and above)
-	fields = append(fields,
-		order.ShortSaleSlot,      // 0 for retail, 1 or 2 for institutions
-		order.DesignatedLocation) // populate only when shortSaleSlot = 2.
+	me.encodeInt64(order.ShortSaleSlot)       // 0 for retail, 1 or 2 for institutions
+	me.encodeString(order.DesignatedLocation) // populate only when shortSaleSlot = 2.
 
 	if c.serverVersion >= MIN_SERVER_VER_SSHORTX_OLD {
-		fields = append(fields, order.ExemptCode)
+		me.encodeInt64(order.ExemptCode)
 	}
 
 	// srv v19 and above fields
-	fields = append(fields, order.OCAType)
+	me.encodeInt64(order.OCAType)
 
-	fields = append(fields,
-		order.Rule80A,
-		order.SettlingFirm,
-		order.AllOrNone,
-		handleEmpty(order.MinQty),
-		handleEmpty(order.PercentOffset),
-		false, // send deprecated order.ETradeOnly
-		false, // send deprecated order.FirmQuoteOnly
-		handleEmpty(UNSET_FLOAT),
-		order.AuctionStrategy, // AUCTION_MATCH, AUCTION_IMPROVEMENT, AUCTION_TRANSPARENT
-		handleEmpty(order.StartingPrice),
-		handleEmpty(order.StockRefPrice),
-		handleEmpty(order.Delta),
-		handleEmpty(order.StockRangeLower),
-		handleEmpty(order.StockRangeUpper),
+	me.encodeString(order.Rule80A)
+	me.encodeString(order.SettlingFirm)
+	me.encodeBool(order.AllOrNone)
+	me.encodeIntMax(order.MinQty)
+	me.encodeFloatMax(order.PercentOffset)
+	me.encodeBool(false) // send deprecated order.ETradeOnly
+	me.encodeBool(false) // send deprecated order.FirmQuoteOnly
+	me.encodeFloatMax(UNSET_FLOAT)
+	me.encodeInt64(order.AuctionStrategy) // AUCTION_MATCH, AUCTION_IMPROVEMENT, AUCTION_TRANSPARENT
+	me.encodeFloatMax(order.StartingPrice)
+	me.encodeFloatMax(order.StockRefPrice)
+	me.encodeFloatMax(order.Delta)
+	me.encodeFloatMax(order.StockRangeLower)
+	me.encodeFloatMax(order.StockRangeUpper)
 
-		order.OverridePercentageConstraints, // srv v22 and above
+	me.encodeBool(order.OverridePercentageConstraints) // srv v22 and above
 
-		// Volatility orders (srv v26 and above)
-		handleEmpty(order.Volatility),
-		handleEmpty(order.VolatilityType),
-		order.DeltaNeutralOrderType,             // srv v28 and above
-		handleEmpty(order.DeltaNeutralAuxPrice)) // srv v28 and above
+	// Volatility orders (srv v26 and above)
+	me.encodeFloatMax(order.Volatility)
+	me.encodeIntMax(order.VolatilityType)
+	me.encodeString(order.DeltaNeutralOrderType)  // srv v28 and above
+	me.encodeFloatMax(order.DeltaNeutralAuxPrice) // srv v28 and above
 
 	if c.serverVersion >= MIN_SERVER_VER_DELTA_NEUTRAL_CONID && order.DeltaNeutralOrderType != "" {
-		fields = append(fields,
-			order.DeltaNeutralConID,
-			order.DeltaNeutralSettlingFirm,
-			order.DeltaNeutralClearingAccount,
-			order.DeltaNeutralClearingIntent)
+		me.encodeInt64(order.DeltaNeutralConID)
+		me.encodeString(order.DeltaNeutralSettlingFirm)
+		me.encodeString(order.DeltaNeutralClearingAccount)
+		me.encodeString(order.DeltaNeutralClearingIntent)
 	}
 
 	if c.serverVersion >= MIN_SERVER_VER_DELTA_NEUTRAL_OPEN_CLOSE && order.DeltaNeutralOrderType != "" {
-		fields = append(fields,
-			order.DeltaNeutralOpenClose,
-			order.DeltaNeutralShortSale,
-			order.DeltaNeutralShortSaleSlot,
-			order.DeltaNeutralDesignatedLocation)
+		me.encodeString(order.DeltaNeutralOpenClose)
+		me.encodeBool(order.DeltaNeutralShortSale)
+		me.encodeInt64(order.DeltaNeutralShortSaleSlot)
+		me.encodeString(order.DeltaNeutralDesignatedLocation)
 	}
 
-	fields = append(fields,
-		order.ContinuousUpdate,
-		handleEmpty(order.ReferencePriceType),
-		handleEmpty(order.TrailStopPrice)) // srv v30 and above
+	me.encodeBool(order.ContinuousUpdate)
+
+	me.encodeIntMax(order.ReferencePriceType)
+
+	me.encodeFloatMax(order.TrailStopPrice) // srv v30 and above
 
 	if c.serverVersion >= MIN_SERVER_VER_TRAILING_PERCENT {
-		fields = append(fields, handleEmpty(order.TrailingPercent))
+		me.encodeFloatMax(order.TrailingPercent)
 	}
 
 	// scale orders
 	if c.serverVersion >= MIN_SERVER_VER_SCALE_ORDERS2 {
-		fields = append(fields,
-			handleEmpty(order.ScaleInitLevelSize),
-			handleEmpty(order.ScaleSubsLevelSize))
+		me.encodeIntMax(order.ScaleInitLevelSize)
+		me.encodeIntMax(order.ScaleSubsLevelSize)
 	} else {
 		// srv v35 and above
-		fields = append(fields,
-			"",                                    // for not supported scaleNumComponents
-			handleEmpty(order.ScaleInitLevelSize)) // for scaleComponentSize
+		me.encodeString("")                       // for not supported scaleNumComponents
+		me.encodeIntMax(order.ScaleInitLevelSize) // for scaleComponentSize
 	}
 
-	fields = append(fields, handleEmpty(order.ScalePriceIncrement))
+	me.encodeFloatMax(order.ScalePriceIncrement)
 
 	if c.serverVersion >= MIN_SERVER_VER_SCALE_ORDERS3 && order.ScalePriceIncrement != UNSET_FLOAT && order.ScalePriceIncrement > 0.0 {
-		fields = append(fields,
-			handleEmpty(order.ScalePriceAdjustValue),
-			handleEmpty(order.ScalePriceAdjustInterval),
-			handleEmpty(order.ScaleProfitOffset),
-			order.ScaleAutoReset,
-			handleEmpty(order.ScaleInitPosition),
-			handleEmpty(order.ScaleInitFillQty),
-			order.ScaleRandomPercent)
+		me.encodeFloatMax(order.ScalePriceAdjustValue)
+		me.encodeIntMax(order.ScalePriceAdjustInterval)
+		me.encodeFloatMax(order.ScaleProfitOffset)
+		me.encodeBool(order.ScaleAutoReset)
+		me.encodeIntMax(order.ScaleInitPosition)
+		me.encodeIntMax(order.ScaleInitFillQty)
+		me.encodeBool(order.ScaleRandomPercent)
 	}
 
 	if c.serverVersion >= MIN_SERVER_VER_SCALE_TABLE {
-		fields = append(fields,
-			order.ScaleTable,
-			order.ActiveStartTime,
-			order.ActiveStopTime)
+		me.encodeString(order.ScaleTable)
+		me.encodeString(order.ActiveStartTime)
+		me.encodeString(order.ActiveStopTime)
 	}
 
 	// hedge orders
 	if c.serverVersion >= MIN_SERVER_VER_HEDGE_ORDERS {
-		fields = append(fields, order.HedgeType)
+		me.encodeString(order.HedgeType)
 		if order.HedgeType != "" {
-			fields = append(fields, order.HedgeParam)
+			me.encodeString(order.HedgeParam)
 		}
 	}
 
 	if c.serverVersion >= MIN_SERVER_VER_OPT_OUT_SMART_ROUTING {
-		fields = append(fields, order.OptOutSmartRouting)
+		me.encodeBool(order.OptOutSmartRouting)
 	}
 
 	if c.serverVersion >= MIN_SERVER_VER_PTA_ORDERS {
-		fields = append(fields,
-			order.ClearingAccount,
-			order.ClearingIntent)
+		me.encodeString(order.ClearingAccount)
+		me.encodeString(order.ClearingIntent)
 	}
 
 	if c.serverVersion >= MIN_SERVER_VER_NOT_HELD {
-		fields = append(fields, order.NotHeld)
+		me.encodeBool(order.NotHeld)
 	}
 
 	if c.serverVersion >= MIN_SERVER_VER_DELTA_NEUTRAL {
 		if contract.DeltaNeutralContract != nil {
-			fields = append(fields,
-				true,
-				contract.DeltaNeutralContract.ConID,
-				contract.DeltaNeutralContract.Delta,
-				contract.DeltaNeutralContract.Price)
+			me.encodeBool(true)
+			me.encodeInt64(contract.DeltaNeutralContract.ConID)
+			me.encodeFloat64(contract.DeltaNeutralContract.Delta)
+			me.encodeFloat64(contract.DeltaNeutralContract.Price)
 		} else {
-			fields = append(fields, false)
+			me.encodeBool(false)
 		}
 	}
 
 	if c.serverVersion >= MIN_SERVER_VER_ALGO_ORDERS {
-		fields = append(fields, order.AlgoStrategy)
+		me.encodeString(order.AlgoStrategy)
 
 		if order.AlgoStrategy != "" {
 			algoParamsCount := len(order.AlgoParams)
-			fields = append(fields, algoParamsCount)
+			me.encodeInt(algoParamsCount)
 			for _, tv := range order.AlgoParams {
-				fields = append(fields, tv.Tag, tv.Value)
+				me.encodeString(tv.Tag)
+				me.encodeString(tv.Value)
 			}
 		}
 	}
 
 	if c.serverVersion >= MIN_SERVER_VER_ALGO_ID {
-		fields = append(fields, order.AlgoID)
+		me.encodeString(order.AlgoID)
 	}
 
-	fields = append(fields, order.WhatIf) // srv v36 and above
+	me.encodeBool(order.WhatIf) // srv v36 and above
 
 	// send miscOptions parameter
 	if c.serverVersion >= MIN_SERVER_VER_LINKING {
-		var miscOptionsBuffer bytes.Buffer
-		for _, tv := range order.OrderMiscOptions {
-			miscOptionsBuffer.WriteString(tv.Tag)
-			miscOptionsBuffer.WriteString("=")
-			miscOptionsBuffer.WriteString(tv.Value)
-			miscOptionsBuffer.WriteString(";")
-		}
-
-		fields = append(fields, miscOptionsBuffer.Bytes())
+		me.encodeTagValues(order.OrderMiscOptions)
 	}
 
 	if c.serverVersion >= MIN_SERVER_VER_ORDER_SOLICITED {
-		fields = append(fields, order.Solictied)
+		me.encodeBool(order.Solictied)
 	}
 
 	if c.serverVersion >= MIN_SERVER_VER_RANDOMIZE_SIZE_AND_PRICE {
-		fields = append(fields,
-			order.RandomizeSize,
-			order.RandomizePrice)
+		me.encodeBool(order.RandomizeSize)
+		me.encodeBool(order.RandomizePrice)
 	}
 
 	if c.serverVersion >= MIN_SERVER_VER_PEGGED_TO_BENCHMARK {
 		if order.OrderType == "PEG BENCH" {
-			fields = append(fields,
-				order.ReferenceContractID,
-				order.IsPeggedChangeAmountDecrease,
-				order.PeggedChangeAmount,
-				order.ReferenceChangeAmount,
-				order.ReferenceExchangeID)
+			me.encodeInt64(order.ReferenceContractID)
+			me.encodeBool(order.IsPeggedChangeAmountDecrease)
+			me.encodeFloat64(order.PeggedChangeAmount)
+			me.encodeFloat64(order.ReferenceChangeAmount)
+			me.encodeString(order.ReferenceExchangeID)
 		}
 
 		orderConditionsCount := len(order.Conditions)
-		fields = append(fields, orderConditionsCount)
+		me.encodeInt(orderConditionsCount)
 		for _, cond := range order.Conditions {
-			fields = append(fields, cond.Type())
-			fields = append(fields, cond.makeFields()...)
-		}
-		if orderConditionsCount > 0 {
-			fields = append(fields,
-				order.ConditionsIgnoreRth,
-				order.ConditionsCancelOrder)
+			me.encodeInt64(cond.Type())
+			me.encodeFields(cond.makeFields()...)
 		}
 
-		fields = append(fields,
-			order.AdjustedOrderType,
-			order.TriggerPrice,
-			order.LmtPriceOffset,
-			order.AdjustedStopPrice,
-			order.AdjustedStopLimitPrice,
-			order.AdjustedTrailingAmount,
-			order.AdjustableTrailingUnit)
+		if orderConditionsCount > 0 {
+			me.encodeBool(order.ConditionsIgnoreRth)
+			me.encodeBool(order.ConditionsCancelOrder)
+		}
+
+		me.encodeString(order.AdjustedOrderType)
+		me.encodeFloat64(order.TriggerPrice)
+		me.encodeFloat64(order.LmtPriceOffset)
+		me.encodeFloat64(order.AdjustedStopPrice)
+		me.encodeFloat64(order.AdjustedStopLimitPrice)
+		me.encodeFloat64(order.AdjustedTrailingAmount)
+		me.encodeInt64(order.AdjustableTrailingUnit)
 	}
 	if c.serverVersion >= MIN_SERVER_VER_EXT_OPERATOR {
-		fields = append(fields, order.ExtOperator)
+		me.encodeString(order.ExtOperator)
 	}
 
 	if c.serverVersion >= MIN_SERVER_VER_SOFT_DOLLAR_TIER {
-		fields = append(fields, order.SoftDollarTier.Name, order.SoftDollarTier.Value)
+		me.encodeString(order.SoftDollarTier.Name)
+		me.encodeString(order.SoftDollarTier.Value)
 	}
 
 	if c.serverVersion >= MIN_SERVER_VER_CASH_QTY {
-		fields = append(fields, order.CashQty)
+		me.encodeFloatMax(order.CashQty)
 	}
 
 	if c.serverVersion >= MIN_SERVER_VER_DECISION_MAKER {
-		fields = append(fields, order.Mifid2DecisionMaker, order.Mifid2DecisionAlgo)
+		me.encodeString(order.Mifid2DecisionMaker)
+		me.encodeString(order.Mifid2DecisionAlgo)
 	}
 
 	if c.serverVersion >= MIN_SERVER_VER_MIFID_EXECUTION {
-		fields = append(fields, order.Mifid2ExecutionTrader, order.Mifid2ExecutionAlgo)
+		me.encodeString(order.Mifid2ExecutionTrader)
+		me.encodeString(order.Mifid2ExecutionAlgo)
 	}
 
 	if c.serverVersion >= MIN_SERVER_VER_AUTO_PRICE_FOR_HEDGE {
-		fields = append(fields, order.DontUseAutoPriceForHedge)
+		me.encodeBool(order.DontUseAutoPriceForHedge)
 	}
 
 	if c.serverVersion >= MIN_SERVER_VER_ORDER_CONTAINER {
-		fields = append(fields, order.IsOmsContainer)
+		me.encodeBool(order.IsOmsContainer)
 	}
 
 	if c.serverVersion >= MIN_SERVER_VER_D_PEG_ORDERS {
-		fields = append(fields, order.DiscretionaryUpToLimitPrice)
+		me.encodeBool(order.DiscretionaryUpToLimitPrice)
 	}
 
 	if c.serverVersion >= MIN_SERVER_VER_PRICE_MGMT_ALGO {
-		fields = append(fields, order.UsePriceMgmtAlgo)
+		me.encodeBool(order.UsePriceMgmtAlgo)
 	}
 
 	if c.serverVersion >= MIN_SERVER_VER_DURATION {
-		fields = append(fields, handleEmpty(order.Duration))
+		me.encodeInt64(order.Duration)
 	}
 
 	if c.serverVersion >= MIN_SERVER_VER_POST_TO_ATS {
-		fields = append(fields, handleEmpty(order.PostToAts))
+		me.encodeInt64(order.PostToAts)
 	}
 
 	if c.serverVersion >= MIN_SERVER_VER_AUTO_CANCEL_PARENT {
-		fields = append(fields, order.AutoCancelParent)
+		me.encodeBool(order.AutoCancelParent)
 	}
 
 	if c.serverVersion >= MIN_SERVER_VER_ADVANCED_ORDER_REJECT {
-		fields = append(fields, order.AdvancedErrorOverride)
+		me.encodeString(order.AdvancedErrorOverride)
 	}
 
 	if c.serverVersion >= MIN_SERVER_VER_MANUAL_ORDER_TIME {
-		fields = append(fields, order.ManualOrderTime)
+		me.encodeString(order.ManualOrderTime)
 	}
 
 	if c.serverVersion >= MIN_SERVER_VER_PEGBEST_PEGMID_OFFSETS {
 		var sendMidOffsets bool
 		if contract.Exchange == "IBKRATS" {
-			fields = append(fields, handleEmpty(order.MinTradeQty))
+			me.encodeIntMax(order.MinTradeQty)
 		}
 		if order.OrderType == "PEG BEST" {
-			fields = append(fields,
-				handleEmpty(order.MinCompeteSize),
-				handleEmpty(order.CompeteAgainstBestOffset))
+			me.encodeIntMax(order.MinCompeteSize)
+			me.encodeFloatMax(order.CompeteAgainstBestOffset)
 			if order.CompeteAgainstBestOffset == COMPETE_AGAINST_BEST_OFFSET_UP_TO_MID {
 				sendMidOffsets = true
 			}
@@ -1569,40 +1798,37 @@ func (c *EClient) PlaceOrder(orderID OrderID, contract *Contract, order *Order) 
 			sendMidOffsets = true
 		}
 		if sendMidOffsets {
-			fields = append(fields,
-				handleEmpty(order.MidOffsetAtWhole),
-				handleEmpty(order.MidOffsetAtHalf))
+			me.encodeFloatMax(order.MidOffsetAtWhole)
+			me.encodeFloatMax(order.MidOffsetAtHalf)
 		}
 	}
 
 	if c.serverVersion >= MIN_SERVER_VER_CUSTOMER_ACCOUNT {
-		fields = append(fields, order.CustomerAccount)
+		me.encodeString(order.CustomerAccount)
 	}
 
 	if c.serverVersion >= MIN_SERVER_VER_PROFESSIONAL_CUSTOMER {
-		fields = append(fields, order.ProfessionalCustomer)
+		me.encodeBool(order.ProfessionalCustomer)
 	}
 
 	if c.serverVersion >= MIN_SERVER_VER_RFQ_FIELDS && c.serverVersion < MIN_SERVER_VER_UNDO_RFQ_FIELDS {
-		fields = append(fields, "")
-		fields = append(fields, UNSET_INT)
+		me.encodeString("")
+		me.encodeInt64(UNSET_INT)
 	}
 
 	if c.serverVersion >= MIN_SERVER_VER_INCLUDE_OVERNIGHT {
-		fields = append(fields, order.IncludeOvernight)
+		me.encodeBool(order.IncludeOvernight)
 	}
 
 	if c.serverVersion >= MIN_SERVER_VER_CME_TAGGING_FIELDS {
-		fields = append(fields, order.ManualOrderIndicator)
+		me.encodeInt64(order.ManualOrderIndicator)
 	}
 
 	if c.serverVersion >= MIN_SERVER_VER_IMBALANCE_ONLY {
-		fields = append(fields, order.ImbalanceOnly)
+		me.encodeBool(order.ImbalanceOnly)
 	}
 
-	msg := makeFields(fields...)
-
-	c.reqChan <- msg
+	c.reqChan <- me.Bytes()
 }
 
 // CancelOrder cancel an order by orderId.
@@ -1625,33 +1851,32 @@ func (c *EClient) CancelOrder(orderID OrderID, orderCancel OrderCancel) {
 
 	const VERSION = 1
 
-	fields := make([]any, 0, 9)
-	fields = append(fields, CANCEL_ORDER)
+	me := NewMsgEncoder(9, c.serverVersion)
+
+	me.encodeMsgID(CANCEL_ORDER)
 
 	if c.serverVersion < MIN_SERVER_VER_CME_TAGGING_FIELDS {
-		fields = append(fields, VERSION)
+		me.encodeInt(VERSION)
 	}
 
-	fields = append(fields, orderID)
+	me.encodeInt64(orderID)
 
 	if c.serverVersion >= MIN_SERVER_VER_MANUAL_ORDER_TIME {
-		fields = append(fields, orderCancel.ManualOrderCancelTime)
+		me.encodeString(orderCancel.ManualOrderCancelTime)
 	}
 
 	if c.serverVersion >= MIN_SERVER_VER_RFQ_FIELDS && c.serverVersion < MIN_SERVER_VER_UNDO_RFQ_FIELDS {
-		fields = append(fields, "")
-		fields = append(fields, "")
-		fields = append(fields, UNSET_INT)
+		me.encodeString("")
+		me.encodeString("")
+		me.encodeInt64(UNSET_INT)
 	}
 
 	if c.serverVersion >= MIN_SERVER_VER_CME_TAGGING_FIELDS {
-		fields = append(fields, orderCancel.ExtOperator)
-		fields = append(fields, orderCancel.ManualOrderIndicator)
+		me.encodeString(orderCancel.ExtOperator)
+		me.encodeInt64(orderCancel.ManualOrderIndicator)
 	}
 
-	msg := makeFields(fields...)
-
-	c.reqChan <- msg
+	c.reqChan <- me.Bytes()
 }
 
 // ReqOpenOrders requests the open orders that were placed from this client.
@@ -1668,9 +1893,12 @@ func (c *EClient) ReqOpenOrders() {
 
 	const VERSION = 1
 
-	msg := makeFields(REQ_OPEN_ORDERS, VERSION)
+	me := NewMsgEncoder(2, c.serverVersion)
 
-	c.reqChan <- msg
+	me.encodeMsgID(REQ_OPEN_ORDERS)
+	me.encodeInt(VERSION)
+
+	c.reqChan <- me.Bytes()
 }
 
 // ReqAutoOpenOrders requests that newly created TWS orders be implicitly associated with the client.
@@ -1687,9 +1915,13 @@ func (c *EClient) ReqAutoOpenOrders(autoBind bool) {
 
 	const VERSION = 1
 
-	msg := makeFields(REQ_AUTO_OPEN_ORDERS, VERSION, autoBind)
+	me := NewMsgEncoder(3, c.serverVersion)
 
-	c.reqChan <- msg
+	me.encodeMsgID(REQ_AUTO_OPEN_ORDERS)
+	me.encodeInt(VERSION)
+	me.encodeBool(autoBind)
+
+	c.reqChan <- me.Bytes()
 }
 
 // ReqAllOpenOrders request the open orders placed from all clients and also from TWS.
@@ -1704,9 +1936,12 @@ func (c *EClient) ReqAllOpenOrders() {
 
 	const VERSION = 1
 
-	msg := makeFields(REQ_ALL_OPEN_ORDERS, VERSION)
+	me := NewMsgEncoder(2, c.serverVersion)
 
-	c.reqChan <- msg
+	me.encodeMsgID(REQ_ALL_OPEN_ORDERS)
+	me.encodeInt(VERSION)
+
+	c.reqChan <- me.Bytes()
 }
 
 // ReqGlobalCancel cancels all open orders globally. It cancels both API and TWS open orders.
@@ -1723,21 +1958,20 @@ func (c *EClient) ReqGlobalCancel(orderCancel OrderCancel) {
 
 	const VERSION = 1
 
-	fields := make([]any, 0, 4)
-	fields = append(fields, REQ_GLOBAL_CANCEL)
+	me := NewMsgEncoder(4, c.serverVersion)
+
+	me.encodeMsgID(REQ_GLOBAL_CANCEL)
 
 	if c.serverVersion < MIN_SERVER_VER_CME_TAGGING_FIELDS {
-		fields = append(fields, VERSION)
+		me.encodeInt(VERSION)
 	}
 
 	if c.serverVersion >= MIN_SERVER_VER_CME_TAGGING_FIELDS {
-		fields = append(fields, orderCancel.ExtOperator)
-		fields = append(fields, orderCancel.ManualOrderIndicator)
+		me.encodeString(orderCancel.ExtOperator)
+		me.encodeInt64(orderCancel.ManualOrderIndicator)
 	}
 
-	msg := makeFields(fields...)
-
-	c.reqChan <- msg
+	c.reqChan <- me.Bytes()
 }
 
 // ReqIDs request from TWS the next valid ID that can be used when placing an order.
@@ -1753,9 +1987,13 @@ func (c *EClient) ReqIDs(numIds int64) {
 
 	const VERSION = 1
 
-	msg := makeFields(REQ_IDS, VERSION, numIds)
+	me := NewMsgEncoder(3, c.serverVersion)
 
-	c.reqChan <- msg
+	me.encodeMsgID(REQ_IDS)
+	me.encodeInt(VERSION)
+	me.encodeInt64(numIds)
+
+	c.reqChan <- me.Bytes()
 }
 
 //	##########################################################################
@@ -1773,9 +2011,16 @@ func (c *EClient) ReqAccountUpdates(subscribe bool, accountName string) {
 
 	const VERSION = 2
 
-	msg := makeFields(REQ_ACCT_DATA, VERSION, subscribe, accountName)
+	me := NewMsgEncoder(4, c.serverVersion)
 
-	c.reqChan <- msg
+	me.encodeMsgID(REQ_ACCT_DATA)
+	me.encodeInt(VERSION)
+	me.encodeBool(subscribe) // TRUE = subscribe, FALSE = unsubscribe.
+
+	// Send the account code. This will only be used for FA clients
+	me.encodeString(accountName) // srv v9 and above
+
+	c.reqChan <- me.Bytes()
 }
 
 // ReqAccountSummary request and keep up to date the data that appears.
@@ -1829,9 +2074,15 @@ func (c *EClient) ReqAccountSummary(reqID int64, groupName string, tags string) 
 
 	const VERSION = 1
 
-	msg := makeFields(REQ_ACCOUNT_SUMMARY, VERSION, reqID, groupName, tags)
+	me := NewMsgEncoder(5, c.serverVersion)
 
-	c.reqChan <- msg
+	me.encodeMsgID(REQ_ACCOUNT_SUMMARY)
+	me.encodeInt(VERSION)
+	me.encodeInt64(reqID)
+	me.encodeString(groupName)
+	me.encodeString(tags)
+
+	c.reqChan <- me.Bytes()
 }
 
 // CancelAccountSummary cancels the request for Account Window Summary tab data.
@@ -1845,9 +2096,13 @@ func (c *EClient) CancelAccountSummary(reqID int64) {
 
 	const VERSION = 1
 
-	msg := makeFields(CANCEL_ACCOUNT_SUMMARY, VERSION, reqID)
+	me := NewMsgEncoder(3, c.serverVersion)
 
-	c.reqChan <- msg
+	me.encodeMsgID(CANCEL_ACCOUNT_SUMMARY)
+	me.encodeInt(VERSION)
+	me.encodeInt64(reqID)
+
+	c.reqChan <- me.Bytes()
 }
 
 // ReqPositions requests real-time position data for all accounts.
@@ -1865,9 +2120,12 @@ func (c *EClient) ReqPositions() {
 
 	const VERSION = 1
 
-	msg := makeFields(REQ_POSITIONS, VERSION)
+	me := NewMsgEncoder(2, c.serverVersion)
 
-	c.reqChan <- msg
+	me.encodeMsgID(REQ_POSITIONS)
+	me.encodeInt(VERSION)
+
+	c.reqChan <- me.Bytes()
 }
 
 // CancelPositions cancels real-time position updates.
@@ -1885,9 +2143,12 @@ func (c *EClient) CancelPositions() {
 
 	const VERSION = 1
 
-	msg := makeFields(CANCEL_POSITIONS, VERSION)
+	me := NewMsgEncoder(2, c.serverVersion)
 
-	c.reqChan <- msg
+	me.encodeMsgID(CANCEL_POSITIONS)
+	me.encodeInt(VERSION)
+
+	c.reqChan <- me.Bytes()
 }
 
 // ReqPositionsMulti requests the positions for account and/or model.
@@ -1906,9 +2167,15 @@ func (c *EClient) ReqPositionsMulti(reqID int64, account string, modelCode strin
 
 	const VERSION = 1
 
-	msg := makeFields(REQ_POSITIONS_MULTI, VERSION, reqID, account, modelCode)
+	me := NewMsgEncoder(5, c.serverVersion)
 
-	c.reqChan <- msg
+	me.encodeMsgID(REQ_POSITIONS_MULTI)
+	me.encodeInt(VERSION)
+	me.encodeInt64(reqID)
+	me.encodeString(account)
+	me.encodeString(modelCode)
+
+	c.reqChan <- me.Bytes()
 }
 
 // CancelPositionsMulti cancels the positions update of assigned account.
@@ -1926,9 +2193,13 @@ func (c *EClient) CancelPositionsMulti(reqID int64) {
 
 	const VERSION = 1
 
-	msg := makeFields(CANCEL_POSITIONS_MULTI, VERSION, reqID)
+	me := NewMsgEncoder(3, c.serverVersion)
 
-	c.reqChan <- msg
+	me.encodeMsgID(CANCEL_POSITIONS_MULTI)
+	me.encodeInt(VERSION)
+	me.encodeInt64(reqID)
+
+	c.reqChan <- me.Bytes()
 }
 
 // ReqAccountUpdatesMulti requests account updates for account and/or model.
@@ -1946,9 +2217,16 @@ func (c *EClient) ReqAccountUpdatesMulti(reqID int64, account string, modelCode 
 
 	const VERSION = 1
 
-	msg := makeFields(REQ_ACCOUNT_UPDATES_MULTI, VERSION, reqID, account, modelCode, ledgerAndNLV)
+	me := NewMsgEncoder(6, c.serverVersion)
 
-	c.reqChan <- msg
+	me.encodeMsgID(REQ_ACCOUNT_UPDATES_MULTI)
+	me.encodeInt(VERSION)
+	me.encodeInt64(reqID)
+	me.encodeString(account)
+	me.encodeString(modelCode)
+	me.encodeBool(ledgerAndNLV)
+
+	c.reqChan <- me.Bytes()
 }
 
 // CancelAccountUpdatesMulti cancels account update for reqID.
@@ -1966,9 +2244,13 @@ func (c *EClient) CancelAccountUpdatesMulti(reqID int64) {
 
 	const VERSION = 1
 
-	msg := makeFields(CANCEL_ACCOUNT_UPDATES_MULTI, VERSION, reqID)
+	me := NewMsgEncoder(3, c.serverVersion)
 
-	c.reqChan <- msg
+	me.encodeMsgID(CANCEL_ACCOUNT_UPDATES_MULTI)
+	me.encodeInt(VERSION)
+	me.encodeInt64(reqID)
+
+	c.reqChan <- me.Bytes()
 }
 
 //	##########################################################################
@@ -1988,9 +2270,14 @@ func (c *EClient) ReqPnL(reqID int64, account string, modelCode string) {
 		return
 	}
 
-	msg := makeFields(REQ_PNL, reqID, account, modelCode)
+	me := NewMsgEncoder(4, c.serverVersion)
 
-	c.reqChan <- msg
+	me.encodeMsgID(REQ_PNL)
+	me.encodeInt64(reqID)
+	me.encodeString(account)
+	me.encodeString(modelCode)
+
+	c.reqChan <- me.Bytes()
 }
 
 // CancelPnL cancels the PnL update of assigned account.
@@ -2006,9 +2293,12 @@ func (c *EClient) CancelPnL(reqID int64) {
 		return
 	}
 
-	msg := makeFields(CANCEL_PNL, reqID)
+	me := NewMsgEncoder(2, c.serverVersion)
 
-	c.reqChan <- msg
+	me.encodeMsgID(CANCEL_PNL)
+	me.encodeInt64(reqID)
+
+	c.reqChan <- me.Bytes()
 }
 
 // ReqPnLSingle request and subscribe the single contract PnL of assigned account.
@@ -2024,9 +2314,15 @@ func (c *EClient) ReqPnLSingle(reqID int64, account string, modelCode string, co
 		return
 	}
 
-	msg := makeFields(REQ_PNL_SINGLE, reqID, account, modelCode, contractID)
+	me := NewMsgEncoder(5, c.serverVersion)
 
-	c.reqChan <- msg
+	me.encodeMsgID(REQ_PNL_SINGLE)
+	me.encodeInt64(reqID)
+	me.encodeString(account)
+	me.encodeString(modelCode)
+	me.encodeInt64(contractID)
+
+	c.reqChan <- me.Bytes()
 }
 
 // CancelPnLSingle cancel the single contract PnL update of assigned account.
@@ -2042,9 +2338,12 @@ func (c *EClient) CancelPnLSingle(reqID int64) {
 		return
 	}
 
-	msg := makeFields(CANCEL_PNL_SINGLE, reqID)
+	me := NewMsgEncoder(2, c.serverVersion)
 
-	c.reqChan <- msg
+	me.encodeMsgID(CANCEL_PNL_SINGLE)
+	me.encodeInt64(reqID)
+
+	c.reqChan <- me.Bytes()
 }
 
 //	##########################################################################
@@ -2056,7 +2355,69 @@ func (c *EClient) CancelPnLSingle(reqID int64) {
 // reqId is the ID of the data request. Ensures that responses are matched to requests if several requests are in process.
 // execFilter contains attributes that describe the filter criteria used to determine which execution reports are returned.
 // NOTE: Time format must be 'yyyymmdd-hh:mm:ss' Eg: '20030702-14:55'
-func (c *EClient) ReqExecutions(reqID int64, execFilter ExecutionFilter) {
+func (c *EClient) ReqExecutions(reqID int64, execFilter *ExecutionFilter) {
+	if c.useProtoBuf(REQ_EXECUTIONS) {
+		c.reqExecutionsNonProtobuf(reqID, execFilter)
+	} else {
+		c.reqExecutionProtobuf(reqID, execFilter)
+	}
+}
+
+func (c *EClient) reqExecutionProtobuf(reqID int64, execFilter *ExecutionFilter) {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
+	execFilterPB := protobuf.ExecutionFilter{}
+	if execFilter.ClientID != UNSET_INT {
+		clientID := int32(execFilter.ClientID)
+		execFilterPB.ClientId = &clientID
+	}
+	if execFilter.AcctCode != "" {
+		execFilterPB.AcctCode = &execFilter.AcctCode
+	}
+	if execFilter.Time != "" {
+		execFilterPB.Time = &execFilter.Time
+	}
+	if execFilter.Symbol != "" {
+		execFilterPB.Symbol = &execFilter.Symbol
+	}
+	if execFilter.SecType != "" {
+		execFilterPB.SecType = &execFilter.SecType
+	}
+	if execFilter.Exchange != "" {
+		execFilterPB.Exchange = &execFilter.Exchange
+	}
+	if execFilter.Side != "" {
+		execFilterPB.Side = &execFilter.Side
+	}
+	if execFilter.LastNDays != UNSET_INT {
+		lastNDays := int32(execFilter.LastNDays)
+		execFilterPB.LastNDays = &lastNDays
+	}
+	if execFilter.SpecificDates != nil {
+		execFilterPB.SpecificDates = make([]int32, len(execFilter.SpecificDates))
+		for i, date := range execFilter.SpecificDates {
+			execFilterPB.SpecificDates[i] = int32(date)
+		}
+	}
+
+	executionRequest := protobuf.ExecutionRequest{}
+	id := int32(reqID)
+	executionRequest.ReqId = &id
+	executionRequest.ExecutionFilter = &execFilterPB
+
+	msg, err := proto.Marshal(&executionRequest)
+	if err != nil {
+		log.Panic().Err(err).Msg("reqExecutionProtobuf marshal error")
+	}
+
+	c.reqChan <- msg
+}
+
+func (c *EClient) reqExecutionsNonProtobuf(reqID int64, execFilter *ExecutionFilter) {
 
 	if !c.IsConnected() {
 		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
@@ -2070,34 +2431,33 @@ func (c *EClient) ReqExecutions(reqID int64, execFilter ExecutionFilter) {
 
 	const VERSION = 3
 
-	fields := make([]any, 0, 10)
-	fields = append(fields, REQ_EXECUTIONS, VERSION)
+	me := NewMsgEncoder(14, c.serverVersion)
+
+	me.encodeMsgID(REQ_EXECUTIONS)
+	me.encodeInt(VERSION)
 
 	if c.serverVersion >= MIN_SERVER_VER_EXECUTION_DATA_CHAIN {
-		fields = append(fields, reqID)
+		me.encodeInt64(reqID)
 	}
 
-	fields = append(fields,
-		execFilter.ClientID,
-		execFilter.AcctCode,
-		execFilter.Time,
-		execFilter.Symbol,
-		execFilter.SecType,
-		execFilter.Exchange,
-		execFilter.Side)
+	me.encodeInt64(execFilter.ClientID)
+	me.encodeString(execFilter.AcctCode)
+	me.encodeString(execFilter.Time)
+	me.encodeString(execFilter.Symbol)
+	me.encodeString(execFilter.SecType)
+	me.encodeString(execFilter.Exchange)
+	me.encodeString(execFilter.Side)
 
 	if c.serverVersion >= MIN_SERVER_VER_PARAMETRIZED_DAYS_OF_EXECUTIONS {
-		fields = append(fields, execFilter.LastNDays)
+		me.encodeInt64(execFilter.LastNDays)
 		specificDatesCount := len(execFilter.SpecificDates)
-		fields = append(fields, specificDatesCount)
+		me.encodeInt(specificDatesCount)
 		for _, date := range execFilter.SpecificDates {
-			fields = append(fields, date)
+			me.encodeInt64(date)
 		}
 	}
 
-	msg := makeFields(fields...)
-
-	c.reqChan <- msg
+	c.reqChan <- me.Bytes()
 }
 
 //	##########################################################################
@@ -2135,49 +2495,53 @@ func (c *EClient) ReqContractDetails(reqID int64, contract *Contract) {
 
 	const VERSION = 8
 
-	fields := make([]any, 0, 21)
-	fields = append(fields, REQ_CONTRACT_DATA, VERSION)
+	me := NewMsgEncoder(21, c.serverVersion)
+
+	me.encodeMsgID(REQ_CONTRACT_DATA)
+	me.encodeInt(VERSION)
 
 	if c.serverVersion >= MIN_SERVER_VER_CONTRACT_DATA_CHAIN {
-		fields = append(fields, reqID)
+		me.encodeInt64(reqID)
 	}
 
-	fields = append(fields,
-		contract.ConID, // srv v37 and above
-		contract.Symbol,
-		contract.SecType,
-		contract.LastTradeDateOrContractMonth,
-		contract.Strike,
-		contract.Right,
-		contract.Multiplier) // srv v15 and above
+	me.encodeInt64(contract.ConID) // srv v37 and above
+	me.encodeString(contract.Symbol)
+	me.encodeString(contract.SecType)
+	me.encodeString(contract.LastTradeDateOrContractMonth)
+	me.encodeFloat64(contract.Strike)
+	me.encodeString(contract.Right)
+	me.encodeString(contract.Multiplier) // srv v15 and above
 
 	if c.serverVersion >= MIN_SERVER_VER_PRIMARYEXCH {
-		fields = append(fields, contract.Exchange, contract.PrimaryExchange)
+		me.encodeString(contract.Exchange)
+		me.encodeString(contract.PrimaryExchange)
 	} else if c.serverVersion >= MIN_SERVER_VER_LINKING {
 		if contract.PrimaryExchange != "" && (contract.Exchange == "BEST" || contract.Exchange == "SMART") {
-			fields = append(fields, contract.Exchange+":"+contract.PrimaryExchange)
+			me.encodeString(contract.Exchange + ":" + contract.PrimaryExchange)
 		} else {
-			fields = append(fields, contract.Exchange)
+			me.encodeString(contract.Exchange)
 		}
 	}
 
-	fields = append(fields, contract.Currency, contract.LocalSymbol)
+	me.encodeString(contract.Currency)
+	me.encodeString(contract.LocalSymbol)
 
 	if c.serverVersion >= MIN_SERVER_VER_TRADING_CLASS {
-		fields = append(fields, contract.TradingClass, contract.IncludeExpired) //  srv v31 and above
+		me.encodeString(contract.TradingClass)
+
 	}
+	me.encodeBool(contract.IncludeExpired) //  srv v31 and above
 
 	if c.serverVersion >= MIN_SERVER_VER_SEC_ID_TYPE {
-		fields = append(fields, contract.SecIDType, contract.SecID)
+		me.encodeString(contract.SecIDType)
+		me.encodeString(contract.SecID)
 	}
 
 	if c.serverVersion >= MIN_SERVER_VER_BOND_ISSUERID {
-		fields = append(fields, contract.IssuerID)
+		me.encodeString(contract.IssuerID)
 	}
 
-	msg := makeFields(fields...)
-
-	c.reqChan <- msg
+	c.reqChan <- me.Bytes()
 }
 
 //	##########################################################################
@@ -2197,9 +2561,11 @@ func (c *EClient) ReqMktDepthExchanges() {
 		return
 	}
 
-	msg := makeFields(REQ_MKT_DEPTH_EXCHANGES)
+	me := NewMsgEncoder(1, c.serverVersion)
 
-	c.reqChan <- msg
+	me.encodeMsgID(REQ_MKT_DEPTH_EXCHANGES)
+
+	c.reqChan <- me.Bytes()
 }
 
 // ReqMktDepth requests the market depth for a specific contract.
@@ -2239,52 +2605,49 @@ func (c *EClient) ReqMktDepth(reqID int64, contract *Contract, numRows int, isSm
 
 	const VERSION = 5
 
-	fields := make([]any, 0, 17)
-	fields = append(fields, REQ_MKT_DEPTH, VERSION, reqID)
+	me := NewMsgEncoder(17, c.serverVersion)
 
+	// send req mkt data msg
+	me.encodeMsgID(REQ_MKT_DEPTH)
+	me.encodeInt(VERSION)
+	me.encodeInt64(reqID)
+
+	// send contract fields
 	if c.serverVersion >= MIN_SERVER_VER_TRADING_CLASS {
-		fields = append(fields, contract.ConID)
+		me.encodeInt64(contract.ConID)
 	}
 
-	fields = append(fields,
-		contract.Symbol,
-		contract.SecType,
-		contract.LastTradeDateOrContractMonth,
-		contract.Strike,
-		contract.Right,
-		contract.Multiplier,
-		contract.Exchange)
+	me.encodeString(contract.Symbol)
+	me.encodeString(contract.SecType)
+	me.encodeString(contract.LastTradeDateOrContractMonth)
+	me.encodeFloat64(contract.Strike)
+	me.encodeString(contract.Right)
+	me.encodeString(contract.Multiplier) // srv v15 and above
+	me.encodeString(contract.Exchange)
 
 	if c.serverVersion >= MIN_SERVER_VER_MKT_DEPTH_PRIM_EXCHANGE {
-		fields = append(fields, contract.PrimaryExchange)
+		me.encodeString(contract.PrimaryExchange)
 	}
 
-	fields = append(fields,
-		contract.Currency,
-		contract.LocalSymbol)
+	me.encodeString(contract.Currency)
+	me.encodeString(contract.LocalSymbol)
 
 	if c.serverVersion >= MIN_SERVER_VER_TRADING_CLASS {
-		fields = append(fields, contract.TradingClass)
+		me.encodeString(contract.TradingClass)
 	}
 
-	fields = append(fields, numRows)
+	me.encodeInt(numRows) // srv v19 and above
 
 	if c.serverVersion >= MIN_SERVER_VER_SMART_DEPTH {
-		fields = append(fields, isSmartDepth)
+		me.encodeBool(isSmartDepth)
 	}
 
+	// send mktDepthOptions parameter
 	if c.serverVersion >= MIN_SERVER_VER_LINKING {
-		//current doc says this part if for "internal use only" -> won't support it
-		if len(mktDepthOptions) > 0 {
-			log.Panic().Msg("not supported")
-		}
-
-		fields = append(fields, "")
+		me.encodeTagValues(mktDepthOptions)
 	}
 
-	msg := makeFields(fields...)
-
-	c.reqChan <- msg
+	c.reqChan <- me.Bytes()
 }
 
 // CancelMktDepth cancels market depth updates.
@@ -2302,15 +2665,17 @@ func (c *EClient) CancelMktDepth(reqID int64, isSmartDepth bool) {
 
 	const VERSION = 1
 
-	fields := make([]any, 0, 4)
-	fields = append(fields, CANCEL_MKT_DEPTH, VERSION, reqID)
+	me := NewMsgEncoder(4, c.serverVersion)
+
+	me.encodeMsgID(CANCEL_MKT_DEPTH)
+	me.encodeInt(VERSION)
+	me.encodeInt64(reqID)
 
 	if c.serverVersion >= MIN_SERVER_VER_SMART_DEPTH {
-		fields = append(fields, isSmartDepth)
+		me.encodeBool(isSmartDepth)
 	}
-	msg := makeFields(fields...)
 
-	c.reqChan <- msg
+	c.reqChan <- me.Bytes()
 }
 
 //	##########################################################################
@@ -2331,9 +2696,13 @@ func (c *EClient) ReqNewsBulletins(allMsgs bool) {
 
 	const VERSION = 1
 
-	msg := makeFields(REQ_NEWS_BULLETINS, VERSION, allMsgs)
+	me := NewMsgEncoder(3, c.serverVersion)
 
-	c.reqChan <- msg
+	me.encodeMsgID(REQ_NEWS_BULLETINS)
+	me.encodeInt(VERSION)
+	me.encodeBool(allMsgs)
+
+	c.reqChan <- me.Bytes()
 }
 
 // CancelNewsBulletins cancels the news bulletins updates
@@ -2346,9 +2715,12 @@ func (c *EClient) CancelNewsBulletins() {
 
 	const VERSION = 1
 
-	msg := makeFields(CANCEL_NEWS_BULLETINS, VERSION)
+	me := NewMsgEncoder(2, c.serverVersion)
 
-	c.reqChan <- msg
+	me.encodeMsgID(CANCEL_NEWS_BULLETINS)
+	me.encodeInt(VERSION)
+
+	c.reqChan <- me.Bytes()
 }
 
 //	##########################################################################
@@ -2367,9 +2739,12 @@ func (c *EClient) ReqManagedAccts() {
 
 	const VERSION = 1
 
-	msg := makeFields(REQ_MANAGED_ACCTS, VERSION)
+	me := NewMsgEncoder(2, c.serverVersion)
 
-	c.reqChan <- msg
+	me.encodeMsgID(REQ_MANAGED_ACCTS)
+	me.encodeInt(VERSION)
+
+	c.reqChan <- me.Bytes()
 }
 
 // RequestFA requests fa.
@@ -2389,9 +2764,13 @@ func (c *EClient) RequestFA(faDataType FaDataType) {
 
 	const VERSION = 1
 
-	msg := makeFields(REQ_FA, VERSION, int(faDataType))
+	me := NewMsgEncoder(3, c.serverVersion)
 
-	c.reqChan <- msg
+	me.encodeMsgID(REQ_FA)
+	me.encodeInt(VERSION)
+	me.encodeInt(int(faDataType))
+
+	c.reqChan <- me.Bytes()
 }
 
 // ReplaceFA replaces the FA configuration information from the API.
@@ -2414,21 +2793,18 @@ func (c *EClient) ReplaceFA(reqID int64, faDataType FaDataType, cxml string) {
 
 	const VERSION = 1
 
-	fields := make([]any, 0, 5)
-	fields = append(fields,
-		REPLACE_FA,
-		VERSION,
-		int(faDataType),
-		cxml,
-	)
+	me := NewMsgEncoder(5, c.serverVersion)
+
+	me.encodeMsgID(REPLACE_FA)
+	me.encodeInt(VERSION)
+	me.encodeInt(int(faDataType))
+	me.encodeString(cxml)
 
 	if c.serverVersion >= MIN_SERVER_VER_REPLACE_FA_END {
-		fields = append(fields, reqID)
+		me.encodeInt64(reqID)
 	}
 
-	msg := makeFields(fields...)
-
-	c.reqChan <- msg
+	c.reqChan <- me.Bytes()
 }
 
 //	##########################################################################
@@ -2498,72 +2874,62 @@ func (c *EClient) ReqHistoricalData(reqID int64, contract *Contract, endDateTime
 
 	const VERSION = 6
 
-	fields := make([]any, 0, 30)
-	fields = append(fields, REQ_HISTORICAL_DATA)
+	me := NewMsgEncoder(20, c.serverVersion)
+
+	me.encodeMsgID(REQ_HISTORICAL_DATA)
 
 	if c.serverVersion <= MIN_SERVER_VER_SYNT_REALTIME_BARS {
-		fields = append(fields, VERSION)
+		me.encodeInt(VERSION)
 	}
 
-	fields = append(fields, reqID)
+	me.encodeInt64(reqID)
 
 	if c.serverVersion >= MIN_SERVER_VER_TRADING_CLASS {
-		fields = append(fields, contract.ConID)
+		me.encodeInt64(contract.ConID)
 	}
 
-	fields = append(fields,
-		contract.Symbol,
-		contract.SecType,
-		contract.LastTradeDateOrContractMonth,
-		contract.Strike,
-		contract.Right,
-		contract.Multiplier,
-		contract.Exchange,
-		contract.PrimaryExchange,
-		contract.Currency,
-		contract.LocalSymbol,
-	)
+	me.encodeString(contract.Symbol)
+	me.encodeString(contract.SecType)
+	me.encodeString(contract.LastTradeDateOrContractMonth)
+	me.encodeFloat64(contract.Strike)
+	me.encodeString(contract.Right)
+	me.encodeString(contract.Multiplier)
+	me.encodeString(contract.Exchange)
+	me.encodeString(contract.PrimaryExchange)
+	me.encodeString(contract.Currency)
+	me.encodeString(contract.LocalSymbol)
 
 	if c.serverVersion >= MIN_SERVER_VER_TRADING_CLASS {
-		fields = append(fields, contract.TradingClass)
+		me.encodeString(contract.TradingClass)
 	}
-	fields = append(fields,
-		contract.IncludeExpired,
-		endDateTime,
-		barSize,
-		duration,
-		useRTH,
-		whatToShow,
-		formatDate,
-	)
+
+	me.encodeBool(contract.IncludeExpired)
+	me.encodeString(endDateTime)
+	me.encodeString(barSize)
+	me.encodeString(duration)
+	me.encodeBool(useRTH)
+	me.encodeString(whatToShow)
+	me.encodeInt(formatDate)
 
 	if contract.SecType == "BAG" {
-		fields = append(fields, len(contract.ComboLegs))
+		me.encodeInt(len(contract.ComboLegs))
 		for _, comboLeg := range contract.ComboLegs {
-			fields = append(fields,
-				comboLeg.ConID,
-				comboLeg.Ratio,
-				comboLeg.Action,
-				comboLeg.Exchange,
-			)
+			me.encodeInt64(comboLeg.ConID)
+			me.encodeInt64(comboLeg.Ratio)
+			me.encodeString(comboLeg.Action)
+			me.encodeString(comboLeg.Exchange)
 		}
 	}
 
 	if c.serverVersion >= MIN_SERVER_VER_SYNT_REALTIME_BARS {
-		fields = append(fields, keepUpToDate)
+		me.encodeBool(keepUpToDate)
 	}
 
 	if c.serverVersion >= MIN_SERVER_VER_LINKING {
-		chartOptionsStr := ""
-		for _, tagValue := range chartOptions {
-			chartOptionsStr += tagValue.Value
-		}
-		fields = append(fields, chartOptionsStr)
+		me.encodeTagValues(chartOptions)
 	}
 
-	msg := makeFields(fields...)
-
-	c.reqChan <- msg
+	c.reqChan <- me.Bytes()
 }
 
 // CancelHistoricalData cancels the update of historical data.
@@ -2578,9 +2944,13 @@ func (c *EClient) CancelHistoricalData(reqID int64) {
 
 	const VERSION = 1
 
-	msg := makeFields(CANCEL_HISTORICAL_DATA, VERSION, reqID)
+	me := NewMsgEncoder(3, c.serverVersion)
 
-	c.reqChan <- msg
+	me.encodeMsgID(CANCEL_HISTORICAL_DATA)
+	me.encodeInt(VERSION)
+	me.encodeInt64(reqID)
+
+	c.reqChan <- me.Bytes()
 }
 
 // ReqHeadTimeStamp request the head timestamp of assigned contract.
@@ -2597,31 +2967,19 @@ func (c *EClient) ReqHeadTimeStamp(reqID int64, contract *Contract, whatToShow s
 		return
 	}
 
-	fields := make([]any, 0, 18)
+	const VERSION = 1
 
-	fields = append(fields,
-		REQ_HEAD_TIMESTAMP,
-		reqID,
-		contract.ConID,
-		contract.Symbol,
-		contract.SecType,
-		contract.LastTradeDateOrContractMonth,
-		contract.Strike,
-		contract.Right,
-		contract.Multiplier,
-		contract.Exchange,
-		contract.PrimaryExchange,
-		contract.Currency,
-		contract.LocalSymbol,
-		contract.TradingClass,
-		contract.IncludeExpired,
-		useRTH,
-		whatToShow,
-		formatDate)
+	me := NewMsgEncoder(19, c.serverVersion)
 
-	msg := makeFields(fields...)
+	me.encodeMsgID(REQ_HEAD_TIMESTAMP)
+	me.encodeInt(VERSION)
+	me.encodeInt64(reqID)
+	me.encodeContract(contract)
+	me.encodeBool(useRTH)
+	me.encodeString(whatToShow)
+	me.encodeInt(formatDate)
 
-	c.reqChan <- msg
+	c.reqChan <- me.Bytes()
 }
 
 // CancelHeadTimeStamp cancels the head timestamp data.
@@ -2637,9 +2995,15 @@ func (c *EClient) CancelHeadTimeStamp(reqID int64) {
 		return
 	}
 
-	msg := makeFields(CANCEL_HEAD_TIMESTAMP, reqID)
+	const VERSION = 1
 
-	c.reqChan <- msg
+	me := NewMsgEncoder(3, c.serverVersion)
+
+	me.encodeMsgID(CANCEL_HEAD_TIMESTAMP)
+	me.encodeInt(VERSION)
+	me.encodeInt64(reqID)
+
+	c.reqChan <- me.Bytes()
 }
 
 // ReqHistogramData requests histogram data.
@@ -2655,29 +3019,18 @@ func (c *EClient) ReqHistogramData(reqID int64, contract *Contract, useRTH bool,
 		return
 	}
 
-	fields := make([]any, 0, 18)
-	fields = append(fields,
-		REQ_HISTOGRAM_DATA,
-		reqID,
-		contract.ConID,
-		contract.Symbol,
-		contract.SecType,
-		contract.LastTradeDateOrContractMonth,
-		contract.Strike,
-		contract.Right,
-		contract.Multiplier,
-		contract.Exchange,
-		contract.PrimaryExchange,
-		contract.Currency,
-		contract.LocalSymbol,
-		contract.TradingClass,
-		contract.IncludeExpired,
-		useRTH,
-		timePeriod)
+	const VERSION = 1
 
-	msg := makeFields(fields...)
+	me := NewMsgEncoder(18, c.serverVersion)
 
-	c.reqChan <- msg
+	me.encodeMsgID(REQ_HISTOGRAM_DATA)
+	me.encodeInt(VERSION)
+	me.encodeInt64(reqID)
+	me.encodeContract(contract)
+	me.encodeBool(useRTH)
+	me.encodeString(timePeriod)
+
+	c.reqChan <- me.Bytes()
 }
 
 // CancelHistogramData cancels histogram data.
@@ -2693,9 +3046,12 @@ func (c *EClient) CancelHistogramData(reqID int64) {
 		return
 	}
 
-	msg := makeFields(CANCEL_HISTOGRAM_DATA, reqID)
+	me := NewMsgEncoder(2, c.serverVersion)
 
-	c.reqChan <- msg
+	me.encodeMsgID(CANCEL_HISTOGRAM_DATA)
+	me.encodeInt64(reqID)
+
+	c.reqChan <- me.Bytes()
 }
 
 // ReqHistoricalTicks requests historical ticks.
@@ -2711,39 +3067,20 @@ func (c *EClient) ReqHistoricalTicks(reqID int64, contract *Contract, startDateT
 		return
 	}
 
-	fields := make([]any, 0, 22)
-	fields = append(fields,
-		REQ_HISTORICAL_TICKS,
-		reqID,
-		contract.ConID,
-		contract.Symbol,
-		contract.SecType,
-		contract.LastTradeDateOrContractMonth,
-		contract.Strike,
-		contract.Right,
-		contract.Multiplier,
-		contract.Exchange,
-		contract.PrimaryExchange,
-		contract.Currency,
-		contract.LocalSymbol,
-		contract.TradingClass,
-		contract.IncludeExpired,
-		startDateTime,
-		endDateTime,
-		numberOfTicks,
-		whatToShow,
-		useRTH,
-		ignoreSize)
+	me := NewMsgEncoder(22, c.serverVersion)
 
-	var miscOptionsBuffer bytes.Buffer
-	for _, tv := range miscOptions {
-		miscOptionsBuffer.WriteString(tv.String())
-	}
-	fields = append(fields, miscOptionsBuffer.Bytes())
+	me.encodeMsgID(REQ_HISTORICAL_TICKS)
+	me.encodeInt64(reqID)
+	me.encodeContract(contract)
+	me.encodeString(startDateTime)
+	me.encodeString(endDateTime)
+	me.encodeInt(numberOfTicks)
+	me.encodeString(whatToShow)
+	me.encodeBool(useRTH)
+	me.encodeBool(ignoreSize)
+	me.encodeTagValues(miscOptions)
 
-	msg := makeFields(fields...)
-
-	c.reqChan <- msg
+	c.reqChan <- me.Bytes()
 }
 
 //	##########################################################################
@@ -2760,9 +3097,12 @@ func (c *EClient) ReqScannerParameters() {
 
 	const VERSION = 1
 
-	msg := makeFields(REQ_SCANNER_PARAMETERS, VERSION)
+	me := NewMsgEncoder(2, c.serverVersion)
 
-	c.reqChan <- msg
+	me.encodeMsgID(REQ_SCANNER_PARAMETERS)
+	me.encodeInt(VERSION)
+
+	c.reqChan <- me.Bytes()
 }
 
 // ReqScannerSubscription subcribes a scanner that matched the subcription.
@@ -2783,57 +3123,46 @@ func (c *EClient) ReqScannerSubscription(reqID int64, subscription *ScannerSubsc
 
 	const VERSION = 4
 
-	fields := make([]any, 0, 25)
-	fields = append(fields, REQ_SCANNER_SUBSCRIPTION)
+	me := NewMsgEncoder(25, c.serverVersion)
+
+	me.encodeMsgID(REQ_SCANNER_SUBSCRIPTION)
 
 	if c.serverVersion < MIN_SERVER_VER_SCANNER_GENERIC_OPTS {
-		fields = append(fields, VERSION)
+		me.encodeInt(VERSION)
 	}
 
-	fields = append(fields,
-		reqID,
-		handleEmpty(subscription.NumberOfRows),
-		subscription.Instrument,
-		subscription.LocationCode,
-		subscription.ScanCode,
-		handleEmpty(subscription.AbovePrice),
-		handleEmpty(subscription.BelowPrice),
-		handleEmpty(subscription.AboveVolume),
-		handleEmpty(subscription.MarketCapAbove),
-		handleEmpty(subscription.MarketCapBelow),
-		subscription.MoodyRatingAbove,
-		subscription.MoodyRatingBelow,
-		subscription.SpRatingAbove,
-		subscription.SpRatingBelow,
-		subscription.MaturityDateAbove,
-		subscription.MaturityDateBelow,
-		handleEmpty(subscription.CouponRateAbove),
-		handleEmpty(subscription.CouponRateBelow),
-		subscription.ExcludeConvertible,
-		handleEmpty(subscription.AverageOptionVolumeAbove),
-		subscription.ScannerSettingPairs,
-		subscription.StockTypeFilter)
+	me.encodeInt64(reqID)
+	me.encodeIntMax(subscription.NumberOfRows)
+	me.encodeString(subscription.Instrument)
+	me.encodeString(subscription.LocationCode)
+	me.encodeString(subscription.ScanCode)
+	me.encodeFloatMax(subscription.AbovePrice)
+	me.encodeFloatMax(subscription.BelowPrice)
+	me.encodeIntMax(subscription.AboveVolume)
+	me.encodeFloatMax(subscription.MarketCapAbove)
+	me.encodeFloatMax(subscription.MarketCapBelow)
+	me.encodeString(subscription.MoodyRatingAbove)
+	me.encodeString(subscription.MoodyRatingBelow)
+	me.encodeString(subscription.SpRatingAbove)
+	me.encodeString(subscription.SpRatingBelow)
+	me.encodeString(subscription.MaturityDateAbove)
+	me.encodeString(subscription.MaturityDateBelow)
+	me.encodeFloatMax(subscription.CouponRateAbove)
+	me.encodeFloatMax(subscription.CouponRateBelow)
+	me.encodeBool(subscription.ExcludeConvertible)
+	me.encodeIntMax(subscription.AverageOptionVolumeAbove)
+	me.encodeString(subscription.ScannerSettingPairs)
+	me.encodeString(subscription.StockTypeFilter)
 
 	if c.serverVersion >= MIN_SERVER_VER_SCANNER_GENERIC_OPTS {
-		var scannerSubscriptionFilterOptionsBuffer bytes.Buffer
-		for _, tv := range scannerSubscriptionFilterOptions {
-			scannerSubscriptionFilterOptionsBuffer.WriteString(tv.String())
-		}
-		fields = append(fields, scannerSubscriptionFilterOptionsBuffer.Bytes())
+		me.encodeTagValues(scannerSubscriptionFilterOptions)
 	}
 
 	if c.serverVersion >= MIN_SERVER_VER_LINKING {
-		var scannerSubscriptionOptionsBuffer bytes.Buffer
-		for _, tv := range scannerSubscriptionOptions {
-			scannerSubscriptionOptionsBuffer.WriteString(tv.String())
-		}
-		fields = append(fields, scannerSubscriptionOptionsBuffer.Bytes())
-
+		me.encodeTagValues(scannerSubscriptionOptions)
 	}
 
-	msg := makeFields(fields...)
-
-	c.reqChan <- msg
+	c.reqChan <- me.Bytes()
 }
 
 // CancelScannerSubscription cancel scanner.
@@ -2847,9 +3176,13 @@ func (c *EClient) CancelScannerSubscription(reqID int64) {
 
 	const VERSION = 1
 
-	msg := makeFields(CANCEL_SCANNER_SUBSCRIPTION, VERSION, reqID)
+	me := NewMsgEncoder(3, c.serverVersion)
 
-	c.reqChan <- msg
+	me.encodeMsgID(CANCEL_SCANNER_SUBSCRIPTION)
+	me.encodeInt(VERSION)
+	me.encodeInt64(reqID)
+
+	c.reqChan <- me.Bytes()
 }
 
 //	##########################################################################
@@ -2895,45 +3228,40 @@ func (c *EClient) ReqRealTimeBars(reqID int64, contract *Contract, barSize int, 
 
 	const VERSION = 3
 
-	fields := make([]any, 0, 19)
-	fields = append(fields, REQ_REAL_TIME_BARS, VERSION, reqID)
+	me := NewMsgEncoder(19, c.serverVersion)
+
+	me.encodeMsgID(REQ_REAL_TIME_BARS)
+	me.encodeInt(VERSION)
+	me.encodeInt64(reqID)
 
 	if c.serverVersion >= MIN_SERVER_VER_TRADING_CLASS {
-		fields = append(fields, contract.ConID)
+		me.encodeInt64(contract.ConID)
 	}
 
-	fields = append(fields,
-		contract.Symbol,
-		contract.SecType,
-		contract.LastTradeDateOrContractMonth,
-		contract.Strike,
-		contract.Right,
-		contract.Multiplier,
-		contract.Exchange,
-		contract.PrimaryExchange,
-		contract.Currency,
-		contract.LocalSymbol)
+	me.encodeString(contract.Symbol)
+	me.encodeString(contract.SecType)
+	me.encodeString(contract.LastTradeDateOrContractMonth)
+	me.encodeFloat64(contract.Strike)
+	me.encodeString(contract.Right)
+	me.encodeString(contract.Multiplier)
+	me.encodeString(contract.Exchange)
+	me.encodeString(contract.PrimaryExchange)
+	me.encodeString(contract.Currency)
+	me.encodeString(contract.LocalSymbol)
 
 	if c.serverVersion >= MIN_SERVER_VER_TRADING_CLASS {
-		fields = append(fields, contract.TradingClass)
+		me.encodeString(contract.TradingClass)
 	}
 
-	fields = append(fields,
-		barSize,
-		whatToShow,
-		useRTH)
+	me.encodeInt(barSize)
+	me.encodeString(whatToShow)
+	me.encodeBool(useRTH)
 
 	if c.serverVersion >= MIN_SERVER_VER_LINKING {
-		var realTimeBarsOptionsBuffer bytes.Buffer
-		for _, tv := range realTimeBarsOptions {
-			realTimeBarsOptionsBuffer.WriteString(tv.String())
-		}
-		fields = append(fields, realTimeBarsOptionsBuffer.Bytes())
+		me.encodeTagValues(realTimeBarsOptions)
 	}
 
-	msg := makeFields(fields...)
-
-	c.reqChan <- msg
+	c.reqChan <- me.Bytes()
 }
 
 // CancelRealTimeBars cancels realtime bars.
@@ -2946,9 +3274,13 @@ func (c *EClient) CancelRealTimeBars(reqID int64) {
 
 	const VERSION = 1
 
-	msg := makeFields(CANCEL_REAL_TIME_BARS, VERSION, reqID)
+	me := NewMsgEncoder(3, c.serverVersion)
 
-	c.reqChan <- msg
+	me.encodeMsgID(CANCEL_REAL_TIME_BARS)
+	me.encodeInt(VERSION)
+	me.encodeInt64(reqID)
+
+	c.reqChan <- me.Bytes()
 }
 
 //	##########################################################################
@@ -2989,34 +3321,30 @@ func (c *EClient) ReqFundamentalData(reqID int64, contract *Contract, reportType
 		return
 	}
 
-	fields := make([]any, 0, 12)
-	fields = append(fields, REQ_FUNDAMENTAL_DATA, VERSION, reqID)
+	me := NewMsgEncoder(12, c.serverVersion)
+
+	me.encodeMsgID(REQ_FUNDAMENTAL_DATA)
+	me.encodeInt(VERSION)
+	me.encodeInt64(reqID)
 
 	if c.serverVersion >= MIN_SERVER_VER_TRADING_CLASS {
-		fields = append(fields, contract.ConID)
+		me.encodeInt64(contract.ConID)
 	}
 
-	fields = append(fields,
-		contract.Symbol,
-		contract.SecType,
-		contract.Exchange,
-		contract.PrimaryExchange,
-		contract.Currency,
-		contract.LocalSymbol,
-		reportType)
+	me.encodeString(contract.Symbol)
+	me.encodeString(contract.SecType)
+	me.encodeString(contract.Exchange)
+	me.encodeString(contract.PrimaryExchange)
+	me.encodeString(contract.Currency)
+	me.encodeString(contract.LocalSymbol)
+
+	me.encodeString(reportType)
 
 	if c.serverVersion >= MIN_SERVER_VER_LINKING {
-		var fundamentalDataOptionsBuffer bytes.Buffer
-		for _, tv := range fundamentalDataOptions {
-			fundamentalDataOptionsBuffer.WriteString(tv.String())
-		}
-		fields = append(fields, fundamentalDataOptionsBuffer.Bytes())
-
+		me.encodeTagValues(fundamentalDataOptions)
 	}
 
-	msg := makeFields(fields...)
-
-	c.reqChan <- msg
+	c.reqChan <- me.Bytes()
 }
 
 // CancelFundamentalData cancels fundamental data.
@@ -3034,9 +3362,13 @@ func (c *EClient) CancelFundamentalData(reqID int64) {
 
 	const VERSION = 1
 
-	msg := makeFields(CANCEL_FUNDAMENTAL_DATA, VERSION, reqID)
+	me := NewMsgEncoder(3, c.serverVersion)
 
-	c.reqChan <- msg
+	me.encodeMsgID(CANCEL_FUNDAMENTAL_DATA)
+	me.encodeInt(VERSION)
+	me.encodeInt64(reqID)
+
+	c.reqChan <- me.Bytes()
 
 }
 
@@ -3057,9 +3389,11 @@ func (c *EClient) ReqNewsProviders() {
 		return
 	}
 
-	msg := makeFields(REQ_NEWS_PROVIDERS)
+	me := NewMsgEncoder(1, c.serverVersion)
 
-	c.reqChan <- msg
+	me.encodeMsgID(REQ_NEWS_PROVIDERS)
+
+	c.reqChan <- me.Bytes()
 }
 
 // ReqNewsArticle request news article.
@@ -3075,24 +3409,18 @@ func (c *EClient) ReqNewsArticle(reqID int64, providerCode string, articleID str
 		return
 	}
 
-	fields := make([]any, 0, 5)
-	fields = append(fields,
-		REQ_NEWS_ARTICLE,
-		reqID,
-		providerCode,
-		articleID)
+	me := NewMsgEncoder(5, c.serverVersion)
+
+	me.encodeMsgID(REQ_NEWS_ARTICLE)
+	me.encodeInt64(reqID)
+	me.encodeString(providerCode)
+	me.encodeString(articleID)
 
 	if c.serverVersion >= MIN_SERVER_VER_NEWS_QUERY_ORIGINS {
-		var newsArticleOptionsBuffer bytes.Buffer
-		for _, tv := range newsArticleOptions {
-			newsArticleOptionsBuffer.WriteString(tv.String())
-		}
-		fields = append(fields, newsArticleOptionsBuffer.Bytes())
-
+		me.encodeTagValues(newsArticleOptions)
 	}
-	msg := makeFields(fields...)
 
-	c.reqChan <- msg
+	c.reqChan <- me.Bytes()
 }
 
 // ReqHistoricalNews request historical news.
@@ -3108,27 +3436,21 @@ func (c *EClient) ReqHistoricalNews(reqID int64, contractID int64, providerCode 
 		return
 	}
 
-	fields := make([]any, 0, 8)
-	fields = append(fields,
-		REQ_HISTORICAL_NEWS,
-		reqID,
-		contractID,
-		providerCode,
-		startDateTime,
-		endDateTime,
-		totalResults)
+	me := NewMsgEncoder(8, c.serverVersion)
+
+	me.encodeMsgID(REQ_HISTORICAL_NEWS)
+	me.encodeInt64(reqID)
+	me.encodeInt64(contractID)
+	me.encodeString(providerCode)
+	me.encodeString(startDateTime)
+	me.encodeString(endDateTime)
+	me.encodeInt64(totalResults)
 
 	if c.serverVersion >= MIN_SERVER_VER_NEWS_QUERY_ORIGINS {
-		var historicalNewsOptionsBuffer bytes.Buffer
-		for _, tv := range historicalNewsOptions {
-			historicalNewsOptionsBuffer.WriteString(tv.String())
-		}
-		fields = append(fields, historicalNewsOptionsBuffer.Bytes())
-
+		me.encodeTagValues(historicalNewsOptions)
 	}
-	msg := makeFields(fields...)
 
-	c.reqChan <- msg
+	c.reqChan <- me.Bytes()
 }
 
 //	##########################################################################
@@ -3150,9 +3472,13 @@ func (c *EClient) QueryDisplayGroups(reqID int64) {
 
 	const VERSION = 1
 
-	msg := makeFields(QUERY_DISPLAY_GROUPS, VERSION, reqID)
+	me := NewMsgEncoder(3, c.serverVersion)
 
-	c.reqChan <- msg
+	me.encodeMsgID(QUERY_DISPLAY_GROUPS)
+	me.encodeInt(VERSION)
+	me.encodeInt64(reqID)
+
+	c.reqChan <- me.Bytes()
 }
 
 // SubscribeToGroupEvents subcribes the group events.
@@ -3172,9 +3498,14 @@ func (c *EClient) SubscribeToGroupEvents(reqID int64, groupID int) {
 
 	const VERSION = 1
 
-	msg := makeFields(SUBSCRIBE_TO_GROUP_EVENTS, VERSION, reqID, groupID)
+	me := NewMsgEncoder(4, c.serverVersion)
 
-	c.reqChan <- msg
+	me.encodeMsgID(SUBSCRIBE_TO_GROUP_EVENTS)
+	me.encodeInt(VERSION)
+	me.encodeInt64(reqID)
+	me.encodeInt(groupID)
+
+	c.reqChan <- me.Bytes()
 }
 
 // UpdateDisplayGroup updates the display group in TWS.
@@ -3200,9 +3531,14 @@ func (c *EClient) UpdateDisplayGroup(reqID int64, contractInfo string) {
 
 	const VERSION = 1
 
-	msg := makeFields(UPDATE_DISPLAY_GROUP, VERSION, reqID, contractInfo)
+	me := NewMsgEncoder(4, c.serverVersion)
 
-	c.reqChan <- msg
+	me.encodeMsgID(UPDATE_DISPLAY_GROUP)
+	me.encodeInt(VERSION)
+	me.encodeInt64(reqID)
+	me.encodeString(contractInfo)
+
+	c.reqChan <- me.Bytes()
 }
 
 // UnsubscribeFromGroupEvents unsubcribes the display group events.
@@ -3220,9 +3556,13 @@ func (c *EClient) UnsubscribeFromGroupEvents(reqID int64) {
 
 	const VERSION = 1
 
-	msg := makeFields(UPDATE_DISPLAY_GROUP, VERSION, reqID)
+	me := NewMsgEncoder(3, c.serverVersion)
 
-	c.reqChan <- msg
+	me.encodeMsgID(UNSUBSCRIBE_FROM_GROUP_EVENTS)
+	me.encodeInt(VERSION)
+	me.encodeInt64(reqID)
+
+	c.reqChan <- me.Bytes()
 }
 
 // VerifyRequest is just for IB's internal use.
@@ -3247,9 +3587,14 @@ func (c *EClient) VerifyRequest(apiName string, apiVersion string) {
 
 	const VERSION = 1
 
-	msg := makeFields(VERIFY_REQUEST, VERSION, apiName, apiVersion)
+	me := NewMsgEncoder(4, c.serverVersion)
 
-	c.reqChan <- msg
+	me.encodeMsgID(VERIFY_REQUEST)
+	me.encodeInt(VERSION)
+	me.encodeString(apiName)
+	me.encodeString(apiVersion)
+
+	c.reqChan <- me.Bytes()
 }
 
 // VerifyMessage is just for IB's internal use.
@@ -3268,9 +3613,13 @@ func (c *EClient) VerifyMessage(apiData string) {
 
 	const VERSION = 1
 
-	msg := makeFields(VERIFY_MESSAGE, VERSION, apiData)
+	me := NewMsgEncoder(2, c.serverVersion)
 
-	c.reqChan <- msg
+	me.encodeMsgID(VERIFY_MESSAGE)
+	me.encodeInt(VERSION)
+	me.encodeString(apiData)
+
+	c.reqChan <- me.Bytes()
 }
 
 // VerifyAndAuthRequest is just for IB's internal use.
@@ -3295,9 +3644,15 @@ func (c *EClient) VerifyAndAuthRequest(apiName string, apiVersion string, opaque
 
 	const VERSION = 1
 
-	msg := makeFields(VERIFY_AND_AUTH_REQUEST, VERSION, apiName, apiVersion, opaqueIsvKey)
+	me := NewMsgEncoder(4, c.serverVersion)
 
-	c.reqChan <- msg
+	me.encodeMsgID(VERIFY_AND_AUTH_REQUEST)
+	me.encodeInt(VERSION)
+	me.encodeString(apiName)
+	me.encodeString(apiVersion)
+	me.encodeString(opaqueIsvKey)
+
+	c.reqChan <- me.Bytes()
 }
 
 // VerifyAndAuthMessage is just for IB's internal use.
@@ -3316,9 +3671,14 @@ func (c *EClient) VerifyAndAuthMessage(apiData string, xyzResponse string) {
 
 	const VERSION = 1
 
-	msg := makeFields(VERIFY_MESSAGE, VERSION, apiData, xyzResponse)
+	me := NewMsgEncoder(4, c.serverVersion)
 
-	c.reqChan <- msg
+	me.encodeMsgID(VERIFY_MESSAGE)
+	me.encodeInt(VERSION)
+	me.encodeString(apiData)
+	me.encodeString(xyzResponse)
+
+	c.reqChan <- me.Bytes()
 }
 
 // ReqSecDefOptParams requests security definition option parameters.
@@ -3339,9 +3699,16 @@ func (c *EClient) ReqSecDefOptParams(reqID int64, underlyingSymbol string, futFo
 		return
 	}
 
-	msg := makeFields(REQ_SEC_DEF_OPT_PARAMS, reqID, underlyingSymbol, futFopExchange, underlyingSecurityType, underlyingContractID)
+	me := NewMsgEncoder(6, c.serverVersion)
 
-	c.reqChan <- msg
+	me.encodeMsgID(REQ_SEC_DEF_OPT_PARAMS)
+	me.encodeInt64(reqID)
+	me.encodeString(underlyingSymbol)
+	me.encodeString(futFopExchange)
+	me.encodeString(underlyingSecurityType)
+	me.encodeInt64(underlyingContractID)
+
+	c.reqChan <- me.Bytes()
 }
 
 // ReqSoftDollarTiers request pre-defined Soft Dollar Tiers.
@@ -3354,9 +3721,12 @@ func (c *EClient) ReqSoftDollarTiers(reqID int64) {
 		return
 	}
 
-	msg := makeFields(REQ_SOFT_DOLLAR_TIERS, reqID)
+	me := NewMsgEncoder(2, c.serverVersion)
 
-	c.reqChan <- msg
+	me.encodeMsgID(REQ_SOFT_DOLLAR_TIERS)
+	me.encodeInt64(reqID)
+
+	c.reqChan <- me.Bytes()
 }
 
 // ReqFamilyCodes requests family codes.
@@ -3372,9 +3742,11 @@ func (c *EClient) ReqFamilyCodes() {
 		return
 	}
 
-	msg := makeFields(REQ_FAMILY_CODES)
+	me := NewMsgEncoder(1, c.serverVersion)
 
-	c.reqChan <- msg
+	me.encodeMsgID(REQ_FAMILY_CODES)
+
+	c.reqChan <- me.Bytes()
 }
 
 // ReqMatchingSymbols requests matching symbols.
@@ -3390,9 +3762,13 @@ func (c *EClient) ReqMatchingSymbols(reqID int64, pattern string) {
 		return
 	}
 
-	msg := makeFields(REQ_MATCHING_SYMBOLS, reqID, pattern)
+	me := NewMsgEncoder(3, c.serverVersion)
 
-	c.reqChan <- msg
+	me.encodeMsgID(REQ_MATCHING_SYMBOLS)
+	me.encodeInt64(reqID)
+	me.encodeString(pattern)
+
+	c.reqChan <- me.Bytes()
 }
 
 // ReqCompletedOrders request the completed orders.
@@ -3405,9 +3781,12 @@ func (c *EClient) ReqCompletedOrders(apiOnly bool) {
 		return
 	}
 
-	msg := makeFields(REQ_COMPLETED_ORDERS, apiOnly)
+	me := NewMsgEncoder(2, c.serverVersion)
 
-	c.reqChan <- msg
+	me.encodeMsgID(REQ_COMPLETED_ORDERS)
+	me.encodeBool(apiOnly)
+
+	c.reqChan <- me.Bytes()
 }
 
 // ReqWshMetaData requests WSHE Meta data.
@@ -3423,9 +3802,12 @@ func (c *EClient) ReqWshMetaData(reqID int64) {
 		return
 	}
 
-	msg := makeFields(REQ_WSH_META_DATA, reqID)
+	me := NewMsgEncoder(2, c.serverVersion)
 
-	c.reqChan <- msg
+	me.encodeMsgID(REQ_WSH_META_DATA)
+	me.encodeInt64(reqID)
+
+	c.reqChan <- me.Bytes()
 }
 
 // CancelWshMetaData cancels WSHE Meta data.
@@ -3441,9 +3823,12 @@ func (c *EClient) CancelWshMetaData(reqID int64) {
 		return
 	}
 
-	msg := makeFields(CANCEL_WSH_META_DATA, reqID)
+	me := NewMsgEncoder(2, c.serverVersion)
 
-	c.reqChan <- msg
+	me.encodeMsgID(CANCEL_WSH_META_DATA)
+	me.encodeInt64(reqID)
+
+	c.reqChan <- me.Bytes()
 }
 
 // ReqWshEventData requests WSHE Event data.
@@ -3468,30 +3853,26 @@ func (c *EClient) ReqWshEventData(reqID int64, wshEventData WshEventData) {
 		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support WSHE event data date filters.", "")
 		return
 	}
-	fields := make([]any, 0, 10)
-	fields = append(fields,
-		REQ_WSH_EVENT_DATA,
-		reqID,
-		wshEventData.ConID)
+	me := NewMsgEncoder(10, c.serverVersion)
+
+	me.encodeMsgID(REQ_WSH_EVENT_DATA)
+	me.encodeInt64(reqID)
+	me.encodeInt64(wshEventData.ConID)
 
 	if c.serverVersion >= MIN_SERVER_VER_WSH_EVENT_DATA_FILTERS {
-		fields = append(fields,
-			wshEventData.Filter,
-			wshEventData.FillWatchList,
-			wshEventData.FillPortfolio,
-			wshEventData.FillCompetitors)
+		me.encodeString(wshEventData.Filter)
+		me.encodeBool(wshEventData.FillWatchList)
+		me.encodeBool(wshEventData.FillPortfolio)
+		me.encodeBool(wshEventData.FillCompetitors)
 	}
 
 	if c.serverVersion >= MIN_SERVER_VER_WSH_EVENT_DATA_FILTERS_DATE {
-		fields = append(fields,
-			wshEventData.StartDate,
-			wshEventData.EndDate,
-			wshEventData.TotalLimit)
+		me.encodeString(wshEventData.StartDate)
+		me.encodeString(wshEventData.EndDate)
+		me.encodeInt64(wshEventData.TotalLimit)
 	}
 
-	msg := makeFields(fields...)
-
-	c.reqChan <- msg
+	c.reqChan <- me.Bytes()
 }
 
 // CancelWshEventData cancels WSHE Event data.
@@ -3507,9 +3888,12 @@ func (c *EClient) CancelWshEventData(reqID int64) {
 		return
 	}
 
-	msg := makeFields(CANCEL_WSH_EVENT_DATA, reqID)
+	me := NewMsgEncoder(2, c.serverVersion)
 
-	c.reqChan <- msg
+	me.encodeMsgID(CANCEL_WSH_EVENT_DATA)
+	me.encodeInt64(reqID)
+
+	c.reqChan <- me.Bytes()
 }
 
 // ReqUserInfo requests user info.
@@ -3525,9 +3909,12 @@ func (c *EClient) ReqUserInfo(reqID int64) {
 		return
 	}
 
-	msg := makeFields(REQ_USER_INFO, reqID)
+	me := NewMsgEncoder(2, c.serverVersion)
 
-	c.reqChan <- msg
+	me.encodeMsgID(REQ_USER_INFO)
+	me.encodeInt64(reqID)
+
+	c.reqChan <- me.Bytes()
 }
 
 // ReqCurrentTimeInMillis requests the current system time in milliseconds on the server side.
@@ -3543,7 +3930,9 @@ func (c *EClient) ReqCurrentTimeInMillis() {
 		return
 	}
 
-	msg := makeFields(REQ_CURRENT_TIME_IN_MILLIS)
+	me := NewMsgEncoder(1, c.serverVersion)
 
-	c.reqChan <- msg
+	me.encodeMsgID(REQ_CURRENT_TIME_IN_MILLIS)
+
+	c.reqChan <- me.Bytes()
 }

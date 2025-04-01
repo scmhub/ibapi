@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package protobuf;
+
+option go_package = ".;protobuf";
+
+message DeltaNeutralContract {
+    optional int32 conId = 1;
+    optional double delta = 2;
+    optional double price = 3;
+}

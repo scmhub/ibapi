@@ -38,7 +38,7 @@ func setupIBClient(t *testing.T) *EClient {
 		return globalIB
 	}
 
-	globalIB := NewEClient(nil)
+	globalIB = NewEClient(nil)
 	if err := globalIB.Connect(host, port, clientID); err != nil {
 		t.Fatalf("Couldn't connect EClient: %v", err)
 	}
@@ -100,10 +100,17 @@ func TestClient(t *testing.T) {
 
 func TestReqCurrentTime(t *testing.T) {
 	ib := setupIBClient(t)
+	time.Sleep(1 * time.Second)
 	ib.ReqCurrentTime()
 	time.Sleep(3 * time.Second)
 }
 
+func TestReqCurrentTimeMillis(t *testing.T) {
+	ib := setupIBClient(t)
+	time.Sleep(1 * time.Second)
+	ib.ReqCurrentTimeInMillis()
+	time.Sleep(3 * time.Second)
+}
 func TestPnlSingleOperation(t *testing.T) {
 	ib := setupIBClient(t)
 	ib.ReqPnLSingle(7002, account, "", 268084)
@@ -383,7 +390,12 @@ func TestOrderOperations(t *testing.T) {
 	ib.ReqGlobalCancel(CancelOrderEmpty())
 
 	// request the day's execution
-	ib.ReqExecutions(100001, ExecutionFilter{})
+	executionFilter1 := NewExecutionFilter()
+	executionFilter1.LastNDays = 7
+	ib.ReqExecutions(100001, executionFilter1)
+	executionFilter2 := NewExecutionFilter()
+	executionFilter2.SpecificDates = []int64{20250303, 20250302}
+	ib.ReqExecutions(100002, executionFilter2)
 
 	// request completed orders
 	ib.ReqCompletedOrders(false)

@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+package protobuf;
+
+import "ExecutionFilter.proto";
+
+option go_package = ".;protobuf";
+
+message ExecutionRequest {
+    optional int32 reqId = 1;
+    optional ExecutionFilter executionFilter = 2;
+}

@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package protobuf;
+
+import "Contract.proto";
+import "Execution.proto";
+
+option go_package = ".;protobuf";
+
+message ExecutionDetails {
+    optional int32 reqId = 1;
+    optional Contract contract = 2;
+    optional Execution execution = 3;
+}

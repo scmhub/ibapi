@@ -180,3 +180,12 @@ const (
 	REQ_USER_INFO                 OUT = 104
 	REQ_CURRENT_TIME_IN_MILLIS    OUT = 105
 )
+
+// TWS New Bulletins constants
+const NEWS_MSG int64 = 1             // standard IB news bulleting message
+const EXCHANGE_AVAIL_MSG int64 = 2   // control message specifying that an exchange is available for trading
+const EXCHANGE_UNAVAIL_MSG int64 = 3 // control message specifying that an exchange is unavailable for trading
+
+const PROTOBUF_MSG_ID int64 = 200
+
+var PROTOBUF_MSG_IDS = []int64{REQ_EXECUTIONS}
