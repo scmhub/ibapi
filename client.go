@@ -189,6 +189,10 @@ func (me *MsgEncoder) encodeDecimal(v Decimal) *MsgEncoder {
 
 // encodeTagValues adds a slice of TagValue to the message
 func (me *MsgEncoder) encodeTagValues(v []TagValue) *MsgEncoder {
+	// Write the count of TagValue items
+	count := len(v)
+	me.buf.WriteString(strconv.Itoa(count))
+	me.buf.WriteByte(delim)
 	for _, tv := range v {
 		me.buf.WriteString(tv.Tag)
 		me.buf.WriteString("=")
@@ -198,6 +202,7 @@ func (me *MsgEncoder) encodeTagValues(v []TagValue) *MsgEncoder {
 	me.buf.WriteByte(delim)
 	return me
 }
+
 func (me *MsgEncoder) encodeContract(v *Contract) *MsgEncoder {
 	me.encodeInt64(v.ConID)
 	me.encodeString(v.Symbol)
@@ -897,7 +902,7 @@ func (c *EClient) CalculateImpliedVolatility(reqID int64, contract *Contract, op
 		return
 	}
 
-	const VERSION = 3
+	const VERSION = 2
 
 	me := NewMsgEncoder(19, c.serverVersion)
 
@@ -905,9 +910,10 @@ func (c *EClient) CalculateImpliedVolatility(reqID int64, contract *Contract, op
 
 	me.encodeInt(VERSION)
 	me.encodeInt64(reqID)
+
 	me.encodeInt64(contract.ConID)
 	me.encodeString(contract.Symbol)
-	me.encodeString(contract.SecID)
+	me.encodeString(contract.SecType)
 	me.encodeString(contract.LastTradeDateOrContractMonth)
 	me.encodeFloat64(contract.Strike)
 	me.encodeString(contract.Right)
@@ -925,16 +931,7 @@ func (c *EClient) CalculateImpliedVolatility(reqID int64, contract *Contract, op
 	me.encodeFloat64(underPrice)
 
 	if c.serverVersion >= MIN_SERVER_VER_LINKING {
-		var implVolOptBuffer bytes.Buffer
-		tagValuesCount := len(impVolOptions)
-		me.encodeInt(tagValuesCount)
-		for _, tv := range impVolOptions {
-			implVolOptBuffer.WriteString(tv.Tag)
-			implVolOptBuffer.WriteString("=")
-			implVolOptBuffer.WriteString(tv.Value)
-			implVolOptBuffer.WriteString(";")
-		}
-		me.encodeBytes(implVolOptBuffer.Bytes())
+		me.encodeTagValues(impVolOptions)
 	}
 
 	c.reqChan <- me.Bytes()
@@ -985,7 +982,7 @@ func (c *EClient) CalculateOptionPrice(reqID int64, contract *Contract, volatili
 		return
 	}
 
-	const VERSION = 3
+	const VERSION = 2
 
 	me := NewMsgEncoder(19, c.serverVersion)
 
@@ -993,9 +990,10 @@ func (c *EClient) CalculateOptionPrice(reqID int64, contract *Contract, volatili
 
 	me.encodeInt(VERSION)
 	me.encodeInt64(reqID)
+
 	me.encodeInt64(contract.ConID)
 	me.encodeString(contract.Symbol)
-	me.encodeString(contract.SecID)
+	me.encodeString(contract.SecType)
 	me.encodeString(contract.LastTradeDateOrContractMonth)
 	me.encodeFloat64(contract.Strike)
 	me.encodeString(contract.Right)
@@ -1013,16 +1011,7 @@ func (c *EClient) CalculateOptionPrice(reqID int64, contract *Contract, volatili
 	me.encodeFloat64(underPrice)
 
 	if c.serverVersion >= MIN_SERVER_VER_LINKING {
-		var optPrcOptBuffer bytes.Buffer
-		tagValuesCount := len(optPrcOptions)
-		me.encodeInt(tagValuesCount)
-		for _, tv := range optPrcOptions {
-			optPrcOptBuffer.WriteString(tv.Tag)
-			optPrcOptBuffer.WriteString("=")
-			optPrcOptBuffer.WriteString(tv.Value)
-			optPrcOptBuffer.WriteString(";")
-		}
-		me.encodeBytes(optPrcOptBuffer.Bytes())
+		me.encodeTagValues(optPrcOptions)
 	}
 
 	c.reqChan <- me.Bytes()
@@ -1111,6 +1100,7 @@ func (c *EClient) ExerciseOptions(reqID TickerID, contract *Contract, exerciseAc
 	}
 
 	me.encodeString(contract.Symbol)
+	me.encodeString(contract.SecType)
 	me.encodeString(contract.LastTradeDateOrContractMonth)
 	me.encodeFloat64(contract.Strike)
 	me.encodeString(contract.Right)
@@ -1466,8 +1456,8 @@ func (c *EClient) PlaceOrder(orderID OrderID, contract *Contract, order *Order) 
 	me.encodeInt64(order.Origin)
 	me.encodeString(order.OrderRef)
 	me.encodeBool(order.Transmit)
-	me.encodeInt64(order.ParentID)
-	// srv v4 and above
+	me.encodeInt64(order.ParentID) // srv v4 and above
+
 	me.encodeBool(order.BlockOrder)   // srv v5 and above
 	me.encodeBool(order.SweepToFill)  // srv v5 and above
 	me.encodeInt64(order.DisplaySize) // srv v5 and above

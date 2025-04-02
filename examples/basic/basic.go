@@ -85,8 +85,8 @@ func main() {
 	ib.ReqScannerParameters()
 
 	// ########## market data ##########
-	// eurusd := &ibapi.Contract{Symbol: "EUR", SecType: "CASH", Currency: "USD", Exchange: "IDEALPRO"}
-	// id := nextID()
+	//eurusd := &ibapi.Contract{Symbol: "EUR", SecType: "CASH", Currency: "USD", Exchange: "IDEALPRO"}
+	//id := nextID()
 	// ib.ReqMktData(id, eurusd, "", false, false, nil)
 	// time.Sleep(4 * time.Second)
 	// ib.CancelMktData(id)
