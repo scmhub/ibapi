@@ -189,10 +189,6 @@ func (me *MsgEncoder) encodeDecimal(v Decimal) *MsgEncoder {
 
 // encodeTagValues adds a slice of TagValue to the message
 func (me *MsgEncoder) encodeTagValues(v []TagValue) *MsgEncoder {
-	// Write the count of TagValue items
-	count := len(v)
-	me.buf.WriteString(strconv.Itoa(count))
-	me.buf.WriteByte(delim)
 	for _, tv := range v {
 		me.buf.WriteString(tv.Tag)
 		me.buf.WriteString("=")
