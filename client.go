@@ -2953,12 +2953,9 @@ func (c *EClient) ReqHeadTimeStamp(reqID int64, contract *Contract, whatToShow s
 		return
 	}
 
-	const VERSION = 1
-
 	me := NewMsgEncoder(19, c.serverVersion)
 
 	me.encodeMsgID(REQ_HEAD_TIMESTAMP)
-	me.encodeInt(VERSION)
 	me.encodeInt64(reqID)
 	me.encodeContract(contract)
 	me.encodeBool(useRTH)
@@ -2981,12 +2978,9 @@ func (c *EClient) CancelHeadTimeStamp(reqID int64) {
 		return
 	}
 
-	const VERSION = 1
-
-	me := NewMsgEncoder(3, c.serverVersion)
+	me := NewMsgEncoder(2, c.serverVersion)
 
 	me.encodeMsgID(CANCEL_HEAD_TIMESTAMP)
-	me.encodeInt(VERSION)
 	me.encodeInt64(reqID)
 
 	c.reqChan <- me.Bytes()
@@ -3005,12 +2999,9 @@ func (c *EClient) ReqHistogramData(reqID int64, contract *Contract, useRTH bool,
 		return
 	}
 
-	const VERSION = 1
-
-	me := NewMsgEncoder(18, c.serverVersion)
+	me := NewMsgEncoder(5, c.serverVersion)
 
 	me.encodeMsgID(REQ_HISTOGRAM_DATA)
-	me.encodeInt(VERSION)
 	me.encodeInt64(reqID)
 	me.encodeContract(contract)
 	me.encodeBool(useRTH)
