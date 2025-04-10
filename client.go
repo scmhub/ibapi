@@ -347,7 +347,7 @@ func (c *EClient) request() {
 		case <-c.Ctx.Done():
 			return
 		case req := <-c.reqChan:
-			log.Debug().Bytes("req", req).Msg("sending request")
+			log.Trace().Bytes("req", req).Msg("sending request")
 			if !c.IsConnected() {
 				c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 				break
@@ -365,6 +365,7 @@ func (c *EClient) request() {
 		}
 	}
 }
+
 func (c *EClient) validateInvalidSymbols(host string) error {
 	if host != "" && !isASCIIPrintable(host) {
 		return errors.New(host)
@@ -889,16 +890,16 @@ func (c *EClient) CalculateImpliedVolatility(reqID int64, contract *Contract, op
 	}
 
 	if c.serverVersion < MIN_SERVER_VER_REQ_CALC_IMPLIED_VOLAT {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support calculateImpliedVolatility req.", "")
+		c.wrapper.Error(reqID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support calculateImpliedVolatility req.", "")
 		return
 	}
 
 	if c.serverVersion < MIN_SERVER_VER_TRADING_CLASS && contract.TradingClass != "" {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support tradingClass parameter in calculateImpliedVolatility.", "")
+		c.wrapper.Error(reqID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support tradingClass parameter in calculateImpliedVolatility.", "")
 		return
 	}
 
-	const VERSION = 2
+	const VERSION = 3
 
 	me := NewMsgEncoder(19, c.serverVersion)
 
@@ -3286,8 +3287,6 @@ func (c *EClient) ReqFundamentalData(reqID int64, contract *Contract, reportType
 		return
 	}
 
-	const VERSION = 2
-
 	if c.serverVersion < MIN_SERVER_VER_FUNDAMENTAL_DATA {
 		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+"  It does not support fundamental data request.", "")
 		return
@@ -3298,9 +3297,12 @@ func (c *EClient) ReqFundamentalData(reqID int64, contract *Contract, reportType
 		return
 	}
 
+	const VERSION = 2
+
 	me := NewMsgEncoder(12, c.serverVersion)
 
 	me.encodeMsgID(REQ_FUNDAMENTAL_DATA)
+
 	me.encodeInt(VERSION)
 	me.encodeInt64(reqID)
 

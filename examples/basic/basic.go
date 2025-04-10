@@ -12,12 +12,12 @@ const (
 	port = 7497
 )
 
-// var orderID int64
+var orderID int64
 
-// func nextID() int64 {
-// 	orderID++
-// 	return orderID
-// }
+func nextID() int64 {
+	orderID++
+	return orderID
+}
 
 func main() {
 	// We set logger for pretty logs to console
@@ -83,7 +83,6 @@ func main() {
 	ib.ReqFamilyCodes()
 	time.Sleep(1 * time.Second)
 	ib.ReqScannerParameters()
-
 	// ########## market data ##########
 	//eurusd := &ibapi.Contract{Symbol: "EUR", SecType: "CASH", Currency: "USD", Exchange: "IDEALPRO"}
 	//id := nextID()
@@ -112,12 +111,25 @@ func main() {
 	// time.Sleep(4 * time.Second)
 	// ib.ReqGlobalCancel()
 	// Real time bars
-
 	// duration := "60 S"
 	// barSize := "5 secs"
 	// whatToShow := "MIDPOINT" // "TRADES", "MIDPOINT", "BID" or "ASK"
 	// ib.ReqHistoricalData(id, eurusd, "", duration, barSize, whatToShow, true, 1, true, nil)
 
+	// ########## orders ##########
+	id := nextID()
+	opt := ibapi.NewContract()
+	opt.Symbol = "GOOG"
+	opt.SecType = "OPT"
+	opt.Exchange = "SMART"
+	opt.Currency = "USD"
+	opt.LastTradeDateOrContractMonth = "202512"
+	opt.Strike = 150
+	opt.Right = "C"
+	opt.Multiplier = "100"
+	ib.CalculateOptionPrice(id, opt, 0.25, 150, nil)
+	time.Sleep(3 * time.Second)
+	ib.CalculateImpliedVolatility(nextID(), opt, 14.35, 150, nil)
 	time.Sleep(10 * time.Second)
 	//ib.CancelHistoricalData(id)
 	err := ib.Disconnect()

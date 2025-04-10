@@ -239,12 +239,19 @@ func TestHistoricalDataRequests(t *testing.T) {
 
 func TestOptionsOperations(t *testing.T) {
 	ib := setupIBClient(t)
+	time.Sleep(1 * time.Second)
 	ib.ReqSecDefOptParams(0, "IBM", "", "STK", 8314)
+	time.Sleep(1 * time.Second)
 	ib.CalculateImpliedVolatility(5001, OptionWithLocalSymbol(), 0.5, 55, nil)
+	time.Sleep(1 * time.Second)
 	ib.CancelCalculateImpliedVolatility(5001)
+	time.Sleep(1 * time.Second)
 	ib.CalculateOptionPrice(5002, OptionWithLocalSymbol(), 0.6, 55, nil)
+	time.Sleep(1 * time.Second)
 	ib.CancelCalculateOptionPrice(5002)
+	time.Sleep(1 * time.Second)
 	ib.ExerciseOptions(5003, OptionWithTradingClass(), 1, 1, "", 1, "20231018-12:00:00", "CustAcct", true)
+	time.Sleep(1 * time.Second)
 }
 
 func TestContractOperations(t *testing.T) {
