@@ -325,7 +325,7 @@ func (w Wrapper) OrderStatus(orderID OrderID, status string, filled Decimal, rem
 func (w Wrapper) OpenOrder(orderID OrderID, contract *Contract, order *Order, orderState *OrderState) {
 	logger := log.Info().Str("PermID", LongMaxString(order.PermID)).Str("ClientID", IntMaxString(order.ClientID)).Str("OrderID", IntMaxString(order.OrderID))
 	logger = logger.Str("Account", order.Account).Str("Symbol", contract.Symbol).Str("SecType", contract.SecType)
-	logger = logger.Str("Exchange", contract.Exchange).Str("Action", order.Action).Str("OrderType", order.OrderType)
+	logger = logger.Str("Exchange", contract.Exchange).Float64("Strike", contract.Strike).Str("Action", order.Action).Str("OrderType", order.OrderType)
 	logger = logger.Str("TotalQuantity", DecimalMaxString(order.TotalQuantity)).Str("CashQty", FloatMaxString(order.CashQty))
 	logger = logger.Str("LmtPrice", FloatMaxString(order.LmtPrice)).Str("AuxPrice", FloatMaxString(order.AuxPrice)).Str("Status", orderState.Status)
 	logger = logger.Str("MinTradeQty", IntMaxString(order.MinTradeQty)).Str("MinCompeteSize", IntMaxString(order.MinCompeteSize))

@@ -441,6 +441,9 @@ func TestOrderOperations(t *testing.T) {
 
 	// Imbalance only order
 	ib.PlaceOrder(nextID(), USStockAtSmart(), LimitOnCloseOrderWithImbalanceOnly("BUY", StringToDecimal("100"), 44.44))
+
+	// zero strike order
+	ib.PlaceOrder(nextID(), OptForecastxZeroStrike(), LimitOrder("BUY", StringToDecimal("1"), 0.05))
 }
 
 func TestOcaSamples(t *testing.T) {

@@ -61,7 +61,7 @@ type Contract struct {
 	SecType                      string
 	LastTradeDateOrContractMonth string
 	LastTradeDate                string
-	Strike                       float64 // float64 !!
+	Strike                       float64 // UNSET_FLOAT
 	Right                        string
 	Multiplier                   string
 	Exchange                     string
@@ -84,7 +84,9 @@ type Contract struct {
 }
 
 func NewContract() *Contract {
-	return &Contract{}
+	return &Contract{
+		Strike: UNSET_FLOAT,
+	}
 }
 
 func (c *Contract) Equal(other *Contract) bool {

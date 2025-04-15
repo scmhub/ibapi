@@ -148,10 +148,11 @@ const (
 	MIN_SERVER_VER_IMBALANCE_ONLY                     Version = 199
 	MIN_SERVER_VER_PARAMETRIZED_DAYS_OF_EXECUTIONS    Version = 200
 	MIN_SERVER_VER_PROTOBUF                           Version = 201
+	MIN_SERVER_VER_ZERO_STRIKE_PRICE                  Version = 202
 
 	// 100+ messaging
 	// 100 = enhanced handshake, msg length prefixes
 
 	MIN_CLIENT_VER = 100
-	MAX_CLIENT_VER = MIN_SERVER_VER_PROTOBUF
+	MAX_CLIENT_VER = MIN_SERVER_VER_ZERO_STRIKE_PRICE
 )

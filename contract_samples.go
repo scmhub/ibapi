@@ -772,3 +772,29 @@ func Fund() *Contract {
 
 	return contract
 }
+
+func OptForecastx() *Contract {
+
+	contract := NewContract()
+	contract.Symbol = "CPIY"
+	contract.SecType = "OPT"
+	contract.LastTradeDateOrContractMonth = "202612"
+	contract.Exchange = "FORECASTX"
+	contract.Currency = "USD"
+
+	return contract
+}
+
+func OptForecastxZeroStrike() *Contract {
+
+	contract := NewContract()
+	contract.Symbol = "CPIY"
+	contract.SecType = "OPT"
+	contract.LastTradeDateOrContractMonth = "202612"
+	contract.Exchange = "FORECASTX"
+	contract.Currency = "USD"
+	contract.Strike = 0
+	contract.Right = "C"
+
+	return contract
+}
