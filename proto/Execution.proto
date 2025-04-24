@@ -25,4 +25,5 @@ message Execution {
     optional int32 lastLiquidity = 18;
     optional bool isPriceRevisionPending = 19;
     optional string submitter = 20;
+    optional int32 optExerciseOrLapseType = 21;
 }

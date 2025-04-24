@@ -104,5 +104,8 @@ func decodeExecution(executionProto *protobf.Execution) *Execution {
 	if executionProto.Submitter != nil {
 		execution.Submitter = executionProto.GetSubmitter()
 	}
+	if executionProto.OptExerciseOrLapseType != nil {
+		execution.OptExerciseOrLapseType = OptionExerciseType(executionProto.GetOptExerciseOrLapseType())
+	}
 	return execution
 }
