@@ -16,12 +16,9 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"os"
-	"os/signal"
 	"slices"
 	"strconv"
 	"sync"
-	"syscall"
 
 	"github.com/scmhub/ibapi/protobuf"
 	"google.golang.org/protobuf/proto"
@@ -506,17 +503,6 @@ func (c *EClient) Connect(host string, port int, clientID int64) error {
 	if err := c.startAPI(); err != nil {
 		return err
 	}
-	log.Debug().Msg("API started")
-
-	// graceful shutdown
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
-	go func() {
-		<-sigChan
-		log.Info().Msg("detected KeyboardInterrupt, SystemExit")
-		c.Disconnect()
-		os.Exit(1)
-	}()
 
 	log.Debug().Msg("IB Client Connected!")
 
