@@ -16,9 +16,12 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"os"
+	"os/signal"
 	"slices"
 	"strconv"
 	"sync"
+	"syscall"
 
 	"github.com/scmhub/ibapi/protobuf"
 	"google.golang.org/protobuf/proto"
@@ -506,6 +509,24 @@ func (c *EClient) Connect(host string, port int, clientID int64) error {
 
 	log.Debug().Msg("IB Client Connected!")
 
+	return nil
+}
+
+// ConnectWithGracefulShutdown connects and sets up signal handling for graceful shutdown.
+// This is a convenience for simple apps. Advanced users should handle signals themselves.
+func (c *EClient) ConnectWithGracefulShutdown(host string, port int, clientID int64) error {
+	err := c.Connect(host, port, clientID)
+	if err != nil {
+		return err
+	}
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+	go func() {
+		<-sigChan
+		log.Warn().Msg("detected termination signal, shutting down gracefully")
+		c.Disconnect()
+		os.Exit(0)
+	}()
 	return nil
 }
 
