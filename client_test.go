@@ -111,6 +111,7 @@ func TestReqCurrentTimeMillis(t *testing.T) {
 	ib.ReqCurrentTimeInMillis()
 	time.Sleep(3 * time.Second)
 }
+
 func TestPnlSingleOperation(t *testing.T) {
 	ib := setupIBClient(t)
 	ib.ReqPnLSingle(7002, account, "", 268084)
@@ -462,18 +463,24 @@ func TestConditionSamples(t *testing.T) {
 	ib := setupIBClient(t)
 	// Order conditioning activate - Order will become active if conditioning criteria is met
 	lmt := LimitOrder("BUY", StringToDecimal("100"), 20)
-	lmt.Conditions = append(lmt.Conditions, NewPriceCondition(DefaultTriggerMethod, 208813720, "SMART", 600, false, false))
-	lmt.Conditions = append(lmt.Conditions, NewExecutionCondition("EUR.USD", "CASH", "IDEALPRO", true))
-	lmt.Conditions = append(lmt.Conditions, NewMarginCondition(30, true, false))
-	lmt.Conditions = append(lmt.Conditions, NewPercentageChangeCondition(15.0, 208813720, "SMART", true, true))
-	lmt.Conditions = append(lmt.Conditions, NewTimeCondition("20220808 10:00:00 US/Eastern", true, false))
-	lmt.Conditions = append(lmt.Conditions, NewVolumeCondition(208813720, "SMART", false, 100, true))
+	priceCondition := NewPriceCondition(8314, "SMART", 600, BidAskTriggerMethod, true, false)
+	executionCondition := NewExecutionCondition("EUR.USD", "CASH", "IDEALPRO", true)
+	marginCondition := NewMarginCondition(30, true, false)
+	percentChangeCondition := NewPercentageChangeCondition(15.0, 208813720, "SMART", true, true)
+	timeCondition := NewTimeCondition("20220808 10:00:00 US/Eastern", true, false)
+	volumeCondition := NewVolumeCondition(208813720, "SMART", false, 100, true)
+	lmt.Conditions = append(lmt.Conditions, priceCondition)
+	lmt.Conditions = append(lmt.Conditions, executionCondition)
+	lmt.Conditions = append(lmt.Conditions, marginCondition)
+	lmt.Conditions = append(lmt.Conditions, percentChangeCondition)
+	lmt.Conditions = append(lmt.Conditions, timeCondition)
+	lmt.Conditions = append(lmt.Conditions, volumeCondition)
 	ib.PlaceOrder(nextID(), USStock(), lmt)
 
 	// Conditions can make the order active or cancel it. Only LMT orders can be conditionally canceled.
 	lmt2 := LimitOrder("BUY", StringToDecimal("100"), 20)
 	lmt2.ConditionsCancelOrder = true
-	lmt2.Conditions = append(lmt2.Conditions, NewPriceCondition(DefaultTriggerMethod, 208813720, "SMART", 600, false, false))
+	lmt2.Conditions = append(lmt2.Conditions, NewPriceCondition(208813720, "SMART", 600, BidAskTriggerMethod, false, false))
 	ib.PlaceOrder(nextID(), EuropeanStock(), lmt2)
 }
 

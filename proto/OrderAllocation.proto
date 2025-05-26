@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package protobuf;
+
+option go_package = ".;protobuf";
+
+message OrderAllocation {
+    optional string account = 1;
+    optional string position = 2;
+    optional string positionDesired = 3;
+    optional string positionAfter = 4;
+    optional string desiredAllocQty = 5;
+    optional string allowedAllocQty = 6;
+    optional bool isMonetary = 7;
+}

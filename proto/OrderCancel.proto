@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package protobuf;
+
+option go_package = ".;protobuf";
+
+message OrderCancel {
+    optional string manualOrderCancelTime = 1;
+    optional string extOperator = 2;
+    optional int32 manualOrderIndicator = 3;
+}

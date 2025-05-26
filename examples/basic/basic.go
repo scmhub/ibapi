@@ -1,9 +1,9 @@
 package main
 
 import (
+	"strings"
 	"time"
 
-	"github.com/rs/zerolog"
 	"github.com/scmhub/ibapi"
 )
 
@@ -22,7 +22,7 @@ func nextID() int64 {
 func main() {
 	// We set logger for pretty logs to console
 	log := ibapi.Logger()
-	ibapi.SetLogLevel(int(zerolog.TraceLevel))
+	//ibapi.SetLogLevel(int(zerolog.DebugLevel))
 	ibapi.SetConsoleWriter()
 	// ibapi.SetConnectionTimeout(1 * time.Second)
 
@@ -47,10 +47,8 @@ func main() {
 	// log.Warn().Interface("Log level", log.GetLevel()).Msg("Logger Warn")
 	// log.Error().Interface("Log level", log.GetLevel()).Msg("Logger Error")
 
-	// time.Sleep(1 * time.Second)
-	// log.Print("Is connected: ", ib.IsConnected())
-	// log.Print("Server Version: ", ib.ServerVersion())
-	// log.Print("TWS Connection time: ", ib.TWSConnectionTime())
+	time.Sleep(1 * time.Second)
+	log.Info().Bool("Is connected", ib.IsConnected()).Int("Server Version", ib.ServerVersion()).Str("TWS Connection time", ib.TWSConnectionTime()).Msg("Connection details")
 
 	time.Sleep(1 * time.Second)
 	ib.ReqCurrentTime()
@@ -64,25 +62,26 @@ func main() {
 	// ib.ReqAllOpenOrders()
 	// ib.ReqPositions()
 	// ib.ReqCompletedOrders(false)
+	// ib.ReqExecutions(690, ibapi.NewExecutionFilter())
 
-	// tags := []string{"AccountType", "NetLiquidation", "TotalCashValue", "SettledCash",
-	// 	"sAccruedCash", "BuyingPower", "EquityWithLoanValue",
-	// 	"PreviousEquityWithLoanValue", "GrossPositionValue", "ReqTEquity",
-	// 	"ReqTMargin", "SMA", "InitMarginReq", "MaintMarginReq", "AvailableFunds",
-	// 	"ExcessLiquidity", "Cushion", "FullInitMarginReq", "FullMaintMarginReq",
-	// 	"FullAvailableFunds", "FullExcessLiquidity", "LookAheadNextChange",
-	// 	"LookAheadInitMarginReq", "LookAheadMaintMarginReq",
-	// 	"LookAheadAvailableFunds", "LookAheadExcessLiquidity",
-	// 	"HighestSeverity", "DayTradesRemaining", "Leverage", "$LEDGER:ALL"}
-	// id := nextID()
-	// ib.ReqAccountSummary(id, "All", strings.Join(tags, ","))
-	// time.Sleep(10 * time.Second)
-	// ib.CancelAccountSummary(id)
+	tags := []string{"AccountType", "NetLiquidation", "TotalCashValue", "SettledCash",
+		"sAccruedCash", "BuyingPower", "EquityWithLoanValue",
+		"PreviousEquityWithLoanValue", "GrossPositionValue", "ReqTEquity",
+		"ReqTMargin", "SMA", "InitMarginReq", "MaintMarginReq", "AvailableFunds",
+		"ExcessLiquidity", "Cushion", "FullInitMarginReq", "FullMaintMarginReq",
+		"FullAvailableFunds", "FullExcessLiquidity", "LookAheadNextChange",
+		"LookAheadInitMarginReq", "LookAheadMaintMarginReq",
+		"LookAheadAvailableFunds", "LookAheadExcessLiquidity",
+		"HighestSeverity", "DayTradesRemaining", "Leverage", "$LEDGER:ALL"}
+	id := nextID()
+	ib.ReqAccountSummary(id, "All", strings.Join(tags, ","))
+	time.Sleep(10 * time.Second)
+	ib.CancelAccountSummary(id)
 
-	time.Sleep(1 * time.Second)
-	ib.ReqFamilyCodes()
-	time.Sleep(1 * time.Second)
-	ib.ReqScannerParameters()
+	// time.Sleep(1 * time.Second)
+	// ib.ReqFamilyCodes()
+	// time.Sleep(1 * time.Second)
+	// ib.ReqScannerParameters()
 	// ########## market data ##########
 	//eurusd := &ibapi.Contract{Symbol: "EUR", SecType: "CASH", Currency: "USD", Exchange: "IDEALPRO"}
 	//id := nextID()
@@ -105,11 +104,12 @@ func main() {
 	// id := nextID()
 	// eurusd := &ibapi.Contract{Symbol: "EUR", SecType: "CASH", Currency: "USD", Exchange: "IDEALPRO"}
 	// limitOrder := ibapi.LimitOrder("BUY", ibapi.StringToDecimal("20000"), 1.08)
-	// ib.PlaceOrder(id, eurusd, limitOrder)
+	// ib.PlaceOrder(id+102, eurusd, limitOrder)
+
 	// time.Sleep(4 * time.Second)
 	// ib.CancelOrder(id, ibapi.NewOrderCancel())
 	// time.Sleep(4 * time.Second)
-	// ib.ReqGlobalCancel()
+	// ib.ReqGlobalCancel(ibapi.NewOrderCancel())
 	// Real time bars
 	// duration := "60 S"
 	// barSize := "5 secs"
@@ -117,21 +117,23 @@ func main() {
 	// ib.ReqHistoricalData(id, eurusd, "", duration, barSize, whatToShow, true, 1, true, nil)
 
 	// ########## orders ##########
-	id := nextID()
-	opt := ibapi.NewContract()
-	opt.Symbol = "GOOG"
-	opt.SecType = "OPT"
-	opt.Exchange = "SMART"
-	opt.Currency = "USD"
-	opt.LastTradeDateOrContractMonth = "202512"
-	opt.Strike = 150
-	opt.Right = "C"
-	opt.Multiplier = "100"
-	ib.CalculateOptionPrice(id, opt, 0.25, 150, nil)
-	time.Sleep(3 * time.Second)
-	ib.CalculateImpliedVolatility(nextID(), opt, 14.35, 150, nil)
-	time.Sleep(10 * time.Second)
+	// id := nextID()
+	// opt := ibapi.NewContract()
+	// opt.Symbol = "GOOG"
+	// opt.SecType = "OPT"
+	// opt.Exchange = "SMART"
+	// opt.Currency = "USD"
+	// opt.LastTradeDateOrContractMonth = "202512"
+	// opt.Strike = 150
+	// opt.Right = "C"
+	// opt.Multiplier = "100"
+	// ib.CalculateOptionPrice(id, opt, 0.25, 150, nil)
+	// time.Sleep(3 * time.Second)
+	// ib.CalculateImpliedVolatility(nextID(), opt, 14.35, 150, nil)
+	// time.Sleep(10 * time.Second)
 	//ib.CancelHistoricalData(id)
+
+	time.Sleep(5 * time.Second)
 	err := ib.Disconnect()
 	if err != nil {
 		log.Error().Err(err).Msg("Disconnect")

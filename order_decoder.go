@@ -373,9 +373,8 @@ func (d *OrderDecoder) decodeAlgoParams(msgBuf *MsgBuffer) {
 
 func (d *OrderDecoder) decodeSolicited(msgBuf *MsgBuffer) {
 	if d.version >= 33 {
-		d.order.Solictied = msgBuf.decodeBool()
+		d.order.Solicited = msgBuf.decodeBool()
 	}
-
 }
 
 func (d *OrderDecoder) decodeWhatIfInfoAndCommissionAndFees(msgBuf *MsgBuffer) {
@@ -571,7 +570,7 @@ func (d *OrderDecoder) decodeCompletedStatus(msgBuf *MsgBuffer) {
 
 func (d *OrderDecoder) decodeUsePriceMgmtAlgo(msgBuf *MsgBuffer) {
 	if d.serverVersion >= MIN_SERVER_VER_PRICE_MGMT_ALGO {
-		d.order.UsePriceMgmtAlgo = msgBuf.decodeBool()
+		d.order.UsePriceMgmtAlgo = msgBuf.decodeInt64ShowUnset()
 	}
 }
 

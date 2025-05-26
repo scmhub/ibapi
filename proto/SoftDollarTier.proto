@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package protobuf;
+
+option go_package = ".;protobuf";
+
+message SoftDollarTier {
+    optional string name = 1;
+    optional string value = 2;
+    optional string displayName = 3;
+}

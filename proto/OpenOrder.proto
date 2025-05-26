@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package protobuf;
+
+import "Contract.proto";
+import "Order.proto";
+import "OrderState.proto";
+
+option go_package = ".;protobuf";
+
+message OpenOrder {
+    optional int32 orderId = 1;
+    optional Contract contract = 2;
+    optional Order order = 3;
+    optional OrderState orderState = 4;
+}

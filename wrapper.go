@@ -2,6 +2,8 @@ package ibapi
 
 import (
 	"time"
+
+	"github.com/scmhub/ibapi/protobuf"
 )
 
 // EWrapper contains the function to handle incoming messages from TWS or Gateway
@@ -280,6 +282,19 @@ type EWrapper interface {
 	UserInfo(reqID int64, whiteBrandingId string)
 	// CurrentTimeInMillis returns IB server's current time in milliseconds after the invocation of reqCurrentTimeInMillis.
 	CurrentTimeInMillis(timeInMillis int64)
+	// Protobuf
+	// ExecDetailsProtoBuf
+	ExecDetailsProtoBuf(executionDetailsProto *protobuf.ExecutionDetails)
+	// ExecDetailsEndProtoBuf
+	ExecDetailsEndProtoBuf(executionDetailsEndProto *protobuf.ExecutionDetailsEnd)
+	// OrderStatusProtoBuf
+	OrderStatusProtoBuf(orderStatusProto *protobuf.OrderStatus)
+	// OpenOrderProtoBuf
+	OpenOrderProtoBuf(openOrderProto *protobuf.OpenOrder)
+	// OpenOrdersEndProtoBuf
+	OpenOrdersEndProtoBuf(openOrdersEndProto *protobuf.OpenOrdersEnd)
+	// ErrorProtoBuf
+	ErrorProtoBuf(errorProto *protobuf.ErrorMessage)
 }
 
 var _ EWrapper = (*Wrapper)(nil)
@@ -694,4 +709,30 @@ func (w Wrapper) UserInfo(reqID int64, whiteBrandingId string) {
 
 func (w Wrapper) CurrentTimeInMillis(timeInMillis int64) {
 	log.Info().Int64("TimeInMillis", timeInMillis).Msg("<CurrentTimeInMillis>")
+}
+
+// Protobuf
+
+func (w Wrapper) ExecDetailsProtoBuf(executionDetailsProto *protobuf.ExecutionDetails) {
+	log.Debug().Stringer("ExecutionDetailsProto", executionDetailsProto).Msg("<ExecDetailsProtoBuf>")
+}
+
+func (w Wrapper) ExecDetailsEndProtoBuf(executionDetailsEndProto *protobuf.ExecutionDetailsEnd) {
+	log.Debug().Stringer("ExecutionDetailsEndProto", executionDetailsEndProto).Msg("<ExecDetailsEndProtoBuf>")
+}
+
+func (w Wrapper) OrderStatusProtoBuf(orderStatusProto *protobuf.OrderStatus) {
+	log.Debug().Stringer("OrderStatusProto", orderStatusProto).Msg("<OrderStatusProtoBuf>")
+}
+
+func (w Wrapper) OpenOrderProtoBuf(openOrderProto *protobuf.OpenOrder) {
+	log.Debug().Stringer("OpenOrderProto", openOrderProto).Msg("<OpenOrderProtoBuf>")
+}
+
+func (w Wrapper) OpenOrdersEndProtoBuf(openOrdersEndProto *protobuf.OpenOrdersEnd) {
+	log.Debug().Stringer("OpenOrdersEndProto", openOrdersEndProto).Msg("<OpenOrdersEndProtoBuf>")
+}
+
+func (w Wrapper) ErrorProtoBuf(errorProto *protobuf.ErrorMessage) {
+	log.Debug().Stringer("ErrorProto", errorProto).Msg("<ErrorProtoBuf>")
 }

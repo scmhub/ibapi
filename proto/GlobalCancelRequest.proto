@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package protobuf;
+
+import "OrderCancel.proto";
+
+option go_package = ".;protobuf";
+
+message GlobalCancelRequest {
+    optional OrderCancel orderCancel = 1;
+}

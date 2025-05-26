@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
-	"slices"
 	"strconv"
 	"sync"
 	"syscall"
@@ -142,8 +141,8 @@ func (me *MsgEncoder) encodeInt64(v int64) *MsgEncoder {
 
 // encodeInt64 adds a raw int64 value to the message
 func (me *MsgEncoder) encodeRawInt64(v int64) *MsgEncoder {
-	var arrayOfBytes [8]byte
-	binary.BigEndian.PutUint64(arrayOfBytes[:], uint64(v))
+	var arrayOfBytes [RAW_INT_LEN]byte
+	binary.BigEndian.PutUint32(arrayOfBytes[:], uint32(v))
 	me.buf.Write(arrayOfBytes[:])
 	return me
 }
@@ -177,6 +176,12 @@ func (me *MsgEncoder) encodeBool(v bool) *MsgEncoder {
 func (me *MsgEncoder) encodeBytes(v []byte) *MsgEncoder {
 	me.buf.Write(v)
 	me.buf.WriteByte(delim)
+	return me
+}
+
+// encodeBytes adds raw bytes to the message
+func (me *MsgEncoder) encodeProto(v []byte) *MsgEncoder {
+	me.buf.Write(v)
 	return me
 }
 
@@ -380,7 +385,10 @@ func (c *EClient) validateInvalidSymbols(host string) error {
 }
 
 func (c *EClient) useProtoBuf(msgID int64) bool {
-	return c.serverVersion >= MIN_SERVER_VER_PROTOBUF && slices.Contains(PROTOBUF_MSG_IDS, msgID)
+	if version, exists := PROTOBUF_MSG_IDS[OUT(msgID)]; exists {
+		return version <= c.serverVersion
+	}
+	return false
 }
 
 // startAPI initiates the message exchange between the client application and the TWS/IB Gateway.
@@ -1149,6 +1157,11 @@ func (c *EClient) ExerciseOptions(reqID TickerID, contract *Contract, exerciseAc
 // order contains the details of the traded order.
 func (c *EClient) PlaceOrder(orderID OrderID, contract *Contract, order *Order) {
 
+	if c.useProtoBuf(PLACE_ORDER) {
+		c.placeOrderProtoBuf(createPlaceOrderRequestProto(orderID, contract, order))
+		return
+	}
+
 	if !c.IsConnected() {
 		c.wrapper.Error(orderID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
@@ -1271,7 +1284,7 @@ func (c *EClient) PlaceOrder(orderID OrderID, contract *Contract, order *Order) 
 		return
 	}
 
-	if c.serverVersion < MIN_SERVER_VER_ORDER_SOLICITED && order.Solictied {
+	if c.serverVersion < MIN_SERVER_VER_ORDER_SOLICITED && order.Solicited {
 		c.wrapper.Error(orderID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support order solicited parameter.", "")
 		return
 	}
@@ -1316,7 +1329,7 @@ func (c *EClient) PlaceOrder(orderID OrderID, contract *Contract, order *Order) 
 		return
 	}
 
-	if c.serverVersion < MIN_SERVER_VER_PRICE_MGMT_ALGO && order.UsePriceMgmtAlgo {
+	if c.serverVersion < MIN_SERVER_VER_PRICE_MGMT_ALGO && order.UsePriceMgmtAlgo != USE_PRICE_MGMT_ALGO_DEFAULT {
 		c.wrapper.Error(orderID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support Use price management algo requests", "")
 		return
 	}
@@ -1681,7 +1694,7 @@ func (c *EClient) PlaceOrder(orderID OrderID, contract *Contract, order *Order) 
 	}
 
 	if c.serverVersion >= MIN_SERVER_VER_ORDER_SOLICITED {
-		me.encodeBool(order.Solictied)
+		me.encodeBool(order.Solicited)
 	}
 
 	if c.serverVersion >= MIN_SERVER_VER_RANDOMIZE_SIZE_AND_PRICE {
@@ -1754,7 +1767,7 @@ func (c *EClient) PlaceOrder(orderID OrderID, contract *Contract, order *Order) 
 	}
 
 	if c.serverVersion >= MIN_SERVER_VER_PRICE_MGMT_ALGO {
-		me.encodeBool(order.UsePriceMgmtAlgo)
+		me.encodeIntMax(order.UsePriceMgmtAlgo)
 	}
 
 	if c.serverVersion >= MIN_SERVER_VER_DURATION {
@@ -1825,9 +1838,39 @@ func (c *EClient) PlaceOrder(orderID OrderID, contract *Contract, order *Order) 
 	c.reqChan <- me.Bytes()
 }
 
+func (c *EClient) placeOrderProtoBuf(placeOrderRequestProto *protobuf.PlaceOrderRequest) {
+
+	orderID := NO_VALID_ID
+	if placeOrderRequestProto.OrderId != nil {
+		orderID = int64(*placeOrderRequestProto.OrderId)
+	}
+
+	if !c.IsConnected() {
+		c.wrapper.Error(orderID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+	me := NewMsgEncoder(150, c.serverVersion)
+	me.encodeMsgID(PLACE_ORDER + PROTOBUF_MSG_ID)
+
+	msg, err := proto.Marshal(placeOrderRequestProto)
+	if err != nil {
+		c.wrapper.Error(orderID, currentTimeMillis(), 0, "Failed to marshal PlaceOrderRequest: "+err.Error(), "")
+		return
+	}
+
+	me.encodeProto(msg)
+
+	c.reqChan <- me.Bytes()
+}
+
 // CancelOrder cancel an order by orderId.
 // It can only be used to cancel an order that was placed originally by a client with the same client ID
 func (c *EClient) CancelOrder(orderID OrderID, orderCancel OrderCancel) {
+
+	if c.useProtoBuf(CANCEL_ORDER) {
+		c.cancelOrderProtoBuf(createCancelOrderRequestProto(orderID, &orderCancel))
+		return
+	}
 
 	if !c.IsConnected() {
 		c.wrapper.Error(orderID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
@@ -1873,6 +1916,33 @@ func (c *EClient) CancelOrder(orderID OrderID, orderCancel OrderCancel) {
 	c.reqChan <- me.Bytes()
 }
 
+func (c *EClient) cancelOrderProtoBuf(cancelOrderRequestProto *protobuf.CancelOrderRequest) {
+
+	orderID := NO_VALID_ID
+	if cancelOrderRequestProto.OrderId != nil {
+		orderID = int64(*cancelOrderRequestProto.OrderId)
+	}
+
+	if !c.IsConnected() {
+		c.wrapper.Error(orderID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
+	me := NewMsgEncoder(9, c.serverVersion)
+	me.encodeMsgID(CANCEL_ORDER + PROTOBUF_MSG_ID)
+
+	msg, err := proto.Marshal(cancelOrderRequestProto)
+	if err != nil {
+		c.wrapper.Error(orderID, currentTimeMillis(), 0, "Failed to marshal CancelOrderRequest: "+err.Error(), "")
+		return
+	}
+
+	me.encodeProto(msg)
+
+	c.reqChan <- me.Bytes()
+}
+
+// CancelOrderAsync cancel an order by orderId.
 // ReqOpenOrders requests the open orders that were placed from this client.
 // Each open order will be fed back through the openOrder() and orderStatus() functions on the EWrapper.
 // The client with a clientId of 0 will also receive the TWS-owned open orders.
@@ -1941,6 +2011,11 @@ func (c *EClient) ReqAllOpenOrders() {
 // ReqGlobalCancel cancels all open orders globally. It cancels both API and TWS open orders.
 func (c *EClient) ReqGlobalCancel(orderCancel OrderCancel) {
 
+	if c.useProtoBuf(REQ_ALL_OPEN_ORDERS) {
+		c.reqGlobalCancelProtoBuf(createGlobalCancelRequestProto(&orderCancel))
+		return
+	}
+
 	if !c.IsConnected() {
 		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
@@ -1964,6 +2039,27 @@ func (c *EClient) ReqGlobalCancel(orderCancel OrderCancel) {
 		me.encodeString(orderCancel.ExtOperator)
 		me.encodeInt64(orderCancel.ManualOrderIndicator)
 	}
+
+	c.reqChan <- me.Bytes()
+}
+
+func (c *EClient) reqGlobalCancelProtoBuf(globalCancelRequestProto *protobuf.GlobalCancelRequest) {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
+	me := NewMsgEncoder(4, c.serverVersion)
+	me.encodeMsgID(REQ_GLOBAL_CANCEL + PROTOBUF_MSG_ID)
+
+	msg, err := proto.Marshal(globalCancelRequestProto)
+	if err != nil {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), 0, "Failed to marshal GlobalCancelRequest: "+err.Error(), "")
+		return
+	}
+
+	me.encodeProto(msg)
 
 	c.reqChan <- me.Bytes()
 }
@@ -2350,68 +2446,11 @@ func (c *EClient) CancelPnLSingle(reqID int64) {
 // execFilter contains attributes that describe the filter criteria used to determine which execution reports are returned.
 // NOTE: Time format must be 'yyyymmdd-hh:mm:ss' Eg: '20030702-14:55'
 func (c *EClient) ReqExecutions(reqID int64, execFilter *ExecutionFilter) {
+
 	if c.useProtoBuf(REQ_EXECUTIONS) {
-		c.reqExecutionsNonProtobuf(reqID, execFilter)
-	} else {
-		c.reqExecutionProtobuf(reqID, execFilter)
-	}
-}
-
-func (c *EClient) reqExecutionProtobuf(reqID int64, execFilter *ExecutionFilter) {
-
-	if !c.IsConnected() {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		c.reqExecutionProtobuf(createExecutionRequestProto(reqID, execFilter))
 		return
 	}
-
-	execFilterPB := protobuf.ExecutionFilter{}
-	if execFilter.ClientID != UNSET_INT {
-		clientID := int32(execFilter.ClientID)
-		execFilterPB.ClientId = &clientID
-	}
-	if execFilter.AcctCode != "" {
-		execFilterPB.AcctCode = &execFilter.AcctCode
-	}
-	if execFilter.Time != "" {
-		execFilterPB.Time = &execFilter.Time
-	}
-	if execFilter.Symbol != "" {
-		execFilterPB.Symbol = &execFilter.Symbol
-	}
-	if execFilter.SecType != "" {
-		execFilterPB.SecType = &execFilter.SecType
-	}
-	if execFilter.Exchange != "" {
-		execFilterPB.Exchange = &execFilter.Exchange
-	}
-	if execFilter.Side != "" {
-		execFilterPB.Side = &execFilter.Side
-	}
-	if execFilter.LastNDays != UNSET_INT {
-		lastNDays := int32(execFilter.LastNDays)
-		execFilterPB.LastNDays = &lastNDays
-	}
-	if execFilter.SpecificDates != nil {
-		execFilterPB.SpecificDates = make([]int32, len(execFilter.SpecificDates))
-		for i, date := range execFilter.SpecificDates {
-			execFilterPB.SpecificDates[i] = int32(date)
-		}
-	}
-
-	executionRequest := protobuf.ExecutionRequest{}
-	id := int32(reqID)
-	executionRequest.ReqId = &id
-	executionRequest.ExecutionFilter = &execFilterPB
-
-	msg, err := proto.Marshal(&executionRequest)
-	if err != nil {
-		log.Panic().Err(err).Msg("reqExecutionProtobuf marshal error")
-	}
-
-	c.reqChan <- msg
-}
-
-func (c *EClient) reqExecutionsNonProtobuf(reqID int64, execFilter *ExecutionFilter) {
 
 	if !c.IsConnected() {
 		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
@@ -2450,6 +2489,31 @@ func (c *EClient) reqExecutionsNonProtobuf(reqID int64, execFilter *ExecutionFil
 			me.encodeInt64(date)
 		}
 	}
+
+	c.reqChan <- me.Bytes()
+}
+
+func (c *EClient) reqExecutionProtobuf(executionRequestProto *protobuf.ExecutionRequest) {
+
+	reqID := NO_VALID_ID
+	if executionRequestProto.ReqId != nil {
+		reqID = int64(*executionRequestProto.ReqId)
+	}
+
+	if !c.IsConnected() {
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
+	me := NewMsgEncoder(0, c.serverVersion)
+	me.encodeMsgID(REQ_EXECUTIONS + PROTOBUF_MSG_ID)
+
+	msg, err := proto.Marshal(executionRequestProto)
+	if err != nil {
+		log.Panic().Err(err).Msg("reqExecutionProtobuf marshal error")
+	}
+
+	me.encodeProto(msg)
 
 	c.reqChan <- me.Bytes()
 }

@@ -84,21 +84,18 @@ func (m *MsgBuffer) decodeRawInt64() int64 {
 		log.Panic().Err(m.err).Msg("decode raw int64 read error")
 	}
 
-	// Ensure m.bs has sufficient capacity
-	if cap(m.bs) < RAW_INT_LEN {
-		m.bs = make([]byte, RAW_INT_LEN)
-	} else {
-		m.bs = m.bs[:RAW_INT_LEN]
+	// Read 4 bytes
+	buf := make([]byte, RAW_INT_LEN)
+	n, err := m.Read(buf)
+	if err != nil || n != RAW_INT_LEN {
+		log.Panic().Err(err).Msg("decode raw int64 read error")
 	}
 
-	// Read RAW_INT_LEN bytes into m.bs
-	_, m.err = m.Read(m.bs)
-	if m.err != nil {
-		log.Panic().Err(m.err).Msg("decode raw int64 read error")
-	}
+	// Update m.bs to contain the remaining buffer
+	m.bs = m.Bytes()
 
-	// Convert bytes directly to int64 using Uint32
-	return int64(binary.BigEndian.Uint32(m.bs))
+	// Convert directly to int64 using LittleEndian
+	return int64(binary.BigEndian.Uint32(buf))
 }
 
 func (m *MsgBuffer) decodeDecimal() Decimal {
@@ -221,6 +218,22 @@ func makeField(val any) string {
 func splitMsgBytes(data []byte) [][]byte {
 	fields := bytes.Split(data, []byte{delim})
 	return fields[:len(fields)-1]
+}
+
+func stringIsEmpty(s string) bool {
+	return s == ""
+}
+
+func isValidFloat64Value(val float64) bool {
+	return val != UNSET_FLOAT
+}
+
+func isValidInt64Value(val int64) bool {
+	return val != UNSET_INT && val != UNSET_LONG
+}
+
+func isValidDecimalValue(val Decimal) bool {
+	return val != UNSET_DECIMAL
 }
 
 func FloatMaxString(val float64) string {

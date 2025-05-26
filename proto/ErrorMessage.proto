@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package protobuf;
+
+option go_package = ".;protobuf";
+
+message ErrorMessage {
+    optional int32 id = 1;
+    optional int64 errorTime = 2;
+    optional int32 errorCode = 3;
+    optional string errorMsg = 4;
+    optional string advancedOrderRejectJson = 5;
+}

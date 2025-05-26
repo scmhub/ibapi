@@ -11,6 +11,14 @@ const (
 	AUCTION_TRANSPARENT AuctionStrategy = 3
 )
 
+type UsePriceMmgtAlgo = int64
+
+const (
+	USE_PRICE_MGMT_ALGO_DONT_USE UsePriceMmgtAlgo = 0
+	USE_PRICE_MGMT_ALGO_USE      UsePriceMmgtAlgo = 1
+	USE_PRICE_MGMT_ALGO_DEFAULT  UsePriceMmgtAlgo = UNSET_INT
+)
+
 var COMPETE_AGAINST_BEST_OFFSET_UP_TO_MID = INFINITY_FLOAT
 
 // OrderComboLeg .
@@ -153,7 +161,7 @@ type Order struct {
 
 	// Not Held
 	NotHeld   bool
-	Solictied bool
+	Solicited bool
 
 	// models
 	ModelCode string
@@ -209,7 +217,7 @@ type Order struct {
 	RouteMarketableToBbo bool
 	ParentPermID         int64
 
-	UsePriceMgmtAlgo         bool
+	UsePriceMgmtAlgo         UsePriceMmgtAlgo
 	Duration                 int64 `default:"UNSET_INT"`
 	PostToAts                int64 `default:"UNSET_INT"`
 	AdvancedErrorOverride    string
@@ -277,6 +285,7 @@ func NewOrder() *Order {
 
 	order.FilledQuantity = UNSET_DECIMAL
 
+	order.UsePriceMgmtAlgo = USE_PRICE_MGMT_ALGO_DEFAULT
 	order.Duration = UNSET_INT
 	order.PostToAts = UNSET_INT
 	order.MinTradeQty = UNSET_INT

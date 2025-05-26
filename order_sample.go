@@ -868,7 +868,7 @@ func WhatIfLimitOrder(action string, quantity Decimal, limitPrice float64) *Orde
 }
 
 // NewPriceCondition .
-func NewPriceCondition(triggerMethod int64, conId int64, exchange string, price float64,
+func NewPriceCondition(conId int64, exchange string, price float64, triggerMethod TriggerMethod,
 	isMore bool, isConjunction bool) *PriceCondition {
 
 	// Conditions have to be created via the CreateOrderCondition and cast to the proper OrderCondition
@@ -883,7 +883,7 @@ func NewPriceCondition(triggerMethod int64, conId int64, exchange string, price 
 	// this quantity
 	priceCondition.Price = price
 	// AND | OR next condition (will be ignored if no more conditions are added)
-	priceCondition.IsConjunctionConnection = isConjunction
+	priceCondition.SetIsConjunctionConnection(isConjunction)
 
 	return priceCondition
 
@@ -900,7 +900,7 @@ func NewExecutionCondition(symbol string, secType string, exchange string, isCon
 	// for this secType
 	execCondition.SecType = secType
 	// AND | OR next condition (will be ignored if no more conditions are added)
-	execCondition.IsConjunctionConnection = isConjunction
+	execCondition.SetIsConjunctionConnection(isConjunction)
 
 	return execCondition
 }
@@ -914,7 +914,7 @@ func NewMarginCondition(percent int64, isMore bool, isConjunction bool) *MarginC
 	// given percent
 	marginCondition.Percent = percent
 	// AND | OR next condition (will be ignored if no more conditions are added)
-	marginCondition.IsConjunctionConnection = isConjunction
+	marginCondition.SetIsConjunctionConnection(isConjunction)
 
 	return marginCondition
 }
@@ -932,7 +932,7 @@ func NewPercentageChangeCondition(pctChange float64, conId int64, exchange strin
 	// when traded on this exchange...
 	pctChangeCondition.Exchange = exchange
 	// AND | OR next condition (will be ignored if no more conditions are added)
-	pctChangeCondition.IsConjunctionConnection = isConjunction
+	pctChangeCondition.SetIsConjunctionConnection(isConjunction)
 
 	return pctChangeCondition
 }
@@ -946,7 +946,7 @@ func NewTimeCondition(time string, isMore bool, isConjunction bool) *TimeConditi
 	// this time..
 	timeCondition.Time = time
 	// AND | OR next condition (will be ignored if no more conditions are added)
-	timeCondition.IsConjunctionConnection = isConjunction
+	timeCondition.SetIsConjunctionConnection(isConjunction)
 
 	return timeCondition
 }
@@ -965,7 +965,7 @@ func NewVolumeCondition(conId int64, exchange string, isMore bool, volume int64,
 	// than this...
 	volCond.Volume = volume
 	// AND | OR next condition (will be ignored if no more conditions are added)
-	volCond.IsConjunctionConnection = isConjunction
+	volCond.SetIsConjunctionConnection(isConjunction)
 
 	return volCond
 }

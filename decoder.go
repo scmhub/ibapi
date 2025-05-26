@@ -26,7 +26,6 @@ func (d *EDecoder) interpret(msgBytes []byte) {
 		return
 	}
 
-	// read the msg type
 	var msgID int64
 	if d.serverVersion >= MIN_SERVER_VER_PROTOBUF {
 		msgID = msgBuf.decodeRawInt64()
@@ -40,185 +39,196 @@ func (d *EDecoder) interpret(msgBytes []byte) {
 		msgID -= PROTOBUF_MSG_ID
 	}
 
-	switch msgID {
-	case TICK_PRICE:
-		d.processTickPriceMsg(msgBuf)
-	case TICK_SIZE:
-		d.processTickSizeMsg(msgBuf)
-	case TICK_OPTION_COMPUTATION:
-		d.processTickOptionComputationMsg(msgBuf)
-	case TICK_GENERIC:
-		d.processTickGenericMsg(msgBuf)
-	case TICK_STRING:
-		d.processTickStringMsg(msgBuf)
-	case TICK_EFP:
-		d.processTickEfpMsg(msgBuf)
-	case ORDER_STATUS:
-		d.processOrderStatusMsg(msgBuf)
-	case ERR_MSG:
-		d.processErrMsg(msgBuf)
-	case OPEN_ORDER:
-		d.processOpenOrderMsg(msgBuf)
-	case ACCT_VALUE:
-		d.processAcctValueMsg(msgBuf)
-	case PORTFOLIO_VALUE:
-		d.processPortfolioValueMsg(msgBuf)
-	case ACCT_UPDATE_TIME:
-		d.processAcctUpdateTimeMsg(msgBuf)
-	case NEXT_VALID_ID:
-		d.processNextValidIdMsg(msgBuf)
-	case CONTRACT_DATA:
-		d.processContractDataMsg(msgBuf)
-	case BOND_CONTRACT_DATA:
-		d.processBondContractDataMsg(msgBuf)
-	case EXECUTION_DATA:
-		if useProtoBuf {
+	if useProtoBuf {
+		switch msgID {
+		case ORDER_STATUS:
+			d.processOrderStatusMsgProtoBuf(msgBuf)
+		case ERR_MSG:
+			d.processErrorMsgProtoBuf(msgBuf)
+		case OPEN_ORDER:
+			d.processOpenOrderMsgProtoBuf(msgBuf)
+		case EXECUTION_DATA:
 			d.processExecutionDetailsMsgProtoBuf(msgBuf)
-		} else {
-			d.processExecutionDetailsMsg(msgBuf)
-		}
-	case MARKET_DEPTH:
-		d.processMarketDepthMsg(msgBuf)
-	case MARKET_DEPTH_L2:
-		d.processMarketDepthL2Msg(msgBuf)
-	case NEWS_BULLETINS:
-		d.processNewsBulletinsMsg(msgBuf)
-	case MANAGED_ACCTS:
-		d.processManagedAcctsMsg(msgBuf)
-	case RECEIVE_FA:
-		d.processReceiveFaMsg(msgBuf)
-	case HISTORICAL_DATA:
-		d.processHistoricalDataMsg(msgBuf)
-	case SCANNER_DATA:
-		d.processScannerDataMsg(msgBuf)
-	case SCANNER_PARAMETERS:
-		d.processScannerParametersMsg(msgBuf)
-	case CURRENT_TIME:
-		d.processCurrentTimeMsg(msgBuf)
-	case REAL_TIME_BARS:
-		d.processRealTimeBarsMsg(msgBuf)
-	case FUNDAMENTAL_DATA:
-		d.processFundamentalDataMsg(msgBuf)
-	case CONTRACT_DATA_END:
-		d.processContractDataEndMsg(msgBuf)
-	case OPEN_ORDER_END:
-		d.processOpenOrderEndMsg(msgBuf)
-	case ACCT_DOWNLOAD_END:
-		d.processAcctDownloadEndMsg(msgBuf)
-	case EXECUTION_DATA_END:
-		if useProtoBuf {
+		case OPEN_ORDER_END:
+			d.processOpenOrderEndMsgProtoBuf(msgBuf)
+		case EXECUTION_DATA_END:
 			d.processExecutionDetailsEndMsgProtoBuf(msgBuf)
-		} else {
-			d.processExecutionDetailsEndMsg(msgBuf)
+		default:
+			d.wrapper.Error(msgID, currentTimeMillis(), UNKNOWN_ID.Code, UNKNOWN_ID.Msg, "")
 		}
-	case DELTA_NEUTRAL_VALIDATION:
-		d.processDeltaNeutralValidationMsg(msgBuf)
-	case TICK_SNAPSHOT_END:
-		d.processTickSnapshotEndMsg(msgBuf)
-	case MARKET_DATA_TYPE:
-		d.processMarketDataTypeMsg(msgBuf)
-	case COMMISSION_AND_FEES_REPORT:
-		d.processCommissionAndFeesReportMsg(msgBuf)
-	case POSITION_DATA:
-		d.processPositionDataMsg(msgBuf)
-	case POSITION_END:
-		d.processPositionEndMsg(msgBuf)
-	case ACCOUNT_SUMMARY:
-		d.processAccountSummaryMsg(msgBuf)
-	case ACCOUNT_SUMMARY_END:
-		d.processAccountSummaryEndMsg(msgBuf)
-	case VERIFY_MESSAGE_API:
-		d.processVerifyMessageApiMsg(msgBuf)
-	case VERIFY_COMPLETED:
-		d.processVerifyCompletedMsg(msgBuf)
-	case DISPLAY_GROUP_LIST:
-		d.processDisplayGroupListMsg(msgBuf)
-	case DISPLAY_GROUP_UPDATED:
-		d.processDisplayGroupUpdatedMsg(msgBuf)
-	case VERIFY_AND_AUTH_MESSAGE_API:
-		d.processVerifyAndAuthMessageApiMsg(msgBuf)
-	case VERIFY_AND_AUTH_COMPLETED:
-		d.processVerifyAndAuthCompletedMsg(msgBuf)
-	case POSITION_MULTI:
-		d.processPositionMultiMsg(msgBuf)
-	case POSITION_MULTI_END:
-		d.processPositionMultiEndMsg(msgBuf)
-	case ACCOUNT_UPDATE_MULTI:
-		d.processAccountUpdateMultiMsg(msgBuf)
-	case ACCOUNT_UPDATE_MULTI_END:
-		d.processAccountUpdateMultiEndMsg(msgBuf)
-	case SECURITY_DEFINITION_OPTION_PARAMETER:
-		d.processSecurityDefinitionOptionalParameterMsg(msgBuf)
-	case SECURITY_DEFINITION_OPTION_PARAMETER_END:
-		d.processSecurityDefinitionOptionalParameterEndMsg(msgBuf)
-	case SOFT_DOLLAR_TIERS:
-		d.processSoftDollarTiersMsg(msgBuf)
-	case FAMILY_CODES:
-		d.processFamilyCodesMsg(msgBuf)
-	case SMART_COMPONENTS:
-		d.processSmartComponentsMsg(msgBuf)
-	case TICK_REQ_PARAMS:
-		d.processTickReqParamsMsg(msgBuf)
-	case SYMBOL_SAMPLES:
-		d.processSymbolSamplesMsg(msgBuf)
-	case MKT_DEPTH_EXCHANGES:
-		d.processMktDepthExchangesMsg(msgBuf)
-	case TICK_NEWS:
-		d.processTickNewsMsg(msgBuf)
-	case NEWS_PROVIDERS:
-		d.processNewsProvidersMsg(msgBuf)
-	case NEWS_ARTICLE:
-		d.processNewsArticleMsg(msgBuf)
-	case HISTORICAL_NEWS:
-		d.processHistoricalNewsMsg(msgBuf)
-	case HISTORICAL_NEWS_END:
-		d.processHistoricalNewsEndMsg(msgBuf)
-	case HEAD_TIMESTAMP:
-		d.processHeadTimestampMsg(msgBuf)
-	case HISTOGRAM_DATA:
-		d.processHistogramDataMsg(msgBuf)
-	case HISTORICAL_DATA_UPDATE:
-		d.processHistoricalDataUpdateMsg(msgBuf)
-	case REROUTE_MKT_DATA_REQ:
-		d.processRerouteMktDataReqMsg(msgBuf)
-	case REROUTE_MKT_DEPTH_REQ:
-		d.processRerouteMktDepthReqMsg(msgBuf)
-	case MARKET_RULE:
-		d.processMarketRuleMsg(msgBuf)
-	case PNL:
-		d.processPnLMsg(msgBuf)
-	case PNL_SINGLE:
-		d.processPnLSingleMsg(msgBuf)
-	case HISTORICAL_TICKS:
-		d.processHistoricalTicks(msgBuf)
-	case HISTORICAL_TICKS_BID_ASK:
-		d.processHistoricalTicksBidAsk(msgBuf)
-	case HISTORICAL_TICKS_LAST:
-		d.processHistoricalTicksLast(msgBuf)
-	case TICK_BY_TICK:
-		d.processTickByTickDataMsg(msgBuf)
-	case ORDER_BOUND:
-		d.processOrderBoundMsg(msgBuf)
-	case COMPLETED_ORDER:
-		d.processCompletedOrderMsg(msgBuf)
-	case COMPLETED_ORDERS_END:
-		d.processCompletedOrdersEndMsg(msgBuf)
-	case REPLACE_FA_END:
-		d.processReplaceFAEndMsg(msgBuf)
-	case WSH_META_DATA:
-		d.processWshMetaData(msgBuf)
-	case WSH_EVENT_DATA:
-		d.processWshEventData(msgBuf)
-	case HISTORICAL_SCHEDULE:
-		d.processHistoricalSchedule(msgBuf)
-	case USER_INFO:
-		d.processUserInfo(msgBuf)
-	case HISTORICAL_DATA_END:
-		d.processHistoricalDataEndMsg(msgBuf)
-	case CURRENT_TIME_IN_MILLIS:
-		d.processCurrentTimeInMillisMsg(msgBuf)
-	default:
-		d.wrapper.Error(NO_VALID_ID, currentTimeMillis(), BAD_MESSAGE.Code, BAD_MESSAGE.Msg, "")
+	} else {
+		switch msgID {
+		case TICK_PRICE:
+			d.processTickPriceMsg(msgBuf)
+		case TICK_SIZE:
+			d.processTickSizeMsg(msgBuf)
+		case TICK_OPTION_COMPUTATION:
+			d.processTickOptionComputationMsg(msgBuf)
+		case TICK_GENERIC:
+			d.processTickGenericMsg(msgBuf)
+		case TICK_STRING:
+			d.processTickStringMsg(msgBuf)
+		case TICK_EFP:
+			d.processTickEfpMsg(msgBuf)
+		case ORDER_STATUS:
+			d.processOrderStatusMsg(msgBuf)
+		case ERR_MSG:
+			d.processErrorMsg(msgBuf)
+		case OPEN_ORDER:
+			d.processOpenOrderMsg(msgBuf)
+		case ACCT_VALUE:
+			d.processAcctValueMsg(msgBuf)
+		case PORTFOLIO_VALUE:
+			d.processPortfolioValueMsg(msgBuf)
+		case ACCT_UPDATE_TIME:
+			d.processAcctUpdateTimeMsg(msgBuf)
+		case NEXT_VALID_ID:
+			d.processNextValidIdMsg(msgBuf)
+		case CONTRACT_DATA:
+			d.processContractDataMsg(msgBuf)
+		case BOND_CONTRACT_DATA:
+			d.processBondContractDataMsg(msgBuf)
+		case EXECUTION_DATA:
+			d.processExecutionDetailsMsg(msgBuf)
+		case MARKET_DEPTH:
+			d.processMarketDepthMsg(msgBuf)
+		case MARKET_DEPTH_L2:
+			d.processMarketDepthL2Msg(msgBuf)
+		case NEWS_BULLETINS:
+			d.processNewsBulletinsMsg(msgBuf)
+		case MANAGED_ACCTS:
+			d.processManagedAcctsMsg(msgBuf)
+		case RECEIVE_FA:
+			d.processReceiveFaMsg(msgBuf)
+		case HISTORICAL_DATA:
+			d.processHistoricalDataMsg(msgBuf)
+		case SCANNER_DATA:
+			d.processScannerDataMsg(msgBuf)
+		case SCANNER_PARAMETERS:
+			d.processScannerParametersMsg(msgBuf)
+		case CURRENT_TIME:
+			d.processCurrentTimeMsg(msgBuf)
+		case REAL_TIME_BARS:
+			d.processRealTimeBarsMsg(msgBuf)
+		case FUNDAMENTAL_DATA:
+			d.processFundamentalDataMsg(msgBuf)
+		case CONTRACT_DATA_END:
+			d.processContractDataEndMsg(msgBuf)
+		case OPEN_ORDER_END:
+			d.processOpenOrderEndMsg(msgBuf)
+		case ACCT_DOWNLOAD_END:
+			d.processAcctDownloadEndMsg(msgBuf)
+		case EXECUTION_DATA_END:
+			d.processExecutionDetailsEndMsg(msgBuf)
+		case DELTA_NEUTRAL_VALIDATION:
+			d.processDeltaNeutralValidationMsg(msgBuf)
+		case TICK_SNAPSHOT_END:
+			d.processTickSnapshotEndMsg(msgBuf)
+		case MARKET_DATA_TYPE:
+			d.processMarketDataTypeMsg(msgBuf)
+		case COMMISSION_AND_FEES_REPORT:
+			d.processCommissionAndFeesReportMsg(msgBuf)
+		case POSITION_DATA:
+			d.processPositionDataMsg(msgBuf)
+		case POSITION_END:
+			d.processPositionEndMsg(msgBuf)
+		case ACCOUNT_SUMMARY:
+			d.processAccountSummaryMsg(msgBuf)
+		case ACCOUNT_SUMMARY_END:
+			d.processAccountSummaryEndMsg(msgBuf)
+		case VERIFY_MESSAGE_API:
+			d.processVerifyMessageApiMsg(msgBuf)
+		case VERIFY_COMPLETED:
+			d.processVerifyCompletedMsg(msgBuf)
+		case DISPLAY_GROUP_LIST:
+			d.processDisplayGroupListMsg(msgBuf)
+		case DISPLAY_GROUP_UPDATED:
+			d.processDisplayGroupUpdatedMsg(msgBuf)
+		case VERIFY_AND_AUTH_MESSAGE_API:
+			d.processVerifyAndAuthMessageApiMsg(msgBuf)
+		case VERIFY_AND_AUTH_COMPLETED:
+			d.processVerifyAndAuthCompletedMsg(msgBuf)
+		case POSITION_MULTI:
+			d.processPositionMultiMsg(msgBuf)
+		case POSITION_MULTI_END:
+			d.processPositionMultiEndMsg(msgBuf)
+		case ACCOUNT_UPDATE_MULTI:
+			d.processAccountUpdateMultiMsg(msgBuf)
+		case ACCOUNT_UPDATE_MULTI_END:
+			d.processAccountUpdateMultiEndMsg(msgBuf)
+		case SECURITY_DEFINITION_OPTION_PARAMETER:
+			d.processSecurityDefinitionOptionalParameterMsg(msgBuf)
+		case SECURITY_DEFINITION_OPTION_PARAMETER_END:
+			d.processSecurityDefinitionOptionalParameterEndMsg(msgBuf)
+		case SOFT_DOLLAR_TIERS:
+			d.processSoftDollarTiersMsg(msgBuf)
+		case FAMILY_CODES:
+			d.processFamilyCodesMsg(msgBuf)
+		case SMART_COMPONENTS:
+			d.processSmartComponentsMsg(msgBuf)
+		case TICK_REQ_PARAMS:
+			d.processTickReqParamsMsg(msgBuf)
+		case SYMBOL_SAMPLES:
+			d.processSymbolSamplesMsg(msgBuf)
+		case MKT_DEPTH_EXCHANGES:
+			d.processMktDepthExchangesMsg(msgBuf)
+		case TICK_NEWS:
+			d.processTickNewsMsg(msgBuf)
+		case NEWS_PROVIDERS:
+			d.processNewsProvidersMsg(msgBuf)
+		case NEWS_ARTICLE:
+			d.processNewsArticleMsg(msgBuf)
+		case HISTORICAL_NEWS:
+			d.processHistoricalNewsMsg(msgBuf)
+		case HISTORICAL_NEWS_END:
+			d.processHistoricalNewsEndMsg(msgBuf)
+		case HEAD_TIMESTAMP:
+			d.processHeadTimestampMsg(msgBuf)
+		case HISTOGRAM_DATA:
+			d.processHistogramDataMsg(msgBuf)
+		case HISTORICAL_DATA_UPDATE:
+			d.processHistoricalDataUpdateMsg(msgBuf)
+		case REROUTE_MKT_DATA_REQ:
+			d.processRerouteMktDataReqMsg(msgBuf)
+		case REROUTE_MKT_DEPTH_REQ:
+			d.processRerouteMktDepthReqMsg(msgBuf)
+		case MARKET_RULE:
+			d.processMarketRuleMsg(msgBuf)
+		case PNL:
+			d.processPnLMsg(msgBuf)
+		case PNL_SINGLE:
+			d.processPnLSingleMsg(msgBuf)
+		case HISTORICAL_TICKS:
+			d.processHistoricalTicks(msgBuf)
+		case HISTORICAL_TICKS_BID_ASK:
+			d.processHistoricalTicksBidAsk(msgBuf)
+		case HISTORICAL_TICKS_LAST:
+			d.processHistoricalTicksLast(msgBuf)
+		case TICK_BY_TICK:
+			d.processTickByTickDataMsg(msgBuf)
+		case ORDER_BOUND:
+			d.processOrderBoundMsg(msgBuf)
+		case COMPLETED_ORDER:
+			d.processCompletedOrderMsg(msgBuf)
+		case COMPLETED_ORDERS_END:
+			d.processCompletedOrdersEndMsg(msgBuf)
+		case REPLACE_FA_END:
+			d.processReplaceFAEndMsg(msgBuf)
+		case WSH_META_DATA:
+			d.processWshMetaData(msgBuf)
+		case WSH_EVENT_DATA:
+			d.processWshEventData(msgBuf)
+		case HISTORICAL_SCHEDULE:
+			d.processHistoricalSchedule(msgBuf)
+		case USER_INFO:
+			d.processUserInfo(msgBuf)
+		case HISTORICAL_DATA_END:
+			d.processHistoricalDataEndMsg(msgBuf)
+		case CURRENT_TIME_IN_MILLIS:
+			d.processCurrentTimeInMillisMsg(msgBuf)
+		default:
+			d.wrapper.Error(msgID, currentTimeMillis(), BAD_MESSAGE.Code, BAD_MESSAGE.Msg, "")
+		}
 	}
 }
 
@@ -411,7 +421,66 @@ func (d *EDecoder) processOrderStatusMsg(msgBuf *MsgBuffer) {
 	d.wrapper.OrderStatus(orderID, status, filled, remaining, avgFilledPrice, permID, parentID, lastFillPrice, clientID, whyHeld, mktCapPrice)
 }
 
-func (d *EDecoder) processErrMsg(msgBuf *MsgBuffer) {
+func (d *EDecoder) processOrderStatusMsgProtoBuf(msgBuf *MsgBuffer) {
+
+	var orderStatusProto protobuf.OrderStatus
+	err := proto.Unmarshal(msgBuf.bs, &orderStatusProto)
+	if err != nil {
+		log.Error().Err(err).Msg("failed to unmarshal OrderStatus message")
+		return
+	}
+
+	d.wrapper.OrderStatusProtoBuf(&orderStatusProto)
+
+	var orderID int64
+	if orderStatusProto.OrderId != nil {
+		orderID = int64(orderStatusProto.GetOrderId())
+	}
+	var status string
+	if orderStatusProto.Status != nil {
+		status = orderStatusProto.GetStatus()
+	}
+	var filled Decimal
+	if orderStatusProto.Filled != nil {
+		filled = StringToDecimal(orderStatusProto.GetFilled())
+	}
+	var remaining Decimal
+	if orderStatusProto.Remaining != nil {
+		remaining = StringToDecimal(orderStatusProto.GetRemaining())
+	}
+	var avgFillPrice float64
+	if orderStatusProto.AvgFillPrice != nil {
+		avgFillPrice = orderStatusProto.GetAvgFillPrice()
+	}
+	var permID int64
+	if orderStatusProto.PermId != nil {
+		permID = int64(orderStatusProto.GetPermId())
+	}
+	var parentID int64
+	if orderStatusProto.ParentId != nil {
+		parentID = int64(orderStatusProto.GetParentId())
+	}
+	var lastFillPrice float64
+	if orderStatusProto.LastFillPrice != nil {
+		lastFillPrice = orderStatusProto.GetLastFillPrice()
+	}
+	var clientID int64
+	if orderStatusProto.ClientId != nil {
+		clientID = int64(orderStatusProto.GetClientId())
+	}
+	var whyHeld string
+	if orderStatusProto.WhyHeld != nil {
+		whyHeld = orderStatusProto.GetWhyHeld()
+	}
+	var mktCapPrice float64
+	if orderStatusProto.MktCapPrice != nil {
+		mktCapPrice = orderStatusProto.GetMktCapPrice()
+	}
+
+	d.wrapper.OrderStatus(orderID, status, filled, remaining, avgFillPrice, permID, parentID, lastFillPrice, clientID, whyHeld, mktCapPrice)
+}
+
+func (d *EDecoder) processErrorMsg(msgBuf *MsgBuffer) {
 
 	if d.serverVersion < MIN_SERVER_VER_ERROR_TIME {
 		msgBuf.decode() // version
@@ -429,6 +498,41 @@ func (d *EDecoder) processErrMsg(msgBuf *MsgBuffer) {
 	var errorTime int64
 	if d.serverVersion >= MIN_SERVER_VER_ERROR_TIME {
 		errorTime = msgBuf.decodeInt64()
+	}
+
+	d.wrapper.Error(reqID, errorTime, errorCode, errorString, advancedOrderRejectJson)
+}
+
+func (d *EDecoder) processErrorMsgProtoBuf(msgBuf *MsgBuffer) {
+
+	var errorMessageProto protobuf.ErrorMessage
+	err := proto.Unmarshal(msgBuf.bs, &errorMessageProto)
+	if err != nil {
+		log.Error().Err(err).Msg("failed to unmarshal ErrorMessage")
+		return
+	}
+
+	d.wrapper.ErrorProtoBuf(&errorMessageProto)
+
+	var reqID int64
+	if errorMessageProto.Id != nil {
+		reqID = int64(errorMessageProto.GetId())
+	}
+	var errorTime int64
+	if errorMessageProto.ErrorTime != nil {
+		errorTime = int64(errorMessageProto.GetErrorTime())
+	}
+	var errorCode int64
+	if errorMessageProto.ErrorCode != nil {
+		errorCode = int64(errorMessageProto.GetErrorCode())
+	}
+	var errorString string
+	if errorMessageProto.ErrorMsg != nil {
+		errorString = errorMessageProto.GetErrorMsg()
+	}
+	var advancedOrderRejectJson string
+	if errorMessageProto.AdvancedOrderRejectJson != nil {
+		advancedOrderRejectJson = errorMessageProto.GetAdvancedOrderRejectJson()
 	}
 
 	d.wrapper.Error(reqID, errorTime, errorCode, errorString, advancedOrderRejectJson)
@@ -530,6 +634,38 @@ func (d *EDecoder) processOpenOrderMsg(msgBuf *MsgBuffer) {
 	orderDecoder.decodeImbalanceOnly(msgBuf, MIN_SERVER_VER_IMBALANCE_ONLY)
 
 	d.wrapper.OpenOrder(order.OrderID, contract, order, orderState)
+}
+
+func (d *EDecoder) processOpenOrderMsgProtoBuf(msgBuf *MsgBuffer) {
+
+	var openOrderProto protobuf.OpenOrder
+	err := proto.Unmarshal(msgBuf.bs, &openOrderProto)
+	if err != nil {
+		log.Error().Err(err).Msg("failed to unmarshal OpenOrder message")
+		return
+	}
+
+	d.wrapper.OpenOrderProtoBuf(&openOrderProto)
+
+	var orderID int64
+	if openOrderProto.OrderId != nil {
+		orderID = int64(openOrderProto.GetOrderId())
+	}
+
+	var contract *Contract
+	if openOrderProto.Contract != nil {
+		contract = decodeContract(openOrderProto.GetContract())
+	}
+	var order *Order
+	if openOrderProto.Order != nil {
+		order = decodeOrder(openOrderProto.GetContract(), openOrderProto.GetOrder())
+	}
+	var orderState *OrderState
+	if openOrderProto.OrderState != nil {
+		orderState = decodeOrderState(openOrderProto.GetOrderState())
+	}
+
+	d.wrapper.OpenOrder(orderID, contract, order, orderState)
 }
 
 func (d *EDecoder) processAcctValueMsg(msgBuf *MsgBuffer) {
@@ -921,6 +1057,8 @@ func (d *EDecoder) processExecutionDetailsMsgProtoBuf(msgBuf *MsgBuffer) {
 		log.Panic().Err(err).Msg("processExecutionDetailsMsgProtoBuf unmarshal error")
 	}
 
+	d.wrapper.ExecDetailsProtoBuf(&executionDetailsProto)
+
 	var reqID int64 = int64(executionDetailsProto.GetReqId())
 
 	var contract *Contract
@@ -1154,6 +1292,19 @@ func (d *EDecoder) processOpenOrderEndMsg(msgBuf *MsgBuffer) {
 	d.wrapper.OpenOrderEnd()
 }
 
+func (d *EDecoder) processOpenOrderEndMsgProtoBuf(msgBuf *MsgBuffer) {
+
+	var openOrdersEndProto protobuf.OpenOrdersEnd
+	err := proto.Unmarshal(msgBuf.Bytes(), &openOrdersEndProto)
+	if err != nil {
+		log.Panic().Err(err).Msg("processOpenOrderEndMsgProtoBuf unmarshal error")
+	}
+
+	d.wrapper.OpenOrdersEndProtoBuf(&openOrdersEndProto)
+
+	d.wrapper.OpenOrderEnd()
+}
+
 func (d *EDecoder) processAcctDownloadEndMsg(msgBuf *MsgBuffer) {
 
 	msgBuf.decode() // version
@@ -1180,7 +1331,12 @@ func (d *EDecoder) processExecutionDetailsEndMsgProtoBuf(msgBuf *MsgBuffer) {
 		log.Panic().Err(err).Msg("processExecutionDetailsEndMsgProtoBuf unmarshal error")
 	}
 
-	var reqID int64 = int64(executionDetailsEndProto.GetReqId())
+	d.wrapper.ExecDetailsEndProtoBuf(&executionDetailsEndProto)
+
+	var reqID int64
+	if executionDetailsEndProto.ReqId != nil {
+		reqID = int64(executionDetailsEndProto.GetReqId())
+	}
 
 	d.wrapper.ExecDetailsEnd(reqID)
 }
