@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package protobuf;
+
+option go_package = ".;protobuf";
+
+message OrderBound {
+    optional int64 permId = 1;
+    optional int32 clientId = 2;
+    optional int32 orderId = 3;
+}

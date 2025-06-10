@@ -53,6 +53,12 @@ func (d *EDecoder) interpret(msgBytes []byte) {
 			d.processOpenOrderEndMsgProtoBuf(msgBuf)
 		case EXECUTION_DATA_END:
 			d.processExecutionDetailsEndMsgProtoBuf(msgBuf)
+		case COMPLETED_ORDER:
+			d.processCompletedOrderMsgProtoBuf(msgBuf)
+		case COMPLETED_ORDERS_END:
+			d.processCompletedOrdersEndMsgProtoBuf(msgBuf)
+		case ORDER_BOUND:
+			d.processOrderBoundMsgProtoBuf(msgBuf)
 		default:
 			d.wrapper.Error(msgID, currentTimeMillis(), UNKNOWN_ID.Code, UNKNOWN_ID.Msg, "")
 		}
@@ -2034,6 +2040,33 @@ func (d *EDecoder) processOrderBoundMsg(msgBuf *MsgBuffer) {
 	d.wrapper.OrderBound(permID, clientId, orderId)
 }
 
+func (d *EDecoder) processOrderBoundMsgProtoBuf(msgBuf *MsgBuffer) {
+
+	var orderBoundProto protobuf.OrderBound
+	err := proto.Unmarshal(msgBuf.bs, &orderBoundProto)
+	if err != nil {
+		log.Error().Err(err).Msg("failed to unmarshal OrderBound message")
+		return
+	}
+
+	d.wrapper.OrderBoundProtoBuf(&orderBoundProto)
+
+	var permID int64
+	if orderBoundProto.PermId != nil {
+		permID = int64(orderBoundProto.GetPermId())
+	}
+	var clientID int64
+	if orderBoundProto.PermId != nil {
+		clientID = int64(orderBoundProto.GetClientId())
+	}
+	var orderID int64
+	if orderBoundProto.PermId != nil {
+		orderID = int64(orderBoundProto.GetOrderId())
+	}
+
+	d.wrapper.OrderBound(permID, clientID, orderID)
+}
+
 func (d *EDecoder) processCompletedOrderMsg(msgBuf *MsgBuffer) {
 
 	order := NewOrder()
@@ -2114,7 +2147,44 @@ func (d *EDecoder) processCompletedOrderMsg(msgBuf *MsgBuffer) {
 	d.wrapper.CompletedOrder(contract, order, orderState)
 }
 
+func (d *EDecoder) processCompletedOrderMsgProtoBuf(msgBuf *MsgBuffer) {
+	var completedOrderProto protobuf.CompletedOrder
+	err := proto.Unmarshal(msgBuf.Bytes(), &completedOrderProto)
+	if err != nil {
+		log.Panic().Err(err).Msg("processOpenOrderEndMsgProtoBuf unmarshal error")
+	}
+
+	d.wrapper.CompletedOrderProtoBuf(&completedOrderProto)
+
+	var contract *Contract
+	if completedOrderProto.Contract != nil {
+		contract = decodeContract(completedOrderProto.GetContract())
+	}
+	var order *Order
+	if completedOrderProto.Order != nil {
+		order = decodeOrder(completedOrderProto.GetContract(), completedOrderProto.GetOrder())
+	}
+	var orderState *OrderState
+	if completedOrderProto.OrderState != nil {
+		orderState = decodeOrderState(completedOrderProto.GetOrderState())
+	}
+
+	d.wrapper.CompletedOrder(contract, order, orderState)
+}
+
 func (d *EDecoder) processCompletedOrdersEndMsg(*MsgBuffer) {
+	d.wrapper.CompletedOrdersEnd()
+}
+
+func (d *EDecoder) processCompletedOrdersEndMsgProtoBuf(msgBuf *MsgBuffer) {
+	var completedOrdersEndProto protobuf.CompletedOrdersEnd
+	err := proto.Unmarshal(msgBuf.Bytes(), &completedOrdersEndProto)
+	if err != nil {
+		log.Panic().Err(err).Msg("processOpenOrderEndMsgProtoBuf unmarshal error")
+	}
+
+	d.wrapper.CompletedOrdersEndProtoBuf(&completedOrdersEndProto)
+
 	d.wrapper.CompletedOrdersEnd()
 }
 

@@ -883,3 +883,27 @@ func createOrderCancelProto(orderCancel *OrderCancel) *protobuf.OrderCancel {
 	}
 	return orderCancelProto
 }
+
+func createAllOpenOrdersRequestProto() *protobuf.AllOpenOrdersRequest {
+	return &protobuf.AllOpenOrdersRequest{}
+}
+
+func createAutoOpenOrdersRequestProto(autoBind bool) *protobuf.AutoOpenOrdersRequest {
+	autoOpenOrdersRequestProto := &protobuf.AutoOpenOrdersRequest{}
+	if autoBind {
+		autoOpenOrdersRequestProto.AutoBind = &autoBind
+	}
+	return autoOpenOrdersRequestProto
+}
+
+func createOpenOrdersRequestProto() *protobuf.OpenOrdersRequest {
+	return &protobuf.OpenOrdersRequest{}
+}
+
+func createCompletedOrdersRequestProto(apiOnly bool) *protobuf.CompletedOrdersRequest {
+	completedOrdersRequestProto := &protobuf.CompletedOrdersRequest{}
+	if apiOnly {
+		completedOrdersRequestProto.ApiOnly = &apiOnly
+	}
+	return completedOrdersRequestProto
+}

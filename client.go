@@ -1849,6 +1849,7 @@ func (c *EClient) placeOrderProtoBuf(placeOrderRequestProto *protobuf.PlaceOrder
 		c.wrapper.Error(orderID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
 	}
+
 	me := NewMsgEncoder(150, c.serverVersion)
 	me.encodeMsgID(PLACE_ORDER + PROTOBUF_MSG_ID)
 
@@ -1950,6 +1951,11 @@ func (c *EClient) cancelOrderProtoBuf(cancelOrderRequestProto *protobuf.CancelOr
 // This association will persist over multiple API and TWS sessions.
 func (c *EClient) ReqOpenOrders() {
 
+	if c.useProtoBuf(REQ_OPEN_ORDERS) {
+		c.reqOpenOrdersProtoBuf(createOpenOrdersRequestProto())
+		return
+	}
+
 	if !c.IsConnected() {
 		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
@@ -1965,12 +1971,38 @@ func (c *EClient) ReqOpenOrders() {
 	c.reqChan <- me.Bytes()
 }
 
+func (c *EClient) reqOpenOrdersProtoBuf(openOrdersRequestProto *protobuf.OpenOrdersRequest) {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
+	me := NewMsgEncoder(2, c.serverVersion)
+	me.encodeMsgID(REQ_OPEN_ORDERS + PROTOBUF_MSG_ID)
+
+	msg, err := proto.Marshal(openOrdersRequestProto)
+	if err != nil {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), 0, "Failed to marshal OpenOrdersRequest: "+err.Error(), "")
+		return
+	}
+
+	me.encodeProto(msg)
+
+	c.reqChan <- me.Bytes()
+}
+
 // ReqAutoOpenOrders requests that newly created TWS orders be implicitly associated with the client.
 // When a new TWS order is created, the order will be associated with the client, and fed back through the openOrder() and orderStatus() functions on the EWrapper.
 // This request can only be made from a client with clientId of 0.
 // if autoBind is set to TRUE, newly created TWS orders will be implicitly associated with the client.
 // If set to FALSE, no association will be made.
 func (c *EClient) ReqAutoOpenOrders(autoBind bool) {
+
+	if c.useProtoBuf(REQ_AUTO_OPEN_ORDERS) {
+		c.reqAutoOpenOrdersProtoBuf(createAutoOpenOrdersRequestProto(autoBind))
+		return
+	}
 
 	if !c.IsConnected() {
 		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
@@ -1988,10 +2020,36 @@ func (c *EClient) ReqAutoOpenOrders(autoBind bool) {
 	c.reqChan <- me.Bytes()
 }
 
+func (c *EClient) reqAutoOpenOrdersProtoBuf(autoOpenOrdersRequestProto *protobuf.AutoOpenOrdersRequest) {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
+	me := NewMsgEncoder(3, c.serverVersion)
+	me.encodeMsgID(REQ_AUTO_OPEN_ORDERS + PROTOBUF_MSG_ID)
+
+	msg, err := proto.Marshal(autoOpenOrdersRequestProto)
+	if err != nil {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), 0, "Failed to marshal AutoOpenOrdersRequest: "+err.Error(), "")
+		return
+	}
+
+	me.encodeProto(msg)
+
+	c.reqChan <- me.Bytes()
+}
+
 // ReqAllOpenOrders request the open orders placed from all clients and also from TWS.
 // Each open order will be fed back through the openOrder() and orderStatus() functions on the EWrapper.
 // No association is made between the returned orders and the requesting client.
 func (c *EClient) ReqAllOpenOrders() {
+
+	if c.useProtoBuf(REQ_ALL_OPEN_ORDERS) {
+		c.reqAllOpenOrdersProtoBuf(createAllOpenOrdersRequestProto())
+		return
+	}
 
 	if !c.IsConnected() {
 		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
@@ -2004,6 +2062,27 @@ func (c *EClient) ReqAllOpenOrders() {
 
 	me.encodeMsgID(REQ_ALL_OPEN_ORDERS)
 	me.encodeInt(VERSION)
+
+	c.reqChan <- me.Bytes()
+}
+
+func (c *EClient) reqAllOpenOrdersProtoBuf(allOpenOrdersRequestProto *protobuf.AllOpenOrdersRequest) {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
+	me := NewMsgEncoder(2, c.serverVersion)
+	me.encodeMsgID(REQ_ALL_OPEN_ORDERS + PROTOBUF_MSG_ID)
+
+	msg, err := proto.Marshal(allOpenOrdersRequestProto)
+	if err != nil {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), 0, "Failed to marshal AllOpenOrdersRequest: "+err.Error(), "")
+		return
+	}
+
+	me.encodeProto(msg)
 
 	c.reqChan <- me.Bytes()
 }
@@ -3687,7 +3766,7 @@ func (c *EClient) VerifyAndAuthRequest(apiName string, apiVersion string, opaque
 	}
 
 	if c.extraAuth {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), BAD_MESSAGE.Code, BAD_MESSAGE.Msg+
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+
 			" Intent to authenticate needs to be expressed during initial connect request.", "")
 		return
 	}
@@ -3826,6 +3905,11 @@ func (c *EClient) ReqMatchingSymbols(reqID int64, pattern string) {
 // Result will be delivered via wrapper.CompletedOrder().
 func (c *EClient) ReqCompletedOrders(apiOnly bool) {
 
+	if c.useProtoBuf(REQ_COMPLETED_ORDERS) {
+		c.reqCompletedOrdersProtoBuf(createCompletedOrdersRequestProto(apiOnly))
+		return
+	}
+
 	if !c.IsConnected() {
 		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
@@ -3835,6 +3919,27 @@ func (c *EClient) ReqCompletedOrders(apiOnly bool) {
 
 	me.encodeMsgID(REQ_COMPLETED_ORDERS)
 	me.encodeBool(apiOnly)
+
+	c.reqChan <- me.Bytes()
+}
+
+func (c *EClient) reqCompletedOrdersProtoBuf(completedOrdersRequestProto *protobuf.CompletedOrdersRequest) {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
+	me := NewMsgEncoder(3, c.serverVersion)
+	me.encodeMsgID(REQ_COMPLETED_ORDERS + PROTOBUF_MSG_ID)
+
+	msg, err := proto.Marshal(completedOrdersRequestProto)
+	if err != nil {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), 0, "Failed to marshal CompletedOrdersRequest: "+err.Error(), "")
+		return
+	}
+
+	me.encodeProto(msg)
 
 	c.reqChan <- me.Bytes()
 }

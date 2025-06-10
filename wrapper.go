@@ -283,18 +283,24 @@ type EWrapper interface {
 	// CurrentTimeInMillis returns IB server's current time in milliseconds after the invocation of reqCurrentTimeInMillis.
 	CurrentTimeInMillis(timeInMillis int64)
 	// Protobuf
-	// ExecDetailsProtoBuf
+	// ExecDetailsProtoBuf .
 	ExecDetailsProtoBuf(executionDetailsProto *protobuf.ExecutionDetails)
-	// ExecDetailsEndProtoBuf
+	// ExecDetailsEndProtoBuf .
 	ExecDetailsEndProtoBuf(executionDetailsEndProto *protobuf.ExecutionDetailsEnd)
-	// OrderStatusProtoBuf
+	// OrderStatusProtoBuf .
 	OrderStatusProtoBuf(orderStatusProto *protobuf.OrderStatus)
-	// OpenOrderProtoBuf
+	// OpenOrderProtoBuf .
 	OpenOrderProtoBuf(openOrderProto *protobuf.OpenOrder)
-	// OpenOrdersEndProtoBuf
+	// OpenOrdersEndProtoBuf .
 	OpenOrdersEndProtoBuf(openOrdersEndProto *protobuf.OpenOrdersEnd)
-	// ErrorProtoBuf
+	// ErrorProtoBuf .
 	ErrorProtoBuf(errorProto *protobuf.ErrorMessage)
+	// CompletedOrderProtoBuf .
+	CompletedOrderProtoBuf(completedOrderProto *protobuf.CompletedOrder)
+	// CompletedOrdersEndProtoBuf .
+	CompletedOrdersEndProtoBuf(completedOrdersEndProto *protobuf.CompletedOrdersEnd)
+	// OrderBoundProtoBuf .
+	OrderBoundProtoBuf(orderBoundProto *protobuf.OrderBound)
 }
 
 var _ EWrapper = (*Wrapper)(nil)
@@ -735,4 +741,16 @@ func (w Wrapper) OpenOrdersEndProtoBuf(openOrdersEndProto *protobuf.OpenOrdersEn
 
 func (w Wrapper) ErrorProtoBuf(errorProto *protobuf.ErrorMessage) {
 	log.Debug().Stringer("ErrorProto", errorProto).Msg("<ErrorProtoBuf>")
+}
+
+func (w Wrapper) CompletedOrderProtoBuf(completedOrderProto *protobuf.CompletedOrder) {
+	log.Debug().Stringer("completedOrderProto", completedOrderProto).Msg("<completedOrderProtoBuf>")
+}
+
+func (w Wrapper) CompletedOrdersEndProtoBuf(completedOrdersEndProto *protobuf.CompletedOrdersEnd) {
+	log.Debug().Stringer("completedOrdersEndProto", completedOrdersEndProto).Msg("<completedOrdersEndProtoBuf>")
+}
+
+func (w Wrapper) OrderBoundProtoBuf(orderBoundProto *protobuf.OrderBound) {
+	log.Debug().Stringer("orderBoundProto", orderBoundProto).Msg("<orderBoundProtoBuf>")
 }

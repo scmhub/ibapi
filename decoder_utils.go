@@ -3,10 +3,10 @@ package ibapi
 import (
 	"strconv"
 
-	protobf "github.com/scmhub/ibapi/protobuf"
+	"github.com/scmhub/ibapi/protobuf"
 )
 
-func decodeContract(contractProto *protobf.Contract) *Contract {
+func decodeContract(contractProto *protobuf.Contract) *Contract {
 	contract := NewContract()
 	if contractProto.ConId != nil {
 		contract.ConID = int64(contractProto.GetConId())
@@ -72,7 +72,7 @@ func decodeContract(contractProto *protobf.Contract) *Contract {
 	return contract
 }
 
-func decodeComboLegs(contractProto *protobf.Contract) []ComboLeg {
+func decodeComboLegs(contractProto *protobuf.Contract) []ComboLeg {
 	var comboLegs []ComboLeg
 	if len(contractProto.GetComboLegs()) > 0 {
 		for _, comboLegProto := range contractProto.GetComboLegs() {
@@ -107,7 +107,7 @@ func decodeComboLegs(contractProto *protobf.Contract) []ComboLeg {
 	return comboLegs
 }
 
-func decodeOrderComboLegs(contractProto *protobf.Contract) []OrderComboLeg {
+func decodeOrderComboLegs(contractProto *protobuf.Contract) []OrderComboLeg {
 	var orderComboLegs []OrderComboLeg
 	if len(contractProto.GetComboLegs()) > 0 {
 		for _, comboLegProto := range contractProto.GetComboLegs() {
@@ -121,7 +121,7 @@ func decodeOrderComboLegs(contractProto *protobf.Contract) []OrderComboLeg {
 	return orderComboLegs
 }
 
-func decodeDeltaNeutralContract(contractProto *protobf.Contract) *DeltaNeutralContract {
+func decodeDeltaNeutralContract(contractProto *protobuf.Contract) *DeltaNeutralContract {
 	if contractProto.DeltaNeutralContract != nil {
 		dncProto := contractProto.GetDeltaNeutralContract()
 		dnc := &DeltaNeutralContract{}
@@ -139,7 +139,7 @@ func decodeDeltaNeutralContract(contractProto *protobf.Contract) *DeltaNeutralCo
 	return nil
 }
 
-func decodeExecution(executionProto *protobf.Execution) *Execution {
+func decodeExecution(executionProto *protobuf.Execution) *Execution {
 	execution := NewExecution()
 	if executionProto.OrderId != nil {
 		execution.OrderID = int64(executionProto.GetOrderId())
@@ -207,7 +207,7 @@ func decodeExecution(executionProto *protobf.Execution) *Execution {
 	return execution
 }
 
-func decodeOrder(contractProto *protobf.Contract, orderProto *protobf.Order) *Order {
+func decodeOrder(contractProto *protobuf.Contract, orderProto *protobuf.Order) *Order {
 	order := NewOrder()
 	// order ids
 	if orderProto.ClientId != nil {
@@ -636,7 +636,7 @@ func decodeOrder(contractProto *protobf.Contract, orderProto *protobf.Order) *Or
 	return order
 }
 
-func decodeConditions(orderProto *protobf.Order) []OrderCondition {
+func decodeConditions(orderProto *protobuf.Order) []OrderCondition {
 	var orderConditions []OrderCondition
 	for _, condProto := range orderProto.GetConditions() {
 		var cond OrderCondition
@@ -664,20 +664,20 @@ func decodeConditions(orderProto *protobf.Order) []OrderCondition {
 
 // --- Condition field helpers ---
 
-func setConditionFields(condProto *protobf.OrderCondition, cond OrderCondition) {
+func setConditionFields(condProto *protobuf.OrderCondition, cond OrderCondition) {
 	if condProto.IsConjunctionConnection != nil {
 		cond.SetIsConjunctionConnection(condProto.GetIsConjunctionConnection())
 	}
 }
 
-func setOperatorConditionFields(condProto *protobf.OrderCondition, cond *operatorCondition) {
+func setOperatorConditionFields(condProto *protobuf.OrderCondition, cond *operatorCondition) {
 	setConditionFields(condProto, cond)
 	if condProto.IsMore != nil {
 		cond.IsMore = condProto.GetIsMore()
 	}
 }
 
-func setContractConditionFields(condProto *protobf.OrderCondition, cond *contractCondition) {
+func setContractConditionFields(condProto *protobuf.OrderCondition, cond *contractCondition) {
 	setOperatorConditionFields(condProto, cond.operatorCondition)
 	if condProto.ConId != nil {
 		cond.ConID = int64(condProto.GetConId())
@@ -689,7 +689,7 @@ func setContractConditionFields(condProto *protobf.OrderCondition, cond *contrac
 
 // --- Concrete condition decoders ---
 
-func decodePriceCondition(condProto *protobf.OrderCondition) *PriceCondition {
+func decodePriceCondition(condProto *protobuf.OrderCondition) *PriceCondition {
 	cond := &PriceCondition{}
 	setContractConditionFields(condProto, cond.contractCondition)
 	if condProto.Price != nil {
@@ -701,7 +701,7 @@ func decodePriceCondition(condProto *protobf.OrderCondition) *PriceCondition {
 	return cond
 }
 
-func decodeTimeCondition(condProto *protobf.OrderCondition) *TimeCondition {
+func decodeTimeCondition(condProto *protobuf.OrderCondition) *TimeCondition {
 	cond := &TimeCondition{}
 	setOperatorConditionFields(condProto, cond.operatorCondition)
 	if condProto.Time != nil {
@@ -710,7 +710,7 @@ func decodeTimeCondition(condProto *protobf.OrderCondition) *TimeCondition {
 	return cond
 }
 
-func decodeMarginCondition(condProto *protobf.OrderCondition) *MarginCondition {
+func decodeMarginCondition(condProto *protobuf.OrderCondition) *MarginCondition {
 	cond := &MarginCondition{}
 	setOperatorConditionFields(condProto, cond.operatorCondition)
 	if condProto.Percent != nil {
@@ -719,7 +719,7 @@ func decodeMarginCondition(condProto *protobf.OrderCondition) *MarginCondition {
 	return cond
 }
 
-func decodeExecutionCondition(condProto *protobf.OrderCondition) *ExecutionCondition {
+func decodeExecutionCondition(condProto *protobuf.OrderCondition) *ExecutionCondition {
 	cond := &ExecutionCondition{}
 	setConditionFields(condProto, cond)
 	if condProto.SecType != nil {
@@ -734,7 +734,7 @@ func decodeExecutionCondition(condProto *protobf.OrderCondition) *ExecutionCondi
 	return cond
 }
 
-func decodeVolumeCondition(condProto *protobf.OrderCondition) *VolumeCondition {
+func decodeVolumeCondition(condProto *protobuf.OrderCondition) *VolumeCondition {
 	cond := &VolumeCondition{}
 	setContractConditionFields(condProto, cond.contractCondition)
 	if condProto.Volume != nil {
@@ -743,7 +743,7 @@ func decodeVolumeCondition(condProto *protobf.OrderCondition) *VolumeCondition {
 	return cond
 }
 
-func decodePercentChangeCondition(condProto *protobf.OrderCondition) *PercentChangeCondition {
+func decodePercentChangeCondition(condProto *protobuf.OrderCondition) *PercentChangeCondition {
 	cond := &PercentChangeCondition{}
 	setContractConditionFields(condProto, cond.contractCondition)
 	if condProto.ChangePercent != nil {
@@ -752,7 +752,7 @@ func decodePercentChangeCondition(condProto *protobf.OrderCondition) *PercentCha
 	return cond
 }
 
-func decodeSoftDollarTier(orderProto *protobf.Order) SoftDollarTier {
+func decodeSoftDollarTier(orderProto *protobuf.Order) SoftDollarTier {
 	var softDollarTier SoftDollarTier
 	if orderProto.SoftDollarTier != nil {
 		tierProto := orderProto.GetSoftDollarTier()
@@ -785,7 +785,7 @@ func decodeTagValueList(stringStringMap map[string]string) []TagValue {
 	return params
 }
 
-func decodeOrderState(orderStateProto *protobf.OrderState) *OrderState {
+func decodeOrderState(orderStateProto *protobuf.OrderState) *OrderState {
 	orderState := &OrderState{}
 	if orderStateProto.Status != nil {
 		orderState.Status = orderStateProto.GetStatus()
@@ -878,7 +878,7 @@ func decodeOrderState(orderStateProto *protobf.OrderState) *OrderState {
 	return orderState
 }
 
-func decodeOrderAllocations(orderStateProto *protobf.OrderState) []*OrderAllocation {
+func decodeOrderAllocations(orderStateProto *protobuf.OrderState) []*OrderAllocation {
 	var orderAllocations []*OrderAllocation
 	for _, allocProto := range orderStateProto.GetOrderAllocations() {
 		orderAllocation := NewOrderAllocation()

@@ -150,10 +150,11 @@ const (
 	MIN_SERVER_VER_PROTOBUF                           Version = 201
 	MIN_SERVER_VER_ZERO_STRIKE_PRICE                  Version = 202
 	MIN_SERVER_VER_PROTOBUF_PLACE_ORDER               Version = 203
+	MIN_SERVER_VER_PROTOBUF_COMPLETED_ORDER           Version = 204
 
 	// 100+ messaging
 	// 100 = enhanced handshake, msg length prefixes
 
 	MIN_CLIENT_VER = 100
-	MAX_CLIENT_VER = MIN_SERVER_VER_PROTOBUF_PLACE_ORDER
+	MAX_CLIENT_VER = MIN_SERVER_VER_PROTOBUF_COMPLETED_ORDER
 )
