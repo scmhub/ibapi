@@ -32,7 +32,6 @@ const (
 	DISCONNECTED ConnState = iota
 	CONNECTING
 	CONNECTED
-	REDIRECT
 )
 
 func (cs ConnState) String() string {
@@ -43,8 +42,6 @@ func (cs ConnState) String() string {
 		return "connecting"
 	case CONNECTED:
 		return "connected"
-	case REDIRECT:
-		return "redirect"
 	default:
 		return "unknown connection state"
 	}
@@ -52,14 +49,14 @@ func (cs ConnState) String() string {
 
 // MsgEncoder efficiently encodes messages for IB API
 type MsgEncoder struct {
-	buf           bytes.Buffer
-	serverVersion Version
+	buf     bytes.Buffer
+	eClient *EClient
 }
 
 // NewMsgEncoder creates a new MsgEncoder with an initial number of fields and server version
-func NewMsgEncoder(nFields int, serverVersion Version) *MsgEncoder {
+func NewMsgEncoder(nFields int, eClient *EClient) *MsgEncoder {
 	me := &MsgEncoder{
-		serverVersion: serverVersion,
+		eClient: eClient,
 	}
 	me.buf.Grow(8*nFields + 4)
 
@@ -70,7 +67,7 @@ func NewMsgEncoder(nFields int, serverVersion Version) *MsgEncoder {
 
 // encodeMsgID encodes a message ID with appropriate format based on server version
 func (me *MsgEncoder) encodeMsgID(msgID int64) *MsgEncoder {
-	if me.serverVersion >= MIN_SERVER_VER_PROTOBUF {
+	if me.eClient.serverVersion >= MIN_SERVER_VER_PROTOBUF {
 		// Encode as raw int (4 bytes, byte-swapped)
 		me.encodeRawInt64(msgID)
 	} else {
@@ -256,6 +253,12 @@ func (me *MsgEncoder) Bytes() []byte {
 	// Calculate message size (excluding the 4-byte header)
 	msgSize := len(result) - 4
 
+	if msgSize > MAX_MSG_LEN {
+		log.Error().Int("msgSize", msgSize).Msg("Message size exceeds maximum allowed size")
+		me.eClient.wrapper.Error(NO_VALID_ID, currentTimeMillis(), BAD_LENGTH.Code, BAD_LENGTH.Msg, "")
+		return nil
+	}
+
 	// Write the size back into the header
 	binary.BigEndian.PutUint32(result[:4], uint32(msgSize))
 
@@ -285,10 +288,11 @@ type EClient struct {
 	wrapper              EWrapper
 	decoder              *EDecoder
 	reqChan              chan []byte
-	Ctx                  context.Context
-	Cancel               context.CancelFunc
+	ctx                  context.Context
+	cancel               context.CancelFunc
 	extraAuth            bool
 	wg                   sync.WaitGroup
+	watchOnce            sync.Once
 	err                  error
 }
 
@@ -311,7 +315,7 @@ func (c *EClient) reset() {
 	c.connectOptions = ""
 	c.optionalCapabilities = ""
 	c.extraAuth = false
-	c.conn = &Connection{}
+	c.conn = &Connection{wrapper: c.wrapper}
 	c.serverVersion = -1
 	c.connTime = ""
 
@@ -324,10 +328,12 @@ func (c *EClient) reset() {
 
 	c.reqChan = make(chan []byte, 10)
 
-	c.Ctx, c.Cancel = context.WithCancel(context.Background())
+	c.ctx, c.cancel = context.WithCancel(context.Background())
 
 	c.wg = sync.WaitGroup{}
 	c.err = nil
+
+	c.watchOnce = sync.Once{}
 
 	c.setConnState(DISCONNECTED)
 	c.connectOptions = ""
@@ -349,23 +355,31 @@ func (c *EClient) request() {
 
 	for {
 		select {
-		case <-c.Ctx.Done():
+		case <-c.ctx.Done():
 			return
 		case req := <-c.reqChan:
 			log.Trace().Bytes("req", req).Msg("sending request")
 			if !c.IsConnected() {
 				c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
-				break
+				c.cancel()
+				return
 			}
 			nn, err := c.writer.Write(req)
 			if err != nil {
 				log.Error().Err(err).Int("nbytes", nn).Bytes("reqMsg", req).Msg("requester write error")
-				break
+				// Disconnect the client
+				log.Info().Msg("Disconnecting client due to write error.")
+				if disconnectErr := c.Disconnect(); disconnectErr != nil {
+					log.Error().Err(disconnectErr).Msg("Error during disconnect.")
+				}
+				c.cancel()
+				return
 			}
 			err = c.writer.Flush()
 			if err != nil {
 				log.Error().Err(err).Bytes("reqMsg", req).Msg("requester flush error")
-				c.writer.Reset(c.conn)
+				c.cancel()
+				return
 			}
 		}
 	}
@@ -413,6 +427,7 @@ func (c *EClient) startAPI() error {
 		payload = append(idBytes, []byte(msg)...)
 	} else {
 		payload = []byte(makeField(START_API) + msg)
+
 	}
 
 	msgLen := uint32(len(payload))
@@ -436,6 +451,11 @@ func (c *EClient) startAPI() error {
 // You should wait for the connection to be established and NextValidID to be returned before calling any other function. If you don't wait, you will get a broken pipe error.
 func (c *EClient) Connect(host string, port int, clientID int64) error {
 
+	if c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), ALREADY_CONNECTED.Code, ALREADY_CONNECTED.Msg, "")
+		return NOT_CONNECTED
+	}
+
 	if err := c.validateInvalidSymbols(host); err != nil {
 		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), INVALID_SYMBOL.Code, INVALID_SYMBOL.Msg+err.Error(), "")
 		return err
@@ -444,6 +464,8 @@ func (c *EClient) Connect(host string, port int, clientID int64) error {
 	c.host = host
 	c.port = port
 	c.clientID = clientID
+
+	c.setConnState(CONNECTING)
 
 	// Connecting to IB server
 	log.Info().Str("host", host).Int("port", port).Int64("clientID", clientID).Msg("Connecting to IB server")
@@ -495,6 +517,11 @@ func (c *EClient) Connect(host string, port int, clientID int64) error {
 	serverInfo := splitMsgBytes(msgBytes)
 	v, _ := strconv.Atoi(string(serverInfo[0]))
 	c.serverVersion = Version(v)
+	if c.serverVersion < MIN_SERVER_VER_SUPPORTED {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), UNSUPPORTED_VERSION.Code, UNSUPPORTED_VERSION.Msg, "")
+		return UNSUPPORTED_VERSION
+	}
+
 	c.connTime = string(serverInfo[1])
 	log.Info().Int("serverVersion", v).Str("connectionTime", c.connTime).Msg("Handshake completed")
 
@@ -502,7 +529,7 @@ func (c *EClient) Connect(host string, port int, clientID int64) error {
 	c.decoder = &EDecoder{wrapper: c.wrapper, serverVersion: c.serverVersion}
 
 	//start Ereader
-	go EReader(c.Ctx, c.scanner, c.decoder, &c.wg)
+	go EReader(c.ctx, c.cancel, c.scanner, c.decoder, &c.wg)
 
 	// start requester
 	go c.request()
@@ -514,6 +541,16 @@ func (c *EClient) Connect(host string, port int, clientID int64) error {
 	if err := c.startAPI(); err != nil {
 		return err
 	}
+
+	// 4) Launch the shutdown watcher exactly once
+	c.watchOnce.Do(func() {
+		go func() {
+			<-c.ctx.Done() // waits for c.cancel()
+			if err := c.Disconnect(); err != nil {
+				log.Error().Err(err).Msg("Disconnect error in watcher")
+			}
+		}()
+	})
 
 	log.Debug().Msg("IB Client Connected!")
 
@@ -545,20 +582,31 @@ func (c *EClient) Disconnect() error {
 		return nil
 	}
 
-	c.Cancel()
+	// Set Disconnected state realy so that new calls to Disconnect() will not block
+	c.setConnState(DISCONNECTED)
 
+	// 1) Cancel to unblock request Loop
+	c.cancel()
+
+	// 2) Close the socket to unblock reader loop
 	if err := c.conn.disconnect(); err != nil {
 		return err
 	}
 
+	// 3) Wait for loops to exit
 	c.wg.Wait()
 
-	defer c.reset()
-	defer c.wrapper.ConnectionClosed()
+	// 4) Reset internal state
+	c.reset()
 
-	defer log.Debug().Msg("IB Client Disconnected!")
+	c.wrapper.ConnectionClosed()
+	log.Debug().Msg("IB Client Disconnected!")
 
-	return c.err
+	return nil
+}
+
+func (c *EClient) Ctx() context.Context {
+	return c.ctx
 }
 
 // IsConnected checks connection to TWS or GateWay.
@@ -578,6 +626,12 @@ func (c *EClient) SetOptionalCapabilities(optCapts string) {
 
 // SetConnectionOptions setup the Connection Options.
 func (c *EClient) SetConnectionOptions(connectOptions string) {
+
+	if c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), ALREADY_CONNECTED.Code, ALREADY_CONNECTED.Msg, "")
+		return
+	}
+
 	c.connectOptions = connectOptions
 }
 
@@ -591,7 +645,7 @@ func (c *EClient) ReqCurrentTime() {
 
 	const VERSION = 1
 
-	me := NewMsgEncoder(2, c.serverVersion)
+	me := NewMsgEncoder(2, c)
 
 	me.encodeMsgID(REQ_CURRENT_TIME).encodeInt(VERSION)
 
@@ -619,7 +673,7 @@ func (c *EClient) SetServerLogLevel(logLevel int64) {
 
 	const VERSION = 1
 
-	me := NewMsgEncoder(3, c.serverVersion)
+	me := NewMsgEncoder(3, c)
 
 	me.encodeMsgID(SET_SERVER_LOGLEVEL).encodeInt(VERSION).encodeInt64(logLevel)
 
@@ -667,7 +721,7 @@ func (c *EClient) ReqMktData(reqID TickerID, contract *Contract, genericTickList
 
 	const VERSION = 11
 
-	me := NewMsgEncoder(30, c.serverVersion)
+	me := NewMsgEncoder(30, c)
 
 	me.encodeMsgID(REQ_MKT_DATA).encodeInt(VERSION).encodeInt64(reqID)
 
@@ -738,7 +792,7 @@ func (c *EClient) CancelMktData(reqID TickerID) {
 
 	const VERSION = 2
 
-	me := NewMsgEncoder(3, c.serverVersion)
+	me := NewMsgEncoder(3, c)
 
 	me.encodeMsgID(CANCEL_MKT_DATA).encodeInt(VERSION).encodeInt64(reqID)
 
@@ -776,7 +830,7 @@ func (c *EClient) ReqMarketDataType(marketDataType int64) {
 
 	const VERSION = 1
 
-	me := NewMsgEncoder(3, c.serverVersion)
+	me := NewMsgEncoder(3, c)
 
 	me.encodeMsgID(REQ_MARKET_DATA_TYPE).encodeInt(VERSION).encodeInt64(marketDataType)
 
@@ -796,7 +850,7 @@ func (c *EClient) ReqSmartComponents(reqID int64, bboExchange string) {
 		return
 	}
 
-	me := NewMsgEncoder(3, c.serverVersion)
+	me := NewMsgEncoder(3, c)
 
 	me.encodeMsgID(REQ_SMART_COMPONENTS).encodeInt64(reqID).encodeString(bboExchange)
 
@@ -816,7 +870,7 @@ func (c *EClient) ReqMarketRule(marketRuleID int64) {
 		return
 	}
 
-	me := NewMsgEncoder(2, c.serverVersion)
+	me := NewMsgEncoder(2, c)
 
 	me.encodeMsgID(REQ_MARKET_RULE).encodeInt64(marketRuleID)
 
@@ -845,7 +899,7 @@ func (c *EClient) ReqTickByTickData(reqID int64, contract *Contract, tickType st
 		return
 	}
 
-	me := NewMsgEncoder(17, c.serverVersion)
+	me := NewMsgEncoder(17, c)
 
 	me.encodeMsgID(REQ_TICK_BY_TICK_DATA)
 
@@ -884,7 +938,7 @@ func (c *EClient) CancelTickByTickData(reqID int64) {
 		return
 	}
 
-	me := NewMsgEncoder(2, c.serverVersion)
+	me := NewMsgEncoder(2, c)
 
 	me.encodeMsgID(CANCEL_TICK_BY_TICK_DATA).encodeInt64(reqID)
 
@@ -916,7 +970,7 @@ func (c *EClient) CalculateImpliedVolatility(reqID int64, contract *Contract, op
 
 	const VERSION = 3
 
-	me := NewMsgEncoder(19, c.serverVersion)
+	me := NewMsgEncoder(19, c)
 
 	me.encodeMsgID(REQ_CALC_IMPLIED_VOLAT)
 
@@ -964,7 +1018,7 @@ func (c *EClient) CancelCalculateImpliedVolatility(reqID int64) {
 
 	const VERSION = 1
 
-	me := NewMsgEncoder(3, c.serverVersion)
+	me := NewMsgEncoder(3, c)
 
 	me.encodeMsgID(CANCEL_CALC_IMPLIED_VOLAT)
 
@@ -996,7 +1050,7 @@ func (c *EClient) CalculateOptionPrice(reqID int64, contract *Contract, volatili
 
 	const VERSION = 2
 
-	me := NewMsgEncoder(19, c.serverVersion)
+	me := NewMsgEncoder(19, c)
 
 	me.encodeMsgID(REQ_CALC_OPTION_PRICE)
 
@@ -1044,7 +1098,7 @@ func (c *EClient) CancelCalculateOptionPrice(reqID int64) {
 
 	const VERSION = 1
 
-	me := NewMsgEncoder(3, c.serverVersion)
+	me := NewMsgEncoder(3, c)
 
 	me.encodeMsgID(CANCEL_CALC_OPTION_PRICE)
 
@@ -1099,7 +1153,7 @@ func (c *EClient) ExerciseOptions(reqID TickerID, contract *Contract, exerciseAc
 
 	const VERSION = 2
 
-	me := NewMsgEncoder(17, c.serverVersion)
+	me := NewMsgEncoder(17, c)
 
 	me.encodeMsgID(EXERCISE_OPTIONS)
 
@@ -1400,7 +1454,7 @@ func (c *EClient) PlaceOrder(orderID OrderID, contract *Contract, order *Order) 
 	}
 
 	// send place order msg
-	me := NewMsgEncoder(150, c.serverVersion)
+	me := NewMsgEncoder(150, c)
 
 	me.encodeMsgID(PLACE_ORDER)
 
@@ -1850,7 +1904,7 @@ func (c *EClient) placeOrderProtoBuf(placeOrderRequestProto *protobuf.PlaceOrder
 		return
 	}
 
-	me := NewMsgEncoder(150, c.serverVersion)
+	me := NewMsgEncoder(150, c)
 	me.encodeMsgID(PLACE_ORDER + PROTOBUF_MSG_ID)
 
 	msg, err := proto.Marshal(placeOrderRequestProto)
@@ -1889,7 +1943,7 @@ func (c *EClient) CancelOrder(orderID OrderID, orderCancel OrderCancel) {
 
 	const VERSION = 1
 
-	me := NewMsgEncoder(9, c.serverVersion)
+	me := NewMsgEncoder(9, c)
 
 	me.encodeMsgID(CANCEL_ORDER)
 
@@ -1929,7 +1983,7 @@ func (c *EClient) cancelOrderProtoBuf(cancelOrderRequestProto *protobuf.CancelOr
 		return
 	}
 
-	me := NewMsgEncoder(9, c.serverVersion)
+	me := NewMsgEncoder(9, c)
 	me.encodeMsgID(CANCEL_ORDER + PROTOBUF_MSG_ID)
 
 	msg, err := proto.Marshal(cancelOrderRequestProto)
@@ -1963,7 +2017,7 @@ func (c *EClient) ReqOpenOrders() {
 
 	const VERSION = 1
 
-	me := NewMsgEncoder(2, c.serverVersion)
+	me := NewMsgEncoder(2, c)
 
 	me.encodeMsgID(REQ_OPEN_ORDERS)
 	me.encodeInt(VERSION)
@@ -1978,7 +2032,7 @@ func (c *EClient) reqOpenOrdersProtoBuf(openOrdersRequestProto *protobuf.OpenOrd
 		return
 	}
 
-	me := NewMsgEncoder(2, c.serverVersion)
+	me := NewMsgEncoder(2, c)
 	me.encodeMsgID(REQ_OPEN_ORDERS + PROTOBUF_MSG_ID)
 
 	msg, err := proto.Marshal(openOrdersRequestProto)
@@ -2011,7 +2065,7 @@ func (c *EClient) ReqAutoOpenOrders(autoBind bool) {
 
 	const VERSION = 1
 
-	me := NewMsgEncoder(3, c.serverVersion)
+	me := NewMsgEncoder(3, c)
 
 	me.encodeMsgID(REQ_AUTO_OPEN_ORDERS)
 	me.encodeInt(VERSION)
@@ -2027,7 +2081,7 @@ func (c *EClient) reqAutoOpenOrdersProtoBuf(autoOpenOrdersRequestProto *protobuf
 		return
 	}
 
-	me := NewMsgEncoder(3, c.serverVersion)
+	me := NewMsgEncoder(3, c)
 	me.encodeMsgID(REQ_AUTO_OPEN_ORDERS + PROTOBUF_MSG_ID)
 
 	msg, err := proto.Marshal(autoOpenOrdersRequestProto)
@@ -2058,7 +2112,7 @@ func (c *EClient) ReqAllOpenOrders() {
 
 	const VERSION = 1
 
-	me := NewMsgEncoder(2, c.serverVersion)
+	me := NewMsgEncoder(2, c)
 
 	me.encodeMsgID(REQ_ALL_OPEN_ORDERS)
 	me.encodeInt(VERSION)
@@ -2073,7 +2127,7 @@ func (c *EClient) reqAllOpenOrdersProtoBuf(allOpenOrdersRequestProto *protobuf.A
 		return
 	}
 
-	me := NewMsgEncoder(2, c.serverVersion)
+	me := NewMsgEncoder(2, c)
 	me.encodeMsgID(REQ_ALL_OPEN_ORDERS + PROTOBUF_MSG_ID)
 
 	msg, err := proto.Marshal(allOpenOrdersRequestProto)
@@ -2106,7 +2160,7 @@ func (c *EClient) ReqGlobalCancel(orderCancel OrderCancel) {
 
 	const VERSION = 1
 
-	me := NewMsgEncoder(4, c.serverVersion)
+	me := NewMsgEncoder(4, c)
 
 	me.encodeMsgID(REQ_GLOBAL_CANCEL)
 
@@ -2129,7 +2183,7 @@ func (c *EClient) reqGlobalCancelProtoBuf(globalCancelRequestProto *protobuf.Glo
 		return
 	}
 
-	me := NewMsgEncoder(4, c.serverVersion)
+	me := NewMsgEncoder(4, c)
 	me.encodeMsgID(REQ_GLOBAL_CANCEL + PROTOBUF_MSG_ID)
 
 	msg, err := proto.Marshal(globalCancelRequestProto)
@@ -2156,7 +2210,7 @@ func (c *EClient) ReqIDs(numIds int64) {
 
 	const VERSION = 1
 
-	me := NewMsgEncoder(3, c.serverVersion)
+	me := NewMsgEncoder(3, c)
 
 	me.encodeMsgID(REQ_IDS)
 	me.encodeInt(VERSION)
@@ -2180,7 +2234,7 @@ func (c *EClient) ReqAccountUpdates(subscribe bool, accountName string) {
 
 	const VERSION = 2
 
-	me := NewMsgEncoder(4, c.serverVersion)
+	me := NewMsgEncoder(4, c)
 
 	me.encodeMsgID(REQ_ACCT_DATA)
 	me.encodeInt(VERSION)
@@ -2243,7 +2297,7 @@ func (c *EClient) ReqAccountSummary(reqID int64, groupName string, tags string) 
 
 	const VERSION = 1
 
-	me := NewMsgEncoder(5, c.serverVersion)
+	me := NewMsgEncoder(5, c)
 
 	me.encodeMsgID(REQ_ACCOUNT_SUMMARY)
 	me.encodeInt(VERSION)
@@ -2265,7 +2319,7 @@ func (c *EClient) CancelAccountSummary(reqID int64) {
 
 	const VERSION = 1
 
-	me := NewMsgEncoder(3, c.serverVersion)
+	me := NewMsgEncoder(3, c)
 
 	me.encodeMsgID(CANCEL_ACCOUNT_SUMMARY)
 	me.encodeInt(VERSION)
@@ -2289,7 +2343,7 @@ func (c *EClient) ReqPositions() {
 
 	const VERSION = 1
 
-	me := NewMsgEncoder(2, c.serverVersion)
+	me := NewMsgEncoder(2, c)
 
 	me.encodeMsgID(REQ_POSITIONS)
 	me.encodeInt(VERSION)
@@ -2312,7 +2366,7 @@ func (c *EClient) CancelPositions() {
 
 	const VERSION = 1
 
-	me := NewMsgEncoder(2, c.serverVersion)
+	me := NewMsgEncoder(2, c)
 
 	me.encodeMsgID(CANCEL_POSITIONS)
 	me.encodeInt(VERSION)
@@ -2336,7 +2390,7 @@ func (c *EClient) ReqPositionsMulti(reqID int64, account string, modelCode strin
 
 	const VERSION = 1
 
-	me := NewMsgEncoder(5, c.serverVersion)
+	me := NewMsgEncoder(5, c)
 
 	me.encodeMsgID(REQ_POSITIONS_MULTI)
 	me.encodeInt(VERSION)
@@ -2362,7 +2416,7 @@ func (c *EClient) CancelPositionsMulti(reqID int64) {
 
 	const VERSION = 1
 
-	me := NewMsgEncoder(3, c.serverVersion)
+	me := NewMsgEncoder(3, c)
 
 	me.encodeMsgID(CANCEL_POSITIONS_MULTI)
 	me.encodeInt(VERSION)
@@ -2386,7 +2440,7 @@ func (c *EClient) ReqAccountUpdatesMulti(reqID int64, account string, modelCode 
 
 	const VERSION = 1
 
-	me := NewMsgEncoder(6, c.serverVersion)
+	me := NewMsgEncoder(6, c)
 
 	me.encodeMsgID(REQ_ACCOUNT_UPDATES_MULTI)
 	me.encodeInt(VERSION)
@@ -2413,7 +2467,7 @@ func (c *EClient) CancelAccountUpdatesMulti(reqID int64) {
 
 	const VERSION = 1
 
-	me := NewMsgEncoder(3, c.serverVersion)
+	me := NewMsgEncoder(3, c)
 
 	me.encodeMsgID(CANCEL_ACCOUNT_UPDATES_MULTI)
 	me.encodeInt(VERSION)
@@ -2439,7 +2493,7 @@ func (c *EClient) ReqPnL(reqID int64, account string, modelCode string) {
 		return
 	}
 
-	me := NewMsgEncoder(4, c.serverVersion)
+	me := NewMsgEncoder(4, c)
 
 	me.encodeMsgID(REQ_PNL)
 	me.encodeInt64(reqID)
@@ -2462,7 +2516,7 @@ func (c *EClient) CancelPnL(reqID int64) {
 		return
 	}
 
-	me := NewMsgEncoder(2, c.serverVersion)
+	me := NewMsgEncoder(2, c)
 
 	me.encodeMsgID(CANCEL_PNL)
 	me.encodeInt64(reqID)
@@ -2483,7 +2537,7 @@ func (c *EClient) ReqPnLSingle(reqID int64, account string, modelCode string, co
 		return
 	}
 
-	me := NewMsgEncoder(5, c.serverVersion)
+	me := NewMsgEncoder(5, c)
 
 	me.encodeMsgID(REQ_PNL_SINGLE)
 	me.encodeInt64(reqID)
@@ -2507,7 +2561,7 @@ func (c *EClient) CancelPnLSingle(reqID int64) {
 		return
 	}
 
-	me := NewMsgEncoder(2, c.serverVersion)
+	me := NewMsgEncoder(2, c)
 
 	me.encodeMsgID(CANCEL_PNL_SINGLE)
 	me.encodeInt64(reqID)
@@ -2543,7 +2597,7 @@ func (c *EClient) ReqExecutions(reqID int64, execFilter *ExecutionFilter) {
 
 	const VERSION = 3
 
-	me := NewMsgEncoder(14, c.serverVersion)
+	me := NewMsgEncoder(14, c)
 
 	me.encodeMsgID(REQ_EXECUTIONS)
 	me.encodeInt(VERSION)
@@ -2584,7 +2638,7 @@ func (c *EClient) reqExecutionProtobuf(executionRequestProto *protobuf.Execution
 		return
 	}
 
-	me := NewMsgEncoder(0, c.serverVersion)
+	me := NewMsgEncoder(0, c)
 	me.encodeMsgID(REQ_EXECUTIONS + PROTOBUF_MSG_ID)
 
 	msg, err := proto.Marshal(executionRequestProto)
@@ -2632,7 +2686,7 @@ func (c *EClient) ReqContractDetails(reqID int64, contract *Contract) {
 
 	const VERSION = 8
 
-	me := NewMsgEncoder(21, c.serverVersion)
+	me := NewMsgEncoder(21, c)
 
 	me.encodeMsgID(REQ_CONTRACT_DATA)
 	me.encodeInt(VERSION)
@@ -2698,7 +2752,7 @@ func (c *EClient) ReqMktDepthExchanges() {
 		return
 	}
 
-	me := NewMsgEncoder(1, c.serverVersion)
+	me := NewMsgEncoder(1, c)
 
 	me.encodeMsgID(REQ_MKT_DEPTH_EXCHANGES)
 
@@ -2742,7 +2796,7 @@ func (c *EClient) ReqMktDepth(reqID int64, contract *Contract, numRows int, isSm
 
 	const VERSION = 5
 
-	me := NewMsgEncoder(17, c.serverVersion)
+	me := NewMsgEncoder(17, c)
 
 	// send req mkt data msg
 	me.encodeMsgID(REQ_MKT_DEPTH)
@@ -2802,7 +2856,7 @@ func (c *EClient) CancelMktDepth(reqID int64, isSmartDepth bool) {
 
 	const VERSION = 1
 
-	me := NewMsgEncoder(4, c.serverVersion)
+	me := NewMsgEncoder(4, c)
 
 	me.encodeMsgID(CANCEL_MKT_DEPTH)
 	me.encodeInt(VERSION)
@@ -2833,7 +2887,7 @@ func (c *EClient) ReqNewsBulletins(allMsgs bool) {
 
 	const VERSION = 1
 
-	me := NewMsgEncoder(3, c.serverVersion)
+	me := NewMsgEncoder(3, c)
 
 	me.encodeMsgID(REQ_NEWS_BULLETINS)
 	me.encodeInt(VERSION)
@@ -2852,7 +2906,7 @@ func (c *EClient) CancelNewsBulletins() {
 
 	const VERSION = 1
 
-	me := NewMsgEncoder(2, c.serverVersion)
+	me := NewMsgEncoder(2, c)
 
 	me.encodeMsgID(CANCEL_NEWS_BULLETINS)
 	me.encodeInt(VERSION)
@@ -2876,7 +2930,7 @@ func (c *EClient) ReqManagedAccts() {
 
 	const VERSION = 1
 
-	me := NewMsgEncoder(2, c.serverVersion)
+	me := NewMsgEncoder(2, c)
 
 	me.encodeMsgID(REQ_MANAGED_ACCTS)
 	me.encodeInt(VERSION)
@@ -2901,7 +2955,7 @@ func (c *EClient) RequestFA(faDataType FaDataType) {
 
 	const VERSION = 1
 
-	me := NewMsgEncoder(3, c.serverVersion)
+	me := NewMsgEncoder(3, c)
 
 	me.encodeMsgID(REQ_FA)
 	me.encodeInt(VERSION)
@@ -2930,7 +2984,7 @@ func (c *EClient) ReplaceFA(reqID int64, faDataType FaDataType, cxml string) {
 
 	const VERSION = 1
 
-	me := NewMsgEncoder(5, c.serverVersion)
+	me := NewMsgEncoder(5, c)
 
 	me.encodeMsgID(REPLACE_FA)
 	me.encodeInt(VERSION)
@@ -3011,7 +3065,7 @@ func (c *EClient) ReqHistoricalData(reqID int64, contract *Contract, endDateTime
 
 	const VERSION = 6
 
-	me := NewMsgEncoder(20, c.serverVersion)
+	me := NewMsgEncoder(20, c)
 
 	me.encodeMsgID(REQ_HISTORICAL_DATA)
 
@@ -3081,7 +3135,7 @@ func (c *EClient) CancelHistoricalData(reqID int64) {
 
 	const VERSION = 1
 
-	me := NewMsgEncoder(3, c.serverVersion)
+	me := NewMsgEncoder(3, c)
 
 	me.encodeMsgID(CANCEL_HISTORICAL_DATA)
 	me.encodeInt(VERSION)
@@ -3104,7 +3158,7 @@ func (c *EClient) ReqHeadTimeStamp(reqID int64, contract *Contract, whatToShow s
 		return
 	}
 
-	me := NewMsgEncoder(19, c.serverVersion)
+	me := NewMsgEncoder(19, c)
 
 	me.encodeMsgID(REQ_HEAD_TIMESTAMP)
 	me.encodeInt64(reqID)
@@ -3129,7 +3183,7 @@ func (c *EClient) CancelHeadTimeStamp(reqID int64) {
 		return
 	}
 
-	me := NewMsgEncoder(2, c.serverVersion)
+	me := NewMsgEncoder(2, c)
 
 	me.encodeMsgID(CANCEL_HEAD_TIMESTAMP)
 	me.encodeInt64(reqID)
@@ -3150,7 +3204,7 @@ func (c *EClient) ReqHistogramData(reqID int64, contract *Contract, useRTH bool,
 		return
 	}
 
-	me := NewMsgEncoder(5, c.serverVersion)
+	me := NewMsgEncoder(5, c)
 
 	me.encodeMsgID(REQ_HISTOGRAM_DATA)
 	me.encodeInt64(reqID)
@@ -3174,7 +3228,7 @@ func (c *EClient) CancelHistogramData(reqID int64) {
 		return
 	}
 
-	me := NewMsgEncoder(2, c.serverVersion)
+	me := NewMsgEncoder(2, c)
 
 	me.encodeMsgID(CANCEL_HISTOGRAM_DATA)
 	me.encodeInt64(reqID)
@@ -3195,7 +3249,7 @@ func (c *EClient) ReqHistoricalTicks(reqID int64, contract *Contract, startDateT
 		return
 	}
 
-	me := NewMsgEncoder(22, c.serverVersion)
+	me := NewMsgEncoder(22, c)
 
 	me.encodeMsgID(REQ_HISTORICAL_TICKS)
 	me.encodeInt64(reqID)
@@ -3225,7 +3279,7 @@ func (c *EClient) ReqScannerParameters() {
 
 	const VERSION = 1
 
-	me := NewMsgEncoder(2, c.serverVersion)
+	me := NewMsgEncoder(2, c)
 
 	me.encodeMsgID(REQ_SCANNER_PARAMETERS)
 	me.encodeInt(VERSION)
@@ -3251,7 +3305,7 @@ func (c *EClient) ReqScannerSubscription(reqID int64, subscription *ScannerSubsc
 
 	const VERSION = 4
 
-	me := NewMsgEncoder(25, c.serverVersion)
+	me := NewMsgEncoder(25, c)
 
 	me.encodeMsgID(REQ_SCANNER_SUBSCRIPTION)
 
@@ -3304,7 +3358,7 @@ func (c *EClient) CancelScannerSubscription(reqID int64) {
 
 	const VERSION = 1
 
-	me := NewMsgEncoder(3, c.serverVersion)
+	me := NewMsgEncoder(3, c)
 
 	me.encodeMsgID(CANCEL_SCANNER_SUBSCRIPTION)
 	me.encodeInt(VERSION)
@@ -3356,7 +3410,7 @@ func (c *EClient) ReqRealTimeBars(reqID int64, contract *Contract, barSize int, 
 
 	const VERSION = 3
 
-	me := NewMsgEncoder(19, c.serverVersion)
+	me := NewMsgEncoder(19, c)
 
 	me.encodeMsgID(REQ_REAL_TIME_BARS)
 	me.encodeInt(VERSION)
@@ -3402,7 +3456,7 @@ func (c *EClient) CancelRealTimeBars(reqID int64) {
 
 	const VERSION = 1
 
-	me := NewMsgEncoder(3, c.serverVersion)
+	me := NewMsgEncoder(3, c)
 
 	me.encodeMsgID(CANCEL_REAL_TIME_BARS)
 	me.encodeInt(VERSION)
@@ -3449,7 +3503,7 @@ func (c *EClient) ReqFundamentalData(reqID int64, contract *Contract, reportType
 
 	const VERSION = 2
 
-	me := NewMsgEncoder(12, c.serverVersion)
+	me := NewMsgEncoder(12, c)
 
 	me.encodeMsgID(REQ_FUNDAMENTAL_DATA)
 
@@ -3491,7 +3545,7 @@ func (c *EClient) CancelFundamentalData(reqID int64) {
 
 	const VERSION = 1
 
-	me := NewMsgEncoder(3, c.serverVersion)
+	me := NewMsgEncoder(3, c)
 
 	me.encodeMsgID(CANCEL_FUNDAMENTAL_DATA)
 	me.encodeInt(VERSION)
@@ -3518,7 +3572,7 @@ func (c *EClient) ReqNewsProviders() {
 		return
 	}
 
-	me := NewMsgEncoder(1, c.serverVersion)
+	me := NewMsgEncoder(1, c)
 
 	me.encodeMsgID(REQ_NEWS_PROVIDERS)
 
@@ -3538,7 +3592,7 @@ func (c *EClient) ReqNewsArticle(reqID int64, providerCode string, articleID str
 		return
 	}
 
-	me := NewMsgEncoder(5, c.serverVersion)
+	me := NewMsgEncoder(5, c)
 
 	me.encodeMsgID(REQ_NEWS_ARTICLE)
 	me.encodeInt64(reqID)
@@ -3565,7 +3619,7 @@ func (c *EClient) ReqHistoricalNews(reqID int64, contractID int64, providerCode 
 		return
 	}
 
-	me := NewMsgEncoder(8, c.serverVersion)
+	me := NewMsgEncoder(8, c)
 
 	me.encodeMsgID(REQ_HISTORICAL_NEWS)
 	me.encodeInt64(reqID)
@@ -3601,7 +3655,7 @@ func (c *EClient) QueryDisplayGroups(reqID int64) {
 
 	const VERSION = 1
 
-	me := NewMsgEncoder(3, c.serverVersion)
+	me := NewMsgEncoder(3, c)
 
 	me.encodeMsgID(QUERY_DISPLAY_GROUPS)
 	me.encodeInt(VERSION)
@@ -3627,7 +3681,7 @@ func (c *EClient) SubscribeToGroupEvents(reqID int64, groupID int) {
 
 	const VERSION = 1
 
-	me := NewMsgEncoder(4, c.serverVersion)
+	me := NewMsgEncoder(4, c)
 
 	me.encodeMsgID(SUBSCRIBE_TO_GROUP_EVENTS)
 	me.encodeInt(VERSION)
@@ -3660,7 +3714,7 @@ func (c *EClient) UpdateDisplayGroup(reqID int64, contractInfo string) {
 
 	const VERSION = 1
 
-	me := NewMsgEncoder(4, c.serverVersion)
+	me := NewMsgEncoder(4, c)
 
 	me.encodeMsgID(UPDATE_DISPLAY_GROUP)
 	me.encodeInt(VERSION)
@@ -3685,7 +3739,7 @@ func (c *EClient) UnsubscribeFromGroupEvents(reqID int64) {
 
 	const VERSION = 1
 
-	me := NewMsgEncoder(3, c.serverVersion)
+	me := NewMsgEncoder(3, c)
 
 	me.encodeMsgID(UNSUBSCRIBE_FROM_GROUP_EVENTS)
 	me.encodeInt(VERSION)
@@ -3716,7 +3770,7 @@ func (c *EClient) VerifyRequest(apiName string, apiVersion string) {
 
 	const VERSION = 1
 
-	me := NewMsgEncoder(4, c.serverVersion)
+	me := NewMsgEncoder(4, c)
 
 	me.encodeMsgID(VERIFY_REQUEST)
 	me.encodeInt(VERSION)
@@ -3742,7 +3796,7 @@ func (c *EClient) VerifyMessage(apiData string) {
 
 	const VERSION = 1
 
-	me := NewMsgEncoder(2, c.serverVersion)
+	me := NewMsgEncoder(2, c)
 
 	me.encodeMsgID(VERIFY_MESSAGE)
 	me.encodeInt(VERSION)
@@ -3773,7 +3827,7 @@ func (c *EClient) VerifyAndAuthRequest(apiName string, apiVersion string, opaque
 
 	const VERSION = 1
 
-	me := NewMsgEncoder(4, c.serverVersion)
+	me := NewMsgEncoder(4, c)
 
 	me.encodeMsgID(VERIFY_AND_AUTH_REQUEST)
 	me.encodeInt(VERSION)
@@ -3800,7 +3854,7 @@ func (c *EClient) VerifyAndAuthMessage(apiData string, xyzResponse string) {
 
 	const VERSION = 1
 
-	me := NewMsgEncoder(4, c.serverVersion)
+	me := NewMsgEncoder(4, c)
 
 	me.encodeMsgID(VERIFY_MESSAGE)
 	me.encodeInt(VERSION)
@@ -3828,7 +3882,7 @@ func (c *EClient) ReqSecDefOptParams(reqID int64, underlyingSymbol string, futFo
 		return
 	}
 
-	me := NewMsgEncoder(6, c.serverVersion)
+	me := NewMsgEncoder(6, c)
 
 	me.encodeMsgID(REQ_SEC_DEF_OPT_PARAMS)
 	me.encodeInt64(reqID)
@@ -3850,7 +3904,7 @@ func (c *EClient) ReqSoftDollarTiers(reqID int64) {
 		return
 	}
 
-	me := NewMsgEncoder(2, c.serverVersion)
+	me := NewMsgEncoder(2, c)
 
 	me.encodeMsgID(REQ_SOFT_DOLLAR_TIERS)
 	me.encodeInt64(reqID)
@@ -3871,7 +3925,7 @@ func (c *EClient) ReqFamilyCodes() {
 		return
 	}
 
-	me := NewMsgEncoder(1, c.serverVersion)
+	me := NewMsgEncoder(1, c)
 
 	me.encodeMsgID(REQ_FAMILY_CODES)
 
@@ -3891,7 +3945,7 @@ func (c *EClient) ReqMatchingSymbols(reqID int64, pattern string) {
 		return
 	}
 
-	me := NewMsgEncoder(3, c.serverVersion)
+	me := NewMsgEncoder(3, c)
 
 	me.encodeMsgID(REQ_MATCHING_SYMBOLS)
 	me.encodeInt64(reqID)
@@ -3915,7 +3969,7 @@ func (c *EClient) ReqCompletedOrders(apiOnly bool) {
 		return
 	}
 
-	me := NewMsgEncoder(2, c.serverVersion)
+	me := NewMsgEncoder(2, c)
 
 	me.encodeMsgID(REQ_COMPLETED_ORDERS)
 	me.encodeBool(apiOnly)
@@ -3930,7 +3984,7 @@ func (c *EClient) reqCompletedOrdersProtoBuf(completedOrdersRequestProto *protob
 		return
 	}
 
-	me := NewMsgEncoder(3, c.serverVersion)
+	me := NewMsgEncoder(3, c)
 	me.encodeMsgID(REQ_COMPLETED_ORDERS + PROTOBUF_MSG_ID)
 
 	msg, err := proto.Marshal(completedOrdersRequestProto)
@@ -3957,7 +4011,7 @@ func (c *EClient) ReqWshMetaData(reqID int64) {
 		return
 	}
 
-	me := NewMsgEncoder(2, c.serverVersion)
+	me := NewMsgEncoder(2, c)
 
 	me.encodeMsgID(REQ_WSH_META_DATA)
 	me.encodeInt64(reqID)
@@ -3978,7 +4032,7 @@ func (c *EClient) CancelWshMetaData(reqID int64) {
 		return
 	}
 
-	me := NewMsgEncoder(2, c.serverVersion)
+	me := NewMsgEncoder(2, c)
 
 	me.encodeMsgID(CANCEL_WSH_META_DATA)
 	me.encodeInt64(reqID)
@@ -4008,7 +4062,7 @@ func (c *EClient) ReqWshEventData(reqID int64, wshEventData WshEventData) {
 		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support WSHE event data date filters.", "")
 		return
 	}
-	me := NewMsgEncoder(10, c.serverVersion)
+	me := NewMsgEncoder(10, c)
 
 	me.encodeMsgID(REQ_WSH_EVENT_DATA)
 	me.encodeInt64(reqID)
@@ -4043,7 +4097,7 @@ func (c *EClient) CancelWshEventData(reqID int64) {
 		return
 	}
 
-	me := NewMsgEncoder(2, c.serverVersion)
+	me := NewMsgEncoder(2, c)
 
 	me.encodeMsgID(CANCEL_WSH_EVENT_DATA)
 	me.encodeInt64(reqID)
@@ -4064,7 +4118,7 @@ func (c *EClient) ReqUserInfo(reqID int64) {
 		return
 	}
 
-	me := NewMsgEncoder(2, c.serverVersion)
+	me := NewMsgEncoder(2, c)
 
 	me.encodeMsgID(REQ_USER_INFO)
 	me.encodeInt64(reqID)
@@ -4085,7 +4139,7 @@ func (c *EClient) ReqCurrentTimeInMillis() {
 		return
 	}
 
-	me := NewMsgEncoder(1, c.serverVersion)
+	me := NewMsgEncoder(1, c)
 
 	me.encodeMsgID(REQ_CURRENT_TIME_IN_MILLIS)
 

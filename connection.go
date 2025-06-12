@@ -14,6 +14,7 @@ const (
 // Connection is a TCPConn wrapper.
 type Connection struct {
 	*net.TCPConn
+	wrapper      EWrapper
 	host         string
 	port         int
 	isConnected  bool
@@ -24,22 +25,30 @@ type Connection struct {
 }
 
 func (c *Connection) Write(bs []byte) (int, error) {
+	// first attempt
 	n, err := c.TCPConn.Write(bs)
+	if err == nil {
+		c.numBytesSent += n
+		c.numMsgSent++
+		log.Trace().Int("nBytes", n).Msg("conn write")
+		return n, nil
+	}
+	// write failed, try to reconnect
+	log.Warn().Err(err).Msg("Write error detected, attempting to reconnect...")
+	if err := c.reconnect(); err != nil {
+		return 0, fmt.Errorf("write failed and reconnection failed: %w", err)
+	}
+
+	// second attempt
+	n, err = c.TCPConn.Write(bs)
 	if err != nil {
-		log.Warn().Err(err).Msg("Write error detected, attempting to reconnect...")
-		if err := c.reconnect(); err != nil {
-			return 0, fmt.Errorf("write failed and reconnection failed: %w", err)
-		}
-		// Retry write after successful reconnection
-		return c.TCPConn.Write(bs)
+		return 0, fmt.Errorf("write retry after reconnect failed: %w", err)
 	}
 
 	c.numBytesSent += n
 	c.numMsgSent++
-
-	log.Trace().Int("nBytes", n).Msg("conn write")
-
-	return n, err
+	log.Trace().Int("nBytes", n).Msg("conn write (after reconnect)")
+	return n, nil
 }
 
 func (c *Connection) Read(bs []byte) (int, error) {
@@ -69,12 +78,14 @@ func (c *Connection) connect(host string, port int) error {
 	addr, err := net.ResolveTCPAddr("tcp4", address)
 	if err != nil {
 		log.Error().Err(err).Str("host", address).Msg("failed to resove tcp address")
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), FAIL_CREATE_SOCK.Code, FAIL_CREATE_SOCK.Msg, "")
 		return err
 	}
 
 	c.TCPConn, err = net.DialTCP("tcp4", nil, addr)
 	if err != nil {
 		log.Error().Err(err).Any("address", addr).Msg("failed to dial tcp")
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), FAIL_CREATE_SOCK.Code, FAIL_CREATE_SOCK.Msg, "")
 		return err
 	}
 
@@ -85,31 +96,34 @@ func (c *Connection) connect(host string, port int) error {
 }
 
 func (c *Connection) reconnect() error {
-	attempts := 0
+	var err error
 	backoff := reconnectDelay // Start with base delay
 
-	for attempts < maxReconnectAttempts {
+	// try up to maxReconnectAttempts times
+	for attempt := 1; attempt <= maxReconnectAttempts; attempt++ {
 		log.Info().
-			Int("attempt", attempts+1).
+			Int("attempt", attempt).
 			Int("maxAttempts", maxReconnectAttempts).
 			Msg("Attempting to reconnect")
 
-		err := c.connect(c.host, c.port)
+		err = c.connect(c.host, c.port)
 		if err == nil {
 			log.Info().Msg("Reconnection successful")
+			c.isConnected = true
 			return nil
 		}
 
-		attempts++
-		if attempts == maxReconnectAttempts {
-			return fmt.Errorf("failed to reconnect after %d attempts", attempts)
+		// if this isn’t our last try, wait and then loop again
+		if attempt < maxReconnectAttempts {
+			time.Sleep(backoff)
+			backoff *= 2
 		}
-
-		time.Sleep(backoff)
-		backoff *= 2 // Exponential backoff
 	}
 
-	return fmt.Errorf("failed to reconnect after %d attempts", attempts)
+	// if we get here, all attempts failed
+	c.isConnected = false
+	return fmt.Errorf("failed to reconnect after %d attempts: %w", maxReconnectAttempts, err)
+
 }
 
 func (c *Connection) disconnect() error {

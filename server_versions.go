@@ -10,6 +10,7 @@ const (
 	// MIN_SERVER_VER_SSHORT_COMBO_LEGS           Version = 35
 	// MIN_SERVER_VER_WHAT_IF_ORDERS              Version = 36
 	// MIN_SERVER_VER_CONTRACT_CONID              Version = 37
+	MIN_SERVER_VER_SUPPORTED                          Version = 38 // 38 is the minimum supported version
 	MIN_SERVER_VER_PTA_ORDERS                         Version = 39
 	MIN_SERVER_VER_FUNDAMENTAL_DATA                   Version = 40
 	MIN_SERVER_VER_DELTA_NEUTRAL                      Version = 40
