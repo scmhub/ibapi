@@ -21,6 +21,11 @@ func Logger() *zerolog.Logger {
 	return &log
 }
 
+// SetLogger sets the default logger instance.
+func SetLogger(l zerolog.Logger) {
+	log = l
+}
+
 // SetLogLevel sets the loggging level.
 func SetLogLevel(logLevel int) {
 	zerolog.SetGlobalLevel(zerolog.Level(int8(logLevel)))
