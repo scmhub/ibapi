@@ -59,6 +59,12 @@ func (d *EDecoder) interpret(msgBytes []byte) {
 			d.processCompletedOrdersEndMsgProtoBuf(msgBuf)
 		case ORDER_BOUND:
 			d.processOrderBoundMsgProtoBuf(msgBuf)
+		case CONTRACT_DATA:
+			d.processContractDataMsgProtoBuf(msgBuf)
+		case BOND_CONTRACT_DATA:
+			d.processBondContractDataMsgProtoBuf(msgBuf)
+		case CONTRACT_DATA_END:
+			d.processContractDataEndMsgProtoBuf(msgBuf)
 		default:
 			d.wrapper.Error(msgID, currentTimeMillis(), UNKNOWN_ID.Code, UNKNOWN_ID.Msg, "")
 		}
@@ -664,7 +670,7 @@ func (d *EDecoder) processOpenOrderMsgProtoBuf(msgBuf *MsgBuffer) {
 	}
 	var order *Order
 	if openOrderProto.Order != nil {
-		order = decodeOrder(openOrderProto.GetContract(), openOrderProto.GetOrder())
+		order = decodeOrder(orderID, openOrderProto.GetContract(), openOrderProto.GetOrder())
 	}
 	var orderState *OrderState
 	if openOrderProto.OrderState != nil {
@@ -761,7 +767,7 @@ func (d *EDecoder) processContractDataMsg(msgBuf *MsgBuffer) {
 	cd.Contract = *NewContract()
 	cd.Contract.Symbol = msgBuf.decodeString()
 	cd.Contract.SecType = msgBuf.decodeString()
-	d.readLastTradeDate(msgBuf, cd, false)
+	d.decodeLastTradeDate(msgBuf, cd, false)
 	if d.serverVersion >= MIN_SERVER_VER_LAST_TRADE_DATE {
 		cd.Contract.LastTradeDate = msgBuf.decodeString()
 	}
@@ -885,6 +891,28 @@ func (d *EDecoder) processContractDataMsg(msgBuf *MsgBuffer) {
 	d.wrapper.ContractDetails(reqID, cd)
 }
 
+func (d *EDecoder) processContractDataMsgProtoBuf(msgBuf *MsgBuffer) {
+	var contractDataProto protobuf.ContractData
+	err := proto.Unmarshal(msgBuf.bs, &contractDataProto)
+	if err != nil {
+		log.Error().Err(err).Msg("failed to unmarshal ContractData message")
+		return
+	}
+
+	d.wrapper.ContractDataProtoBuf(&contractDataProto)
+
+	var reqID int64
+	if contractDataProto.ReqId != nil {
+		reqID = int64(contractDataProto.GetReqId())
+	}
+	var contractDetails *ContractDetails
+	if contractDataProto.Contract != nil && contractDataProto.ContractDetails != nil {
+		contractDetails = decodeContractDetails(contractDataProto.GetContract(), contractDataProto.GetContractDetails(), false)
+	}
+
+	d.wrapper.ContractDetails(reqID, contractDetails)
+}
+
 func (d *EDecoder) processBondContractDataMsg(msgBuf *MsgBuffer) {
 
 	var version Version = 6
@@ -902,7 +930,7 @@ func (d *EDecoder) processBondContractDataMsg(msgBuf *MsgBuffer) {
 	contract.Contract.SecType = msgBuf.decodeString()
 	contract.Cusip = msgBuf.decodeString()
 	contract.Coupon = msgBuf.decodeFloat64()
-	d.readLastTradeDate(msgBuf, contract, true)
+	d.decodeLastTradeDate(msgBuf, contract, true)
 	contract.IssueDate = msgBuf.decodeString()
 	contract.Ratings = msgBuf.decodeString()
 	contract.BondType = msgBuf.decodeString()
@@ -1053,6 +1081,28 @@ func (d *EDecoder) processExecutionDetailsMsg(msgBuf *MsgBuffer) {
 	}
 
 	d.wrapper.ExecDetails(reqID, contract, execution)
+}
+
+func (d *EDecoder) processBondContractDataMsgProtoBuf(msgBuf *MsgBuffer) {
+	var contractDataProto protobuf.ContractData
+	err := proto.Unmarshal(msgBuf.bs, &contractDataProto)
+	if err != nil {
+		log.Error().Err(err).Msg("failed to unmarshal BondContractData message")
+		return
+	}
+
+	d.wrapper.BondContractDataProtoBuf(&contractDataProto)
+
+	var reqID int64
+	if contractDataProto.ReqId != nil {
+		reqID = int64(contractDataProto.GetReqId())
+	}
+	var contractDetails *ContractDetails
+	if contractDataProto.Contract != nil && contractDataProto.ContractDetails != nil {
+		contractDetails = decodeContractDetails(contractDataProto.GetContract(), contractDataProto.GetContractDetails(), true)
+	}
+
+	d.wrapper.BondContractDetails(reqID, contractDetails)
 }
 
 func (d *EDecoder) processExecutionDetailsMsgProtoBuf(msgBuf *MsgBuffer) {
@@ -1287,6 +1337,24 @@ func (d *EDecoder) processContractDataEndMsg(msgBuf *MsgBuffer) {
 	msgBuf.decode() // version
 
 	reqID := msgBuf.decodeInt64()
+
+	d.wrapper.ContractDetailsEnd(reqID)
+}
+
+func (d *EDecoder) processContractDataEndMsgProtoBuf(msgBuf *MsgBuffer) {
+	var contractDataEndProto protobuf.ContractDataEnd
+	err := proto.Unmarshal(msgBuf.bs, &contractDataEndProto)
+	if err != nil {
+		log.Error().Err(err).Msg("failed to unmarshal ContractDataEnd message")
+		return
+	}
+
+	d.wrapper.ContractDataEndProtoBuf(&contractDataEndProto)
+
+	var reqID int64
+	if contractDataEndProto.ReqId != nil {
+		reqID = int64(contractDataEndProto.GetReqId())
+	}
 
 	d.wrapper.ContractDetailsEnd(reqID)
 }
@@ -2162,7 +2230,7 @@ func (d *EDecoder) processCompletedOrderMsgProtoBuf(msgBuf *MsgBuffer) {
 	}
 	var order *Order
 	if completedOrderProto.Order != nil {
-		order = decodeOrder(completedOrderProto.GetContract(), completedOrderProto.GetOrder())
+		order = decodeOrder(UNSET_INT, completedOrderProto.GetContract(), completedOrderProto.GetOrder())
 	}
 	var orderState *OrderState
 	if completedOrderProto.OrderState != nil {
@@ -2251,28 +2319,7 @@ func (d *EDecoder) processCurrentTimeInMillisMsg(msgBuf *MsgBuffer) {
 //		Helpers
 //
 
-func (d *EDecoder) readLastTradeDate(msgBuf *MsgBuffer, contract *ContractDetails, isBond bool) {
+func (d *EDecoder) decodeLastTradeDate(msgBuf *MsgBuffer, contract *ContractDetails, isBond bool) {
 	lastTradeDateOrContractMonth := msgBuf.decodeString()
-	if lastTradeDateOrContractMonth != "" {
-		var splitted []string
-		if strings.Contains(lastTradeDateOrContractMonth, "-") {
-			splitted = strings.Split(lastTradeDateOrContractMonth, "-")
-		} else {
-			splitted = strings.Split(lastTradeDateOrContractMonth, " ")
-		}
-
-		if len(splitted) > 0 {
-			if isBond {
-				contract.Maturity = splitted[0]
-			} else {
-				contract.Contract.LastTradeDateOrContractMonth = splitted[0]
-			}
-		}
-		if len(splitted) > 1 {
-			contract.LastTradeTime = splitted[1]
-		}
-		if isBond && len(splitted) > 2 {
-			contract.TimeZoneID = splitted[2]
-		}
-	}
+	setLastTradeDate(lastTradeDateOrContractMonth, contract, isBond)
 }

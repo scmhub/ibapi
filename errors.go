@@ -106,6 +106,6 @@ var (
 	FA_PROFILE_NOT_SUPPORTED = CodeMsgPair{585, "FA Profile is not supported anymore, use FA Group instead - "}
 	// FAIL_READ_MESSAGE             = CodeMsgPair{586, "Failed to read message because not connected"}
 	// FAIL_SEND_REQCURRTIMEINMILLIS = CodeMsgPair{587, "Request Current Time In Millis Sending Error - "}
-	// ERROR_ENCODING_PROTOBUF       = CodeMsgPair{588, "Error encoding protobuf - "}
+	ERROR_ENCODING_PROTOBUF = CodeMsgPair{588, "Error encoding protobuf - "}
 	// FAIL_SEND_CANMKTDEPTH         = CodeMsgPair{589, "Cancel Market Depth Sending Error - "}
 )

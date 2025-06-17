@@ -28,4 +28,5 @@ message Contract {
     optional bool includeExpired = 18;
     optional string comboLegsDescrip = 19;
     repeated ComboLeg comboLegs = 20;
+    optional string lastTradeDate = 21;
 }

@@ -1212,7 +1212,11 @@ func (c *EClient) ExerciseOptions(reqID TickerID, contract *Contract, exerciseAc
 func (c *EClient) PlaceOrder(orderID OrderID, contract *Contract, order *Order) {
 
 	if c.useProtoBuf(PLACE_ORDER) {
-		c.placeOrderProtoBuf(createPlaceOrderRequestProto(orderID, contract, order))
+		placeOrderRequestProto, err := createPlaceOrderRequestProto(orderID, contract, order)
+		if err != nil {
+			c.wrapper.Error(orderID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
+		}
+		c.placeOrderProtoBuf(placeOrderRequestProto)
 		return
 	}
 
@@ -2144,7 +2148,7 @@ func (c *EClient) reqAllOpenOrdersProtoBuf(allOpenOrdersRequestProto *protobuf.A
 // ReqGlobalCancel cancels all open orders globally. It cancels both API and TWS open orders.
 func (c *EClient) ReqGlobalCancel(orderCancel OrderCancel) {
 
-	if c.useProtoBuf(REQ_ALL_OPEN_ORDERS) {
+	if c.useProtoBuf(REQ_GLOBAL_CANCEL) {
 		c.reqGlobalCancelProtoBuf(createGlobalCancelRequestProto(&orderCancel))
 		return
 	}
@@ -2659,6 +2663,11 @@ func (c *EClient) reqExecutionProtobuf(executionRequestProto *protobuf.Execution
 // The contract details will be received via the contractDetails() function on the EWrapper.
 func (c *EClient) ReqContractDetails(reqID int64, contract *Contract) {
 
+	if c.useProtoBuf(REQ_CONTRACT_DATA) {
+		c.reqContractDataProtoBuf(createContractDataRequestProto(reqID, contract))
+		return
+	}
+
 	if !c.IsConnected() {
 		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
@@ -2731,6 +2740,32 @@ func (c *EClient) ReqContractDetails(reqID int64, contract *Contract) {
 	if c.serverVersion >= MIN_SERVER_VER_BOND_ISSUERID {
 		me.encodeString(contract.IssuerID)
 	}
+
+	c.reqChan <- me.Bytes()
+}
+
+func (c *EClient) reqContractDataProtoBuf(contractDataRequestProto *protobuf.ContractDataRequest) {
+
+	reqID := NO_VALID_ID
+	if contractDataRequestProto.ReqId != nil {
+		reqID = int64(*contractDataRequestProto.ReqId)
+	}
+
+	if !c.IsConnected() {
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
+	me := NewMsgEncoder(150, c)
+	me.encodeMsgID(REQ_CONTRACT_DATA + PROTOBUF_MSG_ID)
+
+	msg, err := proto.Marshal(contractDataRequestProto)
+	if err != nil {
+		c.wrapper.Error(reqID, currentTimeMillis(), 0, "Failed to marshal PlaceOrderRequest: "+err.Error(), "")
+		return
+	}
+
+	me.encodeProto(msg)
 
 	c.reqChan <- me.Bytes()
 }

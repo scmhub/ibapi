@@ -301,6 +301,12 @@ type EWrapper interface {
 	CompletedOrdersEndProtoBuf(completedOrdersEndProto *protobuf.CompletedOrdersEnd)
 	// OrderBoundProtoBuf .
 	OrderBoundProtoBuf(orderBoundProto *protobuf.OrderBound)
+	// ContractDataProtoBuf .
+	ContractDataProtoBuf(contractDataProto *protobuf.ContractData)
+	// BondContractDataProtoBuf .
+	BondContractDataProtoBuf(contractDataProto *protobuf.ContractData)
+	// ContractDataEndProtoBuf .
+	ContractDataEndProtoBuf(contractDataEndProto *protobuf.ContractDataEnd)
 }
 
 var _ EWrapper = (*Wrapper)(nil)
@@ -753,4 +759,16 @@ func (w Wrapper) CompletedOrdersEndProtoBuf(completedOrdersEndProto *protobuf.Co
 
 func (w Wrapper) OrderBoundProtoBuf(orderBoundProto *protobuf.OrderBound) {
 	log.Debug().Stringer("orderBoundProto", orderBoundProto).Msg("<orderBoundProtoBuf>")
+}
+
+func (w Wrapper) ContractDataProtoBuf(contractDataProto *protobuf.ContractData) {
+	log.Debug().Stringer("contractDataProto", contractDataProto).Msg("<ContractDataProtoBuf>")
+}
+
+func (w Wrapper) BondContractDataProtoBuf(contractDataProto *protobuf.ContractData) {
+	log.Debug().Stringer("contractDataProto", contractDataProto).Msg("<BondContractDataProtoBuf>")
+}
+
+func (w Wrapper) ContractDataEndProtoBuf(contractDataEndProto *protobuf.ContractDataEnd) {
+	log.Debug().Stringer("contractDataEndProto", contractDataEndProto).Msg("<ContractDataEndProtoBuf>")
 }

@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+package protobuf;
+
+import "Contract.proto";
+
+option go_package = ".;protobuf";
+
+message ContractDataRequest {
+    optional int32 reqId = 1;
+	optional Contract contract = 2;
+}

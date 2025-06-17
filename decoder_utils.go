@@ -2,6 +2,7 @@ package ibapi
 
 import (
 	"strconv"
+	"strings"
 
 	"github.com/scmhub/ibapi/protobuf"
 )
@@ -67,6 +68,9 @@ func decodeContract(contractProto *protobuf.Contract) *Contract {
 	}
 	if contractProto.ComboLegs != nil {
 		contract.ComboLegs = decodeComboLegs(contractProto)
+	}
+	if contractProto.LastTradeDate != nil {
+		contract.LastTradeDate = contractProto.GetLastTradeDate()
 	}
 
 	return contract
@@ -207,15 +211,18 @@ func decodeExecution(executionProto *protobuf.Execution) *Execution {
 	return execution
 }
 
-func decodeOrder(contractProto *protobuf.Contract, orderProto *protobuf.Order) *Order {
+func decodeOrder(orderID int64, contractProto *protobuf.Contract, orderProto *protobuf.Order) *Order {
 	order := NewOrder()
 	// order ids
 	if orderProto.ClientId != nil {
 		order.ClientID = int64(orderProto.GetClientId())
 	}
-	// if orderProto.OrderId != nil {
-	// 	order.OrderID = int64(orderProto.GetOrderId())
-	// }
+	if isValidInt64Value(orderID) {
+		order.OrderID = orderID
+	}
+	if orderProto.OrderId != nil {
+		order.OrderID = int64(orderProto.GetOrderId())
+	}
 	if orderProto.PermId != nil {
 		order.PermID = int64(orderProto.GetPermId())
 	}
@@ -906,6 +913,234 @@ func decodeOrderAllocations(orderStateProto *protobuf.OrderState) []*OrderAlloca
 		orderAllocations = append(orderAllocations, orderAllocation)
 	}
 	return orderAllocations
+}
+
+func decodeContractDetails(contractProto *protobuf.Contract, contractDetailsProto *protobuf.ContractDetails, isBond bool) *ContractDetails {
+	contractDetails := &ContractDetails{}
+	contractDetails.Contract = *decodeContract(contractProto)
+
+	if contractDetailsProto.MarketName != nil {
+		contractDetails.MarketName = contractDetailsProto.GetMarketName()
+	}
+	if contractDetailsProto.MinTick != nil {
+		contractDetails.MinTick, _ = strconv.ParseFloat(contractDetailsProto.GetMinTick(), 64)
+	}
+	if contractDetailsProto.OrderTypes != nil {
+		contractDetails.OrderTypes = contractDetailsProto.GetOrderTypes()
+	}
+	if contractDetailsProto.ValidExchanges != nil {
+		contractDetails.ValidExchanges = contractDetailsProto.GetValidExchanges()
+	}
+	if contractDetailsProto.PriceMagnifier != nil {
+		contractDetails.PriceMagnifier = int64(contractDetailsProto.GetPriceMagnifier())
+	}
+	if contractDetailsProto.UnderConId != nil {
+		contractDetails.UnderConID = int64(contractDetailsProto.GetUnderConId())
+	}
+	if contractDetailsProto.LongName != nil {
+		contractDetails.LongName = contractDetailsProto.GetLongName()
+	}
+	if contractDetailsProto.ContractMonth != nil {
+		contractDetails.ContractMonth = contractDetailsProto.GetContractMonth()
+	}
+	if contractDetailsProto.Industry != nil {
+		contractDetails.Industry = contractDetailsProto.GetIndustry()
+	}
+	if contractDetailsProto.Category != nil {
+		contractDetails.Category = contractDetailsProto.GetCategory()
+	}
+	if contractDetailsProto.Subcategory != nil {
+		contractDetails.Subcategory = contractDetailsProto.GetSubcategory()
+	}
+	if contractDetailsProto.TimeZoneId != nil {
+		contractDetails.TimeZoneID = contractDetailsProto.GetTimeZoneId()
+	}
+	if contractDetailsProto.TradingHours != nil {
+		contractDetails.TradingHours = contractDetailsProto.GetTradingHours()
+	}
+	if contractDetailsProto.LiquidHours != nil {
+		contractDetails.LiquidHours = contractDetailsProto.GetLiquidHours()
+	}
+	if contractDetailsProto.EvRule != nil {
+		contractDetails.EVRule = contractDetailsProto.GetEvRule()
+	}
+	if contractDetailsProto.EvMultiplier != nil {
+		contractDetails.EVMultiplier = int64(contractDetailsProto.GetEvMultiplier())
+	}
+
+	contractDetails.SecIDList = decodeTagValueList(contractDetailsProto.GetSecIdList())
+
+	if contractDetailsProto.AggGroup != nil {
+		contractDetails.AggGroup = int64(contractDetailsProto.GetAggGroup())
+	}
+	if contractDetailsProto.UnderSymbol != nil {
+		contractDetails.UnderSymbol = contractDetailsProto.GetUnderSymbol()
+	}
+	if contractDetailsProto.UnderSecType != nil {
+		contractDetails.UnderSecType = contractDetailsProto.GetUnderSecType()
+	}
+	if contractDetailsProto.MarketRuleIds != nil {
+		contractDetails.MarketRuleIDs = contractDetailsProto.GetMarketRuleIds()
+	}
+	if contractDetailsProto.RealExpirationDate != nil {
+		contractDetails.RealExpirationDate = contractDetailsProto.GetRealExpirationDate()
+	}
+	if contractDetailsProto.StockType != nil {
+		contractDetails.StockType = contractDetailsProto.GetStockType()
+	}
+	if contractDetailsProto.MinSize != nil {
+		contractDetails.MinSize = StringToDecimal(contractDetailsProto.GetMinSize())
+	}
+	if contractDetailsProto.SizeIncrement != nil {
+		contractDetails.SizeIncrement = StringToDecimal(contractDetailsProto.GetSizeIncrement())
+	}
+	if contractDetailsProto.SuggestedSizeIncrement != nil {
+		contractDetails.SuggestedSizeIncrement = StringToDecimal(contractDetailsProto.GetSuggestedSizeIncrement())
+	}
+
+	setLastTradeDate(contractDetails.Contract.LastTradeDateOrContractMonth, contractDetails, isBond)
+
+	// fund	fields
+	if contractDetailsProto.FundName != nil {
+		contractDetails.FundName = contractDetailsProto.GetFundName()
+	}
+	if contractDetailsProto.FundFamily != nil {
+		contractDetails.FundFamily = contractDetailsProto.GetFundFamily()
+	}
+	if contractDetailsProto.FundType != nil {
+		contractDetails.FundType = contractDetailsProto.GetFundType()
+	}
+	if contractDetailsProto.FundFrontLoad != nil {
+		contractDetails.FundFrontLoad = contractDetailsProto.GetFundFrontLoad()
+	}
+	if contractDetailsProto.FundBackLoad != nil {
+		contractDetails.FundBackLoad = contractDetailsProto.GetFundBackLoad()
+	}
+	if contractDetailsProto.FundBackLoadTimeInterval != nil {
+		contractDetails.FundBackLoadTimeInterval = contractDetailsProto.GetFundBackLoadTimeInterval()
+	}
+	if contractDetailsProto.FundManagementFee != nil {
+		contractDetails.FundManagementFee = contractDetailsProto.GetFundManagementFee()
+	}
+	if contractDetailsProto.FundClosed != nil {
+		contractDetails.FundClosed = contractDetailsProto.GetFundClosed()
+	}
+	if contractDetailsProto.FundClosedForNewInvestors != nil {
+		contractDetails.FundClosedForNewInvestors = contractDetailsProto.GetFundClosedForNewInvestors()
+	}
+	if contractDetailsProto.FundClosedForNewMoney != nil {
+		contractDetails.FundClosedForNewMoney = contractDetailsProto.GetFundClosedForNewMoney()
+	}
+	if contractDetailsProto.FundNotifyAmount != nil {
+		contractDetails.FundNotifyAmount = contractDetailsProto.GetFundNotifyAmount()
+	}
+	if contractDetailsProto.FundMinimumInitialPurchase != nil {
+		contractDetails.FundMinimumInitialPurchase = contractDetailsProto.GetFundMinimumInitialPurchase()
+	}
+	if contractDetailsProto.FundMinimumSubsequentPurchase != nil {
+		contractDetails.FundSubsequentMinimumPurchase = contractDetailsProto.GetFundMinimumSubsequentPurchase()
+	}
+	if contractDetailsProto.FundBlueSkyStates != nil {
+		contractDetails.FundBlueSkyStates = contractDetailsProto.GetFundBlueSkyStates()
+	}
+	if contractDetailsProto.FundBlueSkyTerritories != nil {
+		contractDetails.FundBlueSkyTerritories = contractDetailsProto.GetFundBlueSkyTerritories()
+	}
+	if contractDetailsProto.FundDistributionPolicyIndicator != nil {
+		contractDetails.FundDistributionPolicyIndicator = getFundDistributionPolicyIndicator(contractDetailsProto.GetFundDistributionPolicyIndicator())
+	}
+	if contractDetailsProto.FundAssetType != nil {
+		contractDetails.FundAssetType = getFundAssetType(contractDetailsProto.GetFundAssetType())
+	}
+
+	// bond fields
+	if contractDetailsProto.Cusip != nil {
+		contractDetails.Cusip = contractDetailsProto.GetCusip()
+	}
+	if contractDetailsProto.IssueDate != nil {
+		contractDetails.IssueDate = contractDetailsProto.GetIssueDate()
+	}
+	if contractDetailsProto.Ratings != nil {
+		contractDetails.Ratings = contractDetailsProto.GetRatings()
+	}
+	if contractDetailsProto.BondType != nil {
+		contractDetails.BondType = contractDetailsProto.GetBondType()
+	}
+	if contractDetailsProto.Coupon != nil {
+		contractDetails.Coupon = contractDetailsProto.GetCoupon()
+	}
+	if contractDetailsProto.CouponType != nil {
+		contractDetails.CouponType = contractDetailsProto.GetCouponType()
+	}
+	if contractDetailsProto.Convertible != nil {
+		contractDetails.Convertible = contractDetailsProto.GetConvertible()
+	}
+	if contractDetailsProto.Callable != nil {
+		contractDetails.Callable = contractDetailsProto.GetCallable()
+	}
+	if contractDetailsProto.Puttable != nil {
+		contractDetails.Putable = contractDetailsProto.GetPuttable()
+	}
+	if contractDetailsProto.DescAppend != nil {
+		contractDetails.DescAppend = contractDetailsProto.GetDescAppend()
+	}
+	if contractDetailsProto.NextOptionDate != nil {
+		contractDetails.NextOptionDate = contractDetailsProto.GetNextOptionDate()
+	}
+	if contractDetailsProto.NextOptionType != nil {
+		contractDetails.NextOptionType = contractDetailsProto.GetNextOptionType()
+	}
+	if contractDetailsProto.NextOptionPartial != nil {
+		contractDetails.NextOptionPartial = contractDetailsProto.GetNextOptionPartial()
+	}
+	if contractDetailsProto.BondNotes != nil {
+		contractDetails.Notes = contractDetailsProto.GetBondNotes()
+	}
+
+	contractDetails.IneligibilityReasonList = decodeIneligibilityReasonList(contractDetailsProto)
+
+	return contractDetails
+}
+
+func decodeIneligibilityReasonList(proto *protobuf.ContractDetails) []IneligibilityReason {
+	var reasons []IneligibilityReason
+	for _, reasonProto := range proto.GetIneligibilityReasonList() {
+		reason := IneligibilityReason{}
+		if reasonProto.Id != nil {
+			reason.ID = reasonProto.GetId()
+		}
+		if reasonProto.Description != nil {
+			reason.Description = reasonProto.GetDescription()
+		}
+		reasons = append(reasons, reason)
+	}
+	return reasons
+}
+
+func setLastTradeDate(lastTradeDateOrContractMonth string, contract *ContractDetails, isBond bool) {
+	if lastTradeDateOrContractMonth == "" {
+		return
+	}
+	var split []string
+	splitWith := " "
+	if strings.Contains(lastTradeDateOrContractMonth, "-") {
+		splitWith = "-"
+	}
+	split = strings.Split(lastTradeDateOrContractMonth, splitWith)
+
+	if len(split) > 0 {
+		if isBond {
+			contract.Maturity = split[0]
+		} else {
+			contract.Contract.LastTradeDateOrContractMonth = split[0]
+		}
+	}
+	if len(split) > 1 {
+		contract.LastTradeTime = split[1]
+	}
+	if isBond && len(split) > 2 {
+		contract.TimeZoneID = split[2]
+	}
 }
 
 // Helper for float to string conversion, if needed

@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+package protobuf;
+
+option go_package = ".;protobuf";
+
+message IneligibilityReason {
+    optional string id = 1;
+    optional string description = 2;
+}

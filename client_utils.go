@@ -1,6 +1,7 @@
 package ibapi
 
 import (
+	"fmt"
 	"strconv"
 
 	"github.com/scmhub/ibapi/protobuf"
@@ -51,20 +52,23 @@ func createExecutionRequestProto(reqID int64, execFilter *ExecutionFilter) *prot
 	return executionRequestProto
 }
 
-func createPlaceOrderRequestProto(orderID OrderID, contract *Contract, order *Order) *protobuf.PlaceOrderRequest {
+func createPlaceOrderRequestProto(orderID OrderID, contract *Contract, order *Order) (*protobuf.PlaceOrderRequest, error) {
+	var err error
 	placeOrderRequestProto := &protobuf.PlaceOrderRequest{}
-	placeOrderRequestProto.Order = createOrderProto(order)
 	if isValidInt64Value(orderID) {
 		orderIDProto := int32(orderID)
 		placeOrderRequestProto.OrderId = &orderIDProto
 	}
 	placeOrderRequestProto.Contract = createContractProto(contract, order)
-	placeOrderRequestProto.Order = createOrderProto(order)
-
-	return placeOrderRequestProto
+	placeOrderRequestProto.Order, err = createOrderProto(order)
+	if err != nil {
+		return nil, err
+	}
+	return placeOrderRequestProto, nil
 }
 
-func createOrderProto(order *Order) *protobuf.Order {
+func createOrderProto(order *Order) (*protobuf.Order, error) {
+	var err error
 	orderProto := &protobuf.Order{}
 	// order ids
 	if isValidInt64Value(order.ClientID) {
@@ -415,7 +419,10 @@ func createOrderProto(order *Order) *protobuf.Order {
 	}
 
 	if order.Conditions != nil {
-		orderProto.Conditions = createConditionsProto(order)
+		orderProto.Conditions, err = createConditionsProto(order)
+		if err != nil {
+			return nil, err
+		}
 	}
 	if order.ConditionsCancelOrder {
 		orderProto.ConditionsCancelOrder = &order.ConditionsCancelOrder
@@ -544,33 +551,32 @@ func createOrderProto(order *Order) *protobuf.Order {
 	if !stringIsEmpty(order.Submitter) {
 		orderProto.Submitter = &order.Submitter
 	}
-
-	return orderProto
+	return orderProto, nil
 }
 
-func createConditionsProto(order *Order) []*protobuf.OrderCondition {
+func createConditionsProto(order *Order) ([]*protobuf.OrderCondition, error) {
 	var orderConditionList []*protobuf.OrderCondition
-	for _, cond := range order.Conditions {
+	for _, condition := range order.Conditions {
 		var protoCond *protobuf.OrderCondition
-		switch cond.Type() {
+		switch condition.Type() {
 		case PriceOrderCondition:
-			protoCond = createPriceConditionProto(cond)
+			protoCond = createPriceConditionProto(condition)
 		case TimeOrderCondition:
-			protoCond = createTimeConditionProto(cond)
+			protoCond = createTimeConditionProto(condition)
 		case MarginOrderCondition:
-			protoCond = createMarginConditionProto(cond)
+			protoCond = createMarginConditionProto(condition)
 		case ExecutionOrderCondition:
-			protoCond = createExecutionConditionProto(cond)
+			protoCond = createExecutionConditionProto(condition)
 		case VolumeOrderCondition:
-			protoCond = createVolumeConditionProto(cond)
+			protoCond = createVolumeConditionProto(condition)
 		case PercentChangeOrderCondition:
-			protoCond = createPercentChangeConditionProto(cond)
+			protoCond = createPercentChangeConditionProto(condition)
 		default:
-			continue
+			return nil, fmt.Errorf("unknown condition type: %v", condition)
 		}
 		orderConditionList = append(orderConditionList, protoCond)
 	}
-	return orderConditionList
+	return orderConditionList, nil
 }
 
 // Base
@@ -906,4 +912,14 @@ func createCompletedOrdersRequestProto(apiOnly bool) *protobuf.CompletedOrdersRe
 		completedOrdersRequestProto.ApiOnly = &apiOnly
 	}
 	return completedOrdersRequestProto
+}
+
+func createContractDataRequestProto(reqID int64, contract *Contract) *protobuf.ContractDataRequest {
+	contractDataRequestProto := &protobuf.ContractDataRequest{}
+	if isValidInt64Value(reqID) {
+		id := int32(reqID)
+		contractDataRequestProto.ReqId = &id
+	}
+	contractDataRequestProto.Contract = createContractProto(contract, nil)
+	return contractDataRequestProto
 }
