@@ -20,7 +20,9 @@ import (
 	"os/signal"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"syscall"
+	"unsafe"
 
 	"github.com/scmhub/ibapi/protobuf"
 	"google.golang.org/protobuf/proto"
@@ -340,9 +342,9 @@ func (c *EClient) reset() {
 }
 
 func (c *EClient) setConnState(state ConnState) {
-	cs := c.connState
-	c.connState = state
-	log.Debug().Stringer("from", cs).Stringer("to", c.connState).Msg("connection state changed")
+	cs := ConnState(atomic.LoadInt32((*int32)(unsafe.Pointer(&c.connState))))
+	atomic.StoreInt32((*int32)(unsafe.Pointer(&c.connState)), int32(state))
+	log.Debug().Stringer("from", cs).Stringer("to", state).Msg("connection state changed")
 }
 
 // request is a goroutine that will get the req from reqChan and send it to TWS.
@@ -611,7 +613,7 @@ func (c *EClient) Ctx() context.Context {
 
 // IsConnected checks connection to TWS or GateWay.
 func (c *EClient) IsConnected() bool {
-	return c.conn.IsConnected() && c.connState == CONNECTED
+	return c.conn.IsConnected() && ConnState(atomic.LoadInt32((*int32)(unsafe.Pointer(&c.connState)))) == CONNECTED
 }
 
 // OptionalCapabilities returns the Optional Capabilities.
@@ -1117,7 +1119,7 @@ func (c *EClient) CancelCalculateOptionPrice(reqID int64) {
 //
 // exerciseQuantity is the quantity you want to exercise.
 // account is the destination account.
-// override specifies whether your setting will override the system's natural action.
+// override	specifies whether your setting will override the system's natural action.
 // For example, if your action is "exercise" and the option is not in-the-money, by natural action the option would not exercise.
 // If you have override set to "yes" the natural action would be overridden	and the out-of-the money option would be exercised.
 // Values: 0 = no, 1 = yes.
