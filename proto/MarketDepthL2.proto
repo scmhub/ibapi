@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+package protobuf;
+
+import "MarketDepthData.proto";
+
+option go_package = ".;protobuf";
+
+message MarketDepthL2 {
+    optional int32 reqId = 1;
+	optional MarketDepthData marketDepthData = 2;
+}

@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package protobuf;
+
+option go_package = ".;protobuf";
+
+message TickString {
+    optional int32 reqId = 1;
+    optional int32 tickType = 2;
+    optional string value = 3;
+}

@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+package protobuf;
+
+option go_package = ".;protobuf";
+
+message CancelMarketDepth {
+    optional int32 reqId = 1;
+    optional bool isSmartDepth = 2;
+}

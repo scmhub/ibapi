@@ -153,10 +153,12 @@ const (
 	MIN_SERVER_VER_PROTOBUF_PLACE_ORDER               Version = 203
 	MIN_SERVER_VER_PROTOBUF_COMPLETED_ORDER           Version = 204
 	MIN_SERVER_VER_PROTOBUF_CONTRACT_DATA             Version = 205
+	MIN_SERVER_VER_PROTOBUF_MARKET_DATA               Version = 206
 
 	// 100+ messaging
 	// 100 = enhanced handshake, msg length prefixes
 
 	MIN_CLIENT_VER = 100
+	// Max client version is intentionally left to 205 as 206 was not available for testing.
 	MAX_CLIENT_VER = MIN_SERVER_VER_PROTOBUF_CONTRACT_DATA
 )

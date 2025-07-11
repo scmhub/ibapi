@@ -703,6 +703,11 @@ func (c *EClient) TWSConnectionTime() string {
 // mktDataOptions is for internal use only.Use default value XYZ.
 func (c *EClient) ReqMktData(reqID TickerID, contract *Contract, genericTickList string, snapshot bool, regulatorySnapshot bool, mktDataOptions []TagValue) {
 
+	if c.useProtoBuf(REQ_MKT_DATA) {
+		c.reqMarketDataProtoBuf(createMarketDataRequestProto(reqID, contract, genericTickList, snapshot, regulatorySnapshot, mktDataOptions))
+		return
+	}
+
 	if !c.IsConnected() {
 		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
@@ -784,8 +789,39 @@ func (c *EClient) ReqMktData(reqID TickerID, contract *Contract, genericTickList
 	c.reqChan <- me.Bytes()
 }
 
+func (c *EClient) reqMarketDataProtoBuf(marketDataRequestProto *protobuf.MarketDataRequest) {
+
+	reqID := NO_VALID_ID
+	if marketDataRequestProto.ReqId != nil {
+		reqID = int64(*marketDataRequestProto.ReqId)
+	}
+
+	if !c.IsConnected() {
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
+	me := NewMsgEncoder(30, c)
+	me.encodeMsgID(REQ_MKT_DATA + PROTOBUF_MSG_ID)
+
+	msg, err := proto.Marshal(marketDataRequestProto)
+	if err != nil {
+		c.wrapper.Error(reqID, currentTimeMillis(), 0, "Failed to marshal MarketDataRequest: "+err.Error(), "")
+		return
+	}
+
+	me.encodeProto(msg)
+
+	c.reqChan <- me.Bytes()
+}
+
 // CancelMktData stops the market data flow for the specified TickerId.
 func (c *EClient) CancelMktData(reqID TickerID) {
+
+	if c.useProtoBuf(CANCEL_MKT_DATA) {
+		c.cancelMarketDataProtoBuf(createCancelMarketDataProto(reqID))
+		return
+	}
 
 	if !c.IsConnected() {
 		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
@@ -797,6 +833,32 @@ func (c *EClient) CancelMktData(reqID TickerID) {
 	me := NewMsgEncoder(3, c)
 
 	me.encodeMsgID(CANCEL_MKT_DATA).encodeInt(VERSION).encodeInt64(reqID)
+
+	c.reqChan <- me.Bytes()
+}
+
+func (c *EClient) cancelMarketDataProtoBuf(cancelMarketDataProto *protobuf.CancelMarketData) {
+
+	reqID := NO_VALID_ID
+	if cancelMarketDataProto.ReqId != nil {
+		reqID = int64(*cancelMarketDataProto.ReqId)
+	}
+
+	if !c.IsConnected() {
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
+	me := NewMsgEncoder(3, c)
+	me.encodeMsgID(CANCEL_MKT_DATA + PROTOBUF_MSG_ID)
+
+	msg, err := proto.Marshal(cancelMarketDataProto)
+	if err != nil {
+		c.wrapper.Error(reqID, currentTimeMillis(), 0, "Failed to marshal CancelMarketData: "+err.Error(), "")
+		return
+	}
+
+	me.encodeProto(msg)
 
 	c.reqChan <- me.Bytes()
 }
@@ -814,6 +876,11 @@ func (c *EClient) CancelMktData(reqID TickerID) {
 //	3 -> delayed market data
 //	4 -> delayed frozen market data
 func (c *EClient) ReqMarketDataType(marketDataType int64) {
+
+	if c.useProtoBuf(REQ_MARKET_DATA_TYPE) {
+		c.reqMarketDataTypeProtoBuf(createMarketDataTypeRequestProto(marketDataType))
+		return
+	}
 
 	if !c.IsConnected() {
 		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
@@ -835,6 +902,27 @@ func (c *EClient) ReqMarketDataType(marketDataType int64) {
 	me := NewMsgEncoder(3, c)
 
 	me.encodeMsgID(REQ_MARKET_DATA_TYPE).encodeInt(VERSION).encodeInt64(marketDataType)
+
+	c.reqChan <- me.Bytes()
+}
+
+func (c *EClient) reqMarketDataTypeProtoBuf(marketDataTypeRequestProto *protobuf.MarketDataTypeRequest) {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
+	me := NewMsgEncoder(3, c)
+	me.encodeMsgID(REQ_MARKET_DATA_TYPE + PROTOBUF_MSG_ID)
+
+	msg, err := proto.Marshal(marketDataTypeRequestProto)
+	if err != nil {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), 0, "Failed to marshal MarketDataTypeRequest: "+err.Error(), "")
+		return
+	}
+
+	me.encodeProto(msg)
 
 	c.reqChan <- me.Bytes()
 }
@@ -1855,13 +1943,14 @@ func (c *EClient) PlaceOrder(orderID OrderID, contract *Contract, order *Order) 
 		if contract.Exchange == "IBKRATS" {
 			me.encodeIntMax(order.MinTradeQty)
 		}
-		if order.OrderType == "PEG BEST" {
+		switch order.OrderType {
+		case "PEG BEST":
 			me.encodeIntMax(order.MinCompeteSize)
 			me.encodeFloatMax(order.CompeteAgainstBestOffset)
 			if order.CompeteAgainstBestOffset == COMPETE_AGAINST_BEST_OFFSET_UP_TO_MID {
 				sendMidOffsets = true
 			}
-		} else if order.OrderType == "PEG MID" {
+		case "PEG MID":
 			sendMidOffsets = true
 		}
 		if sendMidOffsets {
@@ -2809,6 +2898,11 @@ func (c *EClient) ReqMktDepthExchanges() {
 // mktDepthOptions is for internal use only. Use default value XYZ.
 func (c *EClient) ReqMktDepth(reqID int64, contract *Contract, numRows int, isSmartDepth bool, mktDepthOptions []TagValue) {
 
+	if c.useProtoBuf(REQ_MKT_DEPTH) {
+		c.reqMarketDepthProtoBuf(createMarketDepthRequestProto(reqID, contract, int64(numRows), isSmartDepth, mktDepthOptions))
+		return
+	}
+
 	if !c.IsConnected() {
 		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
@@ -2878,8 +2972,39 @@ func (c *EClient) ReqMktDepth(reqID int64, contract *Contract, numRows int, isSm
 	c.reqChan <- me.Bytes()
 }
 
+func (c *EClient) reqMarketDepthProtoBuf(marketDepthRequestProto *protobuf.MarketDepthRequest) {
+
+	reqID := NO_VALID_ID
+	if marketDepthRequestProto.ReqId != nil {
+		reqID = int64(*marketDepthRequestProto.ReqId)
+	}
+
+	if !c.IsConnected() {
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
+	me := NewMsgEncoder(17, c)
+	me.encodeMsgID(REQ_MKT_DEPTH + PROTOBUF_MSG_ID)
+
+	msg, err := proto.Marshal(marketDepthRequestProto)
+	if err != nil {
+		c.wrapper.Error(reqID, currentTimeMillis(), 0, "Failed to marshal MarketDepthRequest: "+err.Error(), "")
+		return
+	}
+
+	me.encodeProto(msg)
+
+	c.reqChan <- me.Bytes()
+}
+
 // CancelMktDepth cancels market depth updates.
 func (c *EClient) CancelMktDepth(reqID int64, isSmartDepth bool) {
+
+	if c.useProtoBuf(CANCEL_MKT_DEPTH) {
+		c.cancelMarketDepthProtoBuf(createCancelMarketDepthProto(reqID, isSmartDepth))
+		return
+	}
 
 	if !c.IsConnected() {
 		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
@@ -2902,6 +3027,32 @@ func (c *EClient) CancelMktDepth(reqID int64, isSmartDepth bool) {
 	if c.serverVersion >= MIN_SERVER_VER_SMART_DEPTH {
 		me.encodeBool(isSmartDepth)
 	}
+
+	c.reqChan <- me.Bytes()
+}
+
+func (c *EClient) cancelMarketDepthProtoBuf(cancelMarketDepthProto *protobuf.CancelMarketDepth) {
+
+	reqID := NO_VALID_ID
+	if cancelMarketDepthProto.ReqId != nil {
+		reqID = int64(*cancelMarketDepthProto.ReqId)
+	}
+
+	if !c.IsConnected() {
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
+	me := NewMsgEncoder(4, c)
+	me.encodeMsgID(REQ_MKT_DEPTH + PROTOBUF_MSG_ID)
+
+	msg, err := proto.Marshal(cancelMarketDepthProto)
+	if err != nil {
+		c.wrapper.Error(reqID, currentTimeMillis(), 0, "Failed to marshal CancelMarketDepth: "+err.Error(), "")
+		return
+	}
+
+	me.encodeProto(msg)
 
 	c.reqChan <- me.Bytes()
 }

@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+package protobuf;
+
+option go_package = ".;protobuf";
+
+message TickReqParams {
+    optional int32 reqId = 1;
+	optional string minTick = 2;
+	optional string bboExchange = 3;
+    optional int32 snapshotPermissions = 4;
+}

@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package protobuf;
+
+option go_package = ".;protobuf";
+
+message MarketDepthData {
+    optional int32 position = 1;
+    optional int32 operation = 2;
+    optional int32 side = 3;
+    optional double price = 4;
+    optional string size = 5;
+    optional string marketMaker = 6;
+    optional bool isSmartDepth = 7;
+}

@@ -307,6 +307,26 @@ type EWrapper interface {
 	BondContractDataProtoBuf(contractDataProto *protobuf.ContractData)
 	// ContractDataEndProtoBuf .
 	ContractDataEndProtoBuf(contractDataEndProto *protobuf.ContractDataEnd)
+	// TickPriceProtoBuf .
+	TickPriceProtoBuf(tickPriceProto *protobuf.TickPrice)
+	// TickSizeProtoBuf .
+	TickSizeProtoBuf(tickSizeProto *protobuf.TickSize)
+	// TickOptionComputationProtoBuf .
+	TickOptionComputationProtoBuf(tickOptionComputationProto *protobuf.TickOptionComputation)
+	// TickGenericProtoBuf .
+	TickGenericProtoBuf(tickGenericProto *protobuf.TickGeneric)
+	// TickStringProtoBuf .
+	TickStringProtoBuf(tickStringProto *protobuf.TickString)
+	// TickSnapshotEndProtoBuf .
+	TickSnapshotEndProtoBuf(tickSnapshotEndProto *protobuf.TickSnapshotEnd)
+	// UpdateMarketDepthProtoBuf .
+	UpdateMarketDepthProtoBuf(marketDepthProto *protobuf.MarketDepth)
+	// UpdateMarketDepthL2ProtoBuf .
+	UpdateMarketDepthL2ProtoBuf(marketDepthL2Proto *protobuf.MarketDepthL2)
+	// MarketDataTypeProtoBuf .
+	MarketDataTypeProtoBuf(marketDataTypeProto *protobuf.MarketDataType)
+	// TickReqParamsProtoBuf .
+	TickReqParamsProtoBuf(tickReqParamsProto *protobuf.TickReqParams)
 }
 
 var _ EWrapper = (*Wrapper)(nil)
@@ -771,4 +791,44 @@ func (w Wrapper) BondContractDataProtoBuf(contractDataProto *protobuf.ContractDa
 
 func (w Wrapper) ContractDataEndProtoBuf(contractDataEndProto *protobuf.ContractDataEnd) {
 	log.Debug().Stringer("contractDataEndProto", contractDataEndProto).Msg("<ContractDataEndProtoBuf>")
+}
+
+func (w Wrapper) TickPriceProtoBuf(tickPriceProto *protobuf.TickPrice) {
+	log.Debug().Stringer("tickPriceProto", tickPriceProto).Msg("<ContractDataEndProtoBuf>")
+}
+
+func (w Wrapper) TickSizeProtoBuf(tickSizeProto *protobuf.TickSize) {
+	log.Debug().Stringer("tickSizeProto", tickSizeProto).Msg("<ContractDataEndProtoBuf>")
+}
+
+func (w Wrapper) TickOptionComputationProtoBuf(tickOptionComputationProto *protobuf.TickOptionComputation) {
+	log.Debug().Stringer("tickOptionComputationProto", tickOptionComputationProto).Msg("<ContractDataEndProtoBuf>")
+}
+
+func (w Wrapper) TickGenericProtoBuf(tickGenericProto *protobuf.TickGeneric) {
+	log.Debug().Stringer("tickGenericProto", tickGenericProto).Msg("<ContractDataEndProtoBuf>")
+}
+
+func (w Wrapper) TickStringProtoBuf(tickStringProto *protobuf.TickString) {
+	log.Debug().Stringer("tickStringProto", tickStringProto).Msg("<ContractDataEndProtoBuf>")
+}
+
+func (w Wrapper) TickSnapshotEndProtoBuf(tickSnapshotEndProto *protobuf.TickSnapshotEnd) {
+	log.Debug().Stringer("tickSnapshotEndProto", tickSnapshotEndProto).Msg("<ContractDataEndProtoBuf>")
+}
+
+func (w Wrapper) UpdateMarketDepthProtoBuf(marketDepthProto *protobuf.MarketDepth) {
+	log.Debug().Stringer("marketDepthProto", marketDepthProto).Msg("<ContractDataEndProtoBuf>")
+}
+
+func (w Wrapper) UpdateMarketDepthL2ProtoBuf(marketDepthL2Proto *protobuf.MarketDepthL2) {
+	log.Debug().Stringer("marketDepthL2Proto", marketDepthL2Proto).Msg("<ContractDataEndProtoBuf>")
+}
+
+func (w Wrapper) MarketDataTypeProtoBuf(marketDataTypeProto *protobuf.MarketDataType) {
+	log.Debug().Stringer("marketDataTypeProto", marketDataTypeProto).Msg("<ContractDataEndProtoBuf>")
+}
+
+func (w Wrapper) TickReqParamsProtoBuf(tickReqParamsProto *protobuf.TickReqParams) {
+	log.Debug().Stringer("tickReqParamsProto", tickReqParamsProto).Msg("<ContractDataEndProtoBuf>")
 }

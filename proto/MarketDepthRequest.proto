@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package protobuf;
+
+import "Contract.proto";
+
+option go_package = ".;protobuf";
+
+message MarketDepthRequest {
+    optional int32 reqId = 1;
+    optional Contract contract = 2;
+    optional int32 numRows = 3;
+    optional bool isSmartDepth = 4;
+    map<string, string> marketDepthOptions = 5;
+}

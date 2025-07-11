@@ -5,6 +5,7 @@ It will call the corresponding method from the EWrapper so that customer's code 
 package ibapi
 
 import (
+	"strconv"
 	"strings"
 
 	"github.com/scmhub/ibapi/protobuf"
@@ -65,6 +66,26 @@ func (d *EDecoder) interpret(msgBytes []byte) {
 			d.processBondContractDataMsgProtoBuf(msgBuf)
 		case CONTRACT_DATA_END:
 			d.processContractDataEndMsgProtoBuf(msgBuf)
+		case TICK_PRICE:
+			d.processTickPriceMsgProtoBuf(msgBuf)
+		case TICK_SIZE:
+			d.processTickSizeMsgProtoBuf(msgBuf)
+		case MARKET_DEPTH:
+			d.processMarketDepthMsgProtoBuf(msgBuf)
+		case MARKET_DEPTH_L2:
+			d.processMarketDepthL2MsgProtoBuf(msgBuf)
+		case TICK_OPTION_COMPUTATION:
+			d.processTickOptionComputationMsgProtoBuf(msgBuf)
+		case TICK_GENERIC:
+			d.processTickGenericMsgProtoBuf(msgBuf)
+		case TICK_STRING:
+			d.processTickStringMsgProtoBuf(msgBuf)
+		case TICK_SNAPSHOT_END:
+			d.processTickSnapshotEndMsgProtoBuf(msgBuf)
+		case MARKET_DATA_TYPE:
+			d.processMarketDataTypeMsgProtoBuf(msgBuf)
+		case TICK_REQ_PARAMS:
+			d.processTickReqParamsMsgProtoBuf(msgBuf)
 		default:
 			d.wrapper.Error(msgID, currentTimeMillis(), UNKNOWN_ID.Code, UNKNOWN_ID.Msg, "")
 		}
@@ -258,15 +279,78 @@ func (d *EDecoder) processTickPriceMsg(msgBuf *MsgBuffer) {
 	attrib.CanAutoExecute = attrMask == 1
 
 	if d.serverVersion >= MIN_SERVER_VER_PAST_LIMIT {
-		attrib.CanAutoExecute = attrMask&0x1 != 0
-		attrib.PastLimit = attrMask&0x2 != 0
+		attrib.CanAutoExecute = (attrMask & (1 << 0)) != 0
+		attrib.PastLimit = (attrMask & (1 << 1)) != 0
 		if d.serverVersion >= MIN_SERVER_VER_PRE_OPEN_BID_ASK {
-			attrib.PreOpen = attrMask&0x4 != 0
+			attrib.PreOpen = (attrMask & (1 << 2)) != 0
 		}
 	}
 
 	d.wrapper.TickPrice(reqID, tickType, price, attrib)
 
+	var sizeTickType int64
+	switch tickType {
+	case BID:
+		sizeTickType = BID_SIZE
+	case ASK:
+		sizeTickType = ASK_SIZE
+	case LAST:
+		sizeTickType = LAST_SIZE
+	case DELAYED_BID:
+		sizeTickType = DELAYED_BID_SIZE
+	case DELAYED_ASK:
+		sizeTickType = DELAYED_ASK_SIZE
+	case DELAYED_LAST:
+		sizeTickType = DELAYED_LAST_SIZE
+	default:
+		sizeTickType = NOT_SET
+	}
+
+	if sizeTickType != NOT_SET {
+		d.wrapper.TickSize(reqID, sizeTickType, size)
+	}
+}
+
+func (d *EDecoder) processTickPriceMsgProtoBuf(msgBuf *MsgBuffer) {
+
+	var tickPriceProto protobuf.TickPrice
+	err := proto.Unmarshal(msgBuf.bs, &tickPriceProto)
+	if err != nil {
+		log.Error().Err(err).Msg("failed to unmarshal TickPrice message")
+		return
+	}
+
+	d.wrapper.TickPriceProtoBuf(&tickPriceProto)
+
+	reqID := NO_VALID_ID
+	if tickPriceProto.ReqId != nil {
+		reqID = int64(tickPriceProto.GetReqId())
+	}
+	var tickType TickType
+	if tickPriceProto.TickType != nil {
+		tickType = TickType(tickPriceProto.GetTickType())
+	}
+	var price float64
+	if tickPriceProto.Price != nil {
+		price = tickPriceProto.GetPrice()
+	}
+	var size Decimal
+	if tickPriceProto.Size != nil { // Assuming Size is named Size_ in proto to avoid conflict
+		size = StringToDecimal(tickPriceProto.GetSize())
+	}
+	var attrMask int64
+	if tickPriceProto.AttrMask != nil {
+		attrMask = int64(tickPriceProto.GetAttrMask())
+	}
+
+	attrib := NewTickAttrib()
+	attrib.CanAutoExecute = (attrMask & (1 << 0)) != 0 // Check the 0th bit
+	attrib.PastLimit = (attrMask & (1 << 1)) != 0      // Check the 1st bit
+	attrib.PreOpen = (attrMask & (1 << 2)) != 0        // Check the 2nd bit
+
+	d.wrapper.TickPrice(reqID, tickType, price, attrib)
+
+	// process size tick
 	var sizeTickType int64
 	switch tickType {
 	case BID:
@@ -299,6 +383,34 @@ func (d *EDecoder) processTickSizeMsg(msgBuf *MsgBuffer) {
 	size := msgBuf.decodeDecimal()
 
 	if sizeTickType != NOT_SET {
+		d.wrapper.TickSize(reqID, sizeTickType, size)
+	}
+}
+
+func (d *EDecoder) processTickSizeMsgProtoBuf(msgBuf *MsgBuffer) {
+	var tickSizeProto protobuf.TickSize
+	err := proto.Unmarshal(msgBuf.bs, &tickSizeProto)
+	if err != nil {
+		log.Error().Err(err).Msg("failed to unmarshal TickSize message")
+		return
+	}
+
+	d.wrapper.TickSizeProtoBuf(&tickSizeProto)
+
+	reqID := NO_VALID_ID
+	if tickSizeProto.ReqId != nil {
+		reqID = int64(tickSizeProto.GetReqId())
+	}
+	var sizeTickType int64
+	if tickSizeProto.TickType != nil {
+		sizeTickType = int64(tickSizeProto.GetTickType())
+	}
+	var size Decimal
+	if tickSizeProto.Size != nil {
+		size = StringToDecimal(tickSizeProto.GetSize())
+	}
+
+	if sizeTickType != NOT_SET { // NOT_SET would be a constant defined in your Go code
 		d.wrapper.TickSize(reqID, sizeTickType, size)
 	}
 }
@@ -368,6 +480,98 @@ func (d *EDecoder) processTickOptionComputationMsg(msgBuf *MsgBuffer) {
 
 }
 
+func (d *EDecoder) processTickOptionComputationMsgProtoBuf(msgBuf *MsgBuffer) {
+	var tickOptionComputationProto protobuf.TickOptionComputation
+	err := proto.Unmarshal(msgBuf.bs, &tickOptionComputationProto)
+	if err != nil {
+		log.Error().Err(err).Msg("failed to unmarshal TickOptionComputation message")
+		return
+	}
+
+	d.wrapper.TickOptionComputationProtoBuf(&tickOptionComputationProto)
+
+	reqID := NO_VALID_ID
+	if tickOptionComputationProto.ReqId != nil {
+		reqID = int64(tickOptionComputationProto.GetReqId())
+	}
+
+	var tickType TickType
+	if tickOptionComputationProto.TickType != nil {
+		tickType = TickType(tickOptionComputationProto.GetTickType())
+	}
+
+	var tickAttrib int64
+	if tickOptionComputationProto.TickAttrib != nil {
+		tickAttrib = int64(tickOptionComputationProto.GetTickAttrib())
+	}
+
+	var impliedVol float64
+	if tickOptionComputationProto.ImpliedVol != nil {
+		impliedVol = tickOptionComputationProto.GetImpliedVol()
+		if impliedVol == -1 { // -1 is the "not computed" indicator
+			impliedVol = UNSET_FLOAT
+		}
+	}
+
+	var delta float64
+	if tickOptionComputationProto.Delta != nil {
+		delta = tickOptionComputationProto.GetDelta()
+		if delta == -2 { // -2 is the "not computed" indicator
+			delta = UNSET_FLOAT
+		}
+	}
+
+	var optPrice float64
+	if tickOptionComputationProto.OptPrice != nil {
+		optPrice = tickOptionComputationProto.GetOptPrice()
+		if optPrice == -1 { // -1 is the "not computed" indicator
+			optPrice = UNSET_FLOAT
+		}
+	}
+
+	var pvDividend float64
+	if tickOptionComputationProto.PvDividend != nil {
+		pvDividend = tickOptionComputationProto.GetPvDividend()
+		if pvDividend == -1 { // -1 is the "not computed" indicator
+			pvDividend = UNSET_FLOAT
+		}
+	}
+
+	var gamma float64
+	if tickOptionComputationProto.Gamma != nil {
+		gamma = tickOptionComputationProto.GetGamma()
+		if gamma == -2 { // -2 is the "not yet computed" indicator
+			gamma = UNSET_FLOAT
+		}
+	}
+
+	var vega float64
+	if tickOptionComputationProto.Vega != nil {
+		vega = tickOptionComputationProto.GetVega()
+		if vega == -2 { // -2 is the "not yet computed" indicator
+			vega = UNSET_FLOAT
+		}
+	}
+
+	var theta float64
+	if tickOptionComputationProto.Theta != nil {
+		theta = tickOptionComputationProto.GetTheta()
+		if theta == -2 { // -2 is the "not yet computed" indicator
+			theta = UNSET_FLOAT
+		}
+	}
+
+	var undPrice float64
+	if tickOptionComputationProto.UndPrice != nil {
+		undPrice = tickOptionComputationProto.GetUndPrice()
+		if undPrice == -1 { // -1 is the "not computed" indicator
+			undPrice = UNSET_FLOAT
+		}
+	}
+
+	d.wrapper.TickOptionComputation(reqID, tickType, tickAttrib, impliedVol, delta, optPrice, pvDividend, gamma, vega, theta, undPrice)
+}
+
 func (d *EDecoder) processTickGenericMsg(msgBuf *MsgBuffer) {
 
 	msgBuf.decode() // version
@@ -379,6 +583,34 @@ func (d *EDecoder) processTickGenericMsg(msgBuf *MsgBuffer) {
 	d.wrapper.TickGeneric(reqID, tickType, value)
 }
 
+func (d *EDecoder) processTickGenericMsgProtoBuf(msgBuf *MsgBuffer) {
+	var tickGenericProto protobuf.TickGeneric
+	err := proto.Unmarshal(msgBuf.bs, &tickGenericProto)
+	if err != nil {
+		log.Error().Err(err).Msg("failed to unmarshal TickGeneric message")
+		return
+	}
+
+	d.wrapper.TickGenericProtoBuf(&tickGenericProto)
+
+	reqID := NO_VALID_ID
+	if tickGenericProto.ReqId != nil {
+		reqID = int64(tickGenericProto.GetReqId())
+	}
+
+	var tickType TickType
+	if tickGenericProto.TickType != nil {
+		tickType = TickType(tickGenericProto.GetTickType())
+	}
+
+	var value float64
+	if tickGenericProto.Value != nil {
+		value = tickGenericProto.GetValue()
+	}
+
+	d.wrapper.TickGeneric(reqID, tickType, value)
+}
+
 func (d *EDecoder) processTickStringMsg(msgBuf *MsgBuffer) {
 
 	msgBuf.decode() // version
@@ -386,6 +618,32 @@ func (d *EDecoder) processTickStringMsg(msgBuf *MsgBuffer) {
 	reqID := msgBuf.decodeInt64()
 	tickType := msgBuf.decodeInt64()
 	value := msgBuf.decodeString()
+
+	d.wrapper.TickString(reqID, tickType, value)
+}
+
+func (d *EDecoder) processTickStringMsgProtoBuf(msgBuf *MsgBuffer) {
+	var tickStringProto protobuf.TickString
+	err := proto.Unmarshal(msgBuf.bs, &tickStringProto)
+	if err != nil {
+		log.Error().Err(err).Msg("failed to unmarshal TickString message")
+		return
+	}
+
+	d.wrapper.TickStringProtoBuf(&tickStringProto)
+
+	reqID := NO_VALID_ID
+	if tickStringProto.ReqId != nil {
+		reqID = int64(tickStringProto.GetReqId())
+	}
+	var tickType int64
+	if tickStringProto.TickType != nil {
+		tickType = int64(tickStringProto.GetTickType())
+	}
+	var value string
+	if tickStringProto.Value != nil {
+		value = tickStringProto.GetValue()
+	}
 
 	d.wrapper.TickString(reqID, tickType, value)
 }
@@ -901,7 +1159,7 @@ func (d *EDecoder) processContractDataMsgProtoBuf(msgBuf *MsgBuffer) {
 
 	d.wrapper.ContractDataProtoBuf(&contractDataProto)
 
-	var reqID int64
+	reqID := NO_VALID_ID
 	if contractDataProto.ReqId != nil {
 		reqID = int64(contractDataProto.GetReqId())
 	}
@@ -1093,7 +1351,7 @@ func (d *EDecoder) processBondContractDataMsgProtoBuf(msgBuf *MsgBuffer) {
 
 	d.wrapper.BondContractDataProtoBuf(&contractDataProto)
 
-	var reqID int64
+	reqID := NO_VALID_ID
 	if contractDataProto.ReqId != nil {
 		reqID = int64(contractDataProto.GetReqId())
 	}
@@ -1145,6 +1403,48 @@ func (d *EDecoder) processMarketDepthMsg(msgBuf *MsgBuffer) {
 	d.wrapper.UpdateMktDepth(tickerID, position, operation, side, price, size)
 }
 
+func (d *EDecoder) processMarketDepthMsgProtoBuf(msgBuf *MsgBuffer) {
+	var marketDepthProto protobuf.MarketDepth
+	err := proto.Unmarshal(msgBuf.bs, &marketDepthProto)
+	if err != nil {
+		log.Error().Err(err).Msg("failed to unmarshal MarketDepth message")
+		return
+	}
+
+	d.wrapper.UpdateMarketDepthProtoBuf(&marketDepthProto) // Assuming you have a wrapper method for the raw protobuf message
+
+	reqID := NO_VALID_ID
+	if marketDepthProto.ReqId != nil {
+		reqID = int64(marketDepthProto.GetReqId())
+	}
+	if marketDepthProto.GetMarketDepthData() == nil {
+		return
+	}
+	marketDepthData := marketDepthProto.GetMarketDepthData()
+	var position int64
+	if marketDepthData.Position != nil {
+		position = int64(marketDepthData.GetPosition())
+	}
+	var operation int64
+	if marketDepthData.Operation != nil {
+		operation = int64(marketDepthData.GetOperation())
+	}
+	var side int64
+	if marketDepthData.Side != nil {
+		side = int64(marketDepthData.GetSide())
+	}
+	var price float64
+	if marketDepthData.Price != nil {
+		price = marketDepthData.GetPrice()
+	}
+	var size Decimal
+	if marketDepthData.Size != nil {
+		size = StringToDecimal(marketDepthData.GetSize())
+	}
+
+	d.wrapper.UpdateMktDepth(reqID, position, operation, side, price, size)
+}
+
 func (d *EDecoder) processMarketDepthL2Msg(msgBuf *MsgBuffer) {
 
 	msgBuf.decode() // version
@@ -1164,6 +1464,56 @@ func (d *EDecoder) processMarketDepthL2Msg(msgBuf *MsgBuffer) {
 	}
 
 	d.wrapper.UpdateMktDepthL2(tickerID, position, marketMaker, operation, side, price, size, isSmartDepth)
+}
+
+func (d *EDecoder) processMarketDepthL2MsgProtoBuf(msgBuf *MsgBuffer) {
+	var marketDepthL2Proto protobuf.MarketDepthL2
+	err := proto.Unmarshal(msgBuf.bs, &marketDepthL2Proto)
+	if err != nil {
+		log.Error().Err(err).Msg("failed to unmarshal MarketDepthL2 message")
+		return
+	}
+
+	d.wrapper.UpdateMarketDepthL2ProtoBuf(&marketDepthL2Proto) // Assuming you have a wrapper method for the raw protobuf message
+
+	reqID := NO_VALID_ID
+	if marketDepthL2Proto.ReqId != nil {
+		reqID = int64(marketDepthL2Proto.GetReqId())
+	}
+	if marketDepthL2Proto.GetMarketDepthData() == nil {
+		return
+	}
+	marketDepthData := marketDepthL2Proto.GetMarketDepthData()
+	var position int64
+	if marketDepthData.Position != nil {
+		position = int64(marketDepthData.GetPosition())
+	}
+	var marketMaker string
+	if marketDepthData.MarketMaker != nil {
+		marketMaker = marketDepthData.GetMarketMaker()
+	}
+	var operation int64
+	if marketDepthData.Operation != nil {
+		operation = int64(marketDepthData.GetOperation())
+	}
+	var side int64
+	if marketDepthData.Side != nil {
+		side = int64(marketDepthData.GetSide())
+	}
+	var price float64
+	if marketDepthData.Price != nil {
+		price = marketDepthData.GetPrice()
+	}
+	var size Decimal
+	if marketDepthData.Size != nil {
+		size = StringToDecimal(marketDepthData.GetSize())
+	}
+	var isSmartDepth bool
+	if marketDepthData.IsSmartDepth != nil {
+		isSmartDepth = marketDepthData.GetIsSmartDepth()
+	}
+
+	d.wrapper.UpdateMktDepthL2(reqID, position, marketMaker, operation, side, price, size, isSmartDepth)
 }
 
 func (d *EDecoder) processNewsBulletinsMsg(msgBuf *MsgBuffer) {
@@ -1351,7 +1701,7 @@ func (d *EDecoder) processContractDataEndMsgProtoBuf(msgBuf *MsgBuffer) {
 
 	d.wrapper.ContractDataEndProtoBuf(&contractDataEndProto)
 
-	var reqID int64
+	reqID := NO_VALID_ID
 	if contractDataEndProto.ReqId != nil {
 		reqID = int64(contractDataEndProto.GetReqId())
 	}
@@ -1407,7 +1757,7 @@ func (d *EDecoder) processExecutionDetailsEndMsgProtoBuf(msgBuf *MsgBuffer) {
 
 	d.wrapper.ExecDetailsEndProtoBuf(&executionDetailsEndProto)
 
-	var reqID int64
+	reqID := NO_VALID_ID
 	if executionDetailsEndProto.ReqId != nil {
 		reqID = int64(executionDetailsEndProto.GetReqId())
 	}
@@ -1439,12 +1789,53 @@ func (d *EDecoder) processTickSnapshotEndMsg(msgBuf *MsgBuffer) {
 	d.wrapper.TickSnapshotEnd(reqID)
 }
 
+func (d *EDecoder) processTickSnapshotEndMsgProtoBuf(msgBuf *MsgBuffer) {
+	var tickSnapshotEndProto protobuf.TickSnapshotEnd
+	err := proto.Unmarshal(msgBuf.bs, &tickSnapshotEndProto)
+	if err != nil {
+		log.Error().Err(err).Msg("failed to unmarshal TickSnapshotEnd message")
+		return
+	}
+
+	d.wrapper.TickSnapshotEndProtoBuf(&tickSnapshotEndProto)
+
+	reqID := NO_VALID_ID
+	if tickSnapshotEndProto.ReqId != nil {
+		reqID = int64(tickSnapshotEndProto.GetReqId())
+	}
+
+	d.wrapper.TickSnapshotEnd(reqID)
+}
+
 func (d *EDecoder) processMarketDataTypeMsg(msgBuf *MsgBuffer) {
 
 	msgBuf.decode() // version
 
 	reqID := msgBuf.decodeInt64()
 	marketDataType := msgBuf.decodeInt64()
+
+	d.wrapper.MarketDataType(reqID, marketDataType)
+}
+
+func (d *EDecoder) processMarketDataTypeMsgProtoBuf(msgBuf *MsgBuffer) {
+	var marketDataTypeProto protobuf.MarketDataType
+	err := proto.Unmarshal(msgBuf.bs, &marketDataTypeProto)
+	if err != nil {
+		log.Error().Err(err).Msg("failed to unmarshal MarketDataType message")
+		return
+	}
+
+	d.wrapper.MarketDataTypeProtoBuf(&marketDataTypeProto)
+
+	reqID := NO_VALID_ID
+	if marketDataTypeProto.ReqId != nil {
+		reqID = int64(marketDataTypeProto.GetReqId())
+	}
+
+	var marketDataType int64
+	if marketDataTypeProto.MarketDataType != nil {
+		marketDataType = int64(marketDataTypeProto.GetMarketDataType())
+	}
 
 	d.wrapper.MarketDataType(reqID, marketDataType)
 }
@@ -1788,6 +2179,43 @@ func (d *EDecoder) processTickReqParamsMsg(msgBuf *MsgBuffer) {
 	snapshotPermissions := msgBuf.decodeInt64()
 
 	d.wrapper.TickReqParams(tickerID, minTick, bboExchange, snapshotPermissions)
+}
+
+func (d *EDecoder) processTickReqParamsMsgProtoBuf(msgBuf *MsgBuffer) {
+	var tickReqParamsProto protobuf.TickReqParams
+	err := proto.Unmarshal(msgBuf.bs, &tickReqParamsProto)
+	if err != nil {
+		log.Error().Err(err).Msg("failed to unmarshal TickReqParams message")
+		return
+	}
+
+	d.wrapper.TickReqParamsProtoBuf(&tickReqParamsProto) // Assuming you have a wrapper method for the raw protobuf message
+
+	reqID := NO_VALID_ID
+	if tickReqParamsProto.ReqId != nil {
+		reqID = int64(tickReqParamsProto.GetReqId())
+	}
+
+	minTick := UNSET_FLOAT
+	if tickReqParamsProto.MinTick != nil {
+		minTick, err = strconv.ParseFloat(tickReqParamsProto.GetMinTick(), 64)
+		if err != nil {
+			log.Error().Err(err).Msg("failed to convert TickReqParams minTick")
+			minTick = UNSET_FLOAT
+		}
+	}
+
+	var bboExchange string
+	if tickReqParamsProto.BboExchange != nil {
+		bboExchange = tickReqParamsProto.GetBboExchange()
+	}
+
+	snapshotPermissions := UNSET_INT
+	if tickReqParamsProto.SnapshotPermissions != nil {
+		snapshotPermissions = int64(tickReqParamsProto.GetSnapshotPermissions())
+	}
+
+	d.wrapper.TickReqParams(reqID, minTick, bboExchange, snapshotPermissions)
 }
 
 func (d *EDecoder) processSmartComponentsMsg(msgBuf *MsgBuffer) {

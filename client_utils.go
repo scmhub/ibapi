@@ -923,3 +923,104 @@ func createContractDataRequestProto(reqID int64, contract *Contract) *protobuf.C
 	contractDataRequestProto.Contract = createContractProto(contract, nil)
 	return contractDataRequestProto
 }
+
+func createMarketDataRequestProto(reqID int64, contract *Contract, genericTickList string, snapshot bool, regulatorySnapshot bool, marketDataOptionsList []TagValue) *protobuf.MarketDataRequest {
+	marketDataRequestProto := &protobuf.MarketDataRequest{}
+	if isValidInt64Value(reqID) {
+		id := int32(reqID)
+		marketDataRequestProto.ReqId = &id
+	}
+	marketDataRequestProto.Contract = createContractProto(contract, nil)
+	if !stringIsEmpty(genericTickList) {
+		marketDataRequestProto.GenericTickList = &genericTickList
+	}
+
+	if snapshot {
+		marketDataRequestProto.Snapshot = &snapshot
+	}
+
+	if regulatorySnapshot {
+		marketDataRequestProto.RegulatorySnapshot = &regulatorySnapshot
+	}
+
+	marketDataOptionsMap := createStringStringMap(marketDataOptionsList)
+	if len(marketDataOptionsMap) > 0 {
+		if marketDataRequestProto.MarketDataOptions == nil {
+			marketDataRequestProto.MarketDataOptions = make(map[string]string)
+		}
+		for key, value := range marketDataOptionsMap {
+			marketDataRequestProto.MarketDataOptions[key] = value
+		}
+	}
+
+	return marketDataRequestProto
+}
+
+func createMarketDepthRequestProto(reqID int64, contract *Contract, numRows int64, isSmartDepth bool, marketDepthOptionsList []TagValue) *protobuf.MarketDepthRequest {
+	marketDepthRequestProto := &protobuf.MarketDepthRequest{}
+
+	if isValidInt64Value(reqID) {
+		id := int32(reqID)
+		marketDepthRequestProto.ReqId = &id
+	}
+
+	marketDepthRequestProto.Contract = createContractProto(contract, nil)
+
+	if isValidInt64Value(numRows) {
+		nr := int32(numRows)
+		marketDepthRequestProto.NumRows = &nr
+	}
+
+	if isSmartDepth {
+		marketDepthRequestProto.IsSmartDepth = &isSmartDepth
+	}
+
+	marketDepthOptionsMap := createStringStringMap(marketDepthOptionsList)
+	if len(marketDepthOptionsMap) > 0 {
+		if marketDepthRequestProto.MarketDepthOptions == nil {
+			marketDepthRequestProto.MarketDepthOptions = make(map[string]string)
+		}
+		for key, value := range marketDepthOptionsMap {
+			marketDepthRequestProto.MarketDepthOptions[key] = value
+		}
+	}
+
+	return marketDepthRequestProto
+}
+
+func createMarketDataTypeRequestProto(marketDataType int64) *protobuf.MarketDataTypeRequest {
+	marketDataTypeRequestProto := &protobuf.MarketDataTypeRequest{}
+
+	if isValidInt64Value(marketDataType) {
+		mdt := int32(marketDataType)
+		marketDataTypeRequestProto.MarketDataType = &mdt
+	}
+
+	return marketDataTypeRequestProto
+}
+
+func createCancelMarketDataProto(reqID int64) *protobuf.CancelMarketData {
+	cancelMarketDataProto := &protobuf.CancelMarketData{}
+
+	if isValidInt64Value(reqID) {
+		id := int32(reqID)
+		cancelMarketDataProto.ReqId = &id
+	}
+
+	return cancelMarketDataProto
+}
+
+func createCancelMarketDepthProto(reqID int64, isSmartDepth bool) *protobuf.CancelMarketDepth {
+	cancelMarketDepthProto := &protobuf.CancelMarketDepth{}
+
+	if isValidInt64Value(reqID) {
+		id := int32(reqID)
+		cancelMarketDepthProto.ReqId = &id
+	}
+
+	if isSmartDepth {
+		cancelMarketDepthProto.IsSmartDepth = &isSmartDepth
+	}
+
+	return cancelMarketDepthProto
+}
