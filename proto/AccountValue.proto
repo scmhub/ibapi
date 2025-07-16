@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+package protobuf;
+
+option go_package = ".;protobuf";
+
+message AccountValue {
+    optional string key = 1;
+    optional string value = 2;
+    optional string currency = 3;
+    optional string accountName = 4;
+}

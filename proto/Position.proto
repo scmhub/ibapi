@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package protobuf;
+
+import "Contract.proto";
+
+option go_package = ".;protobuf";
+
+message Position {
+    optional string account = 1;
+	optional Contract contract = 2;
+    optional string position = 3;
+    optional double avgCost = 4;
+}

@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package protobuf;
+
+import "Contract.proto";
+
+option go_package = ".;protobuf";
+
+message PositionMulti {
+    optional int32 reqId = 1;
+    optional string account = 2;
+	optional Contract contract = 3;
+    optional string position = 4;
+    optional double avgCost = 5;
+    optional string modelCode = 6;
+}

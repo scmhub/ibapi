@@ -1024,3 +1024,123 @@ func createCancelMarketDepthProto(reqID int64, isSmartDepth bool) *protobuf.Canc
 
 	return cancelMarketDepthProto
 }
+
+func createAccountDataRequestProto(subscribe bool, acctCode string) *protobuf.AccountDataRequest {
+	accountDataRequestProto := &protobuf.AccountDataRequest{}
+
+	if subscribe {
+		accountDataRequestProto.Subscribe = &subscribe
+	}
+
+	if !stringIsEmpty(acctCode) {
+		accountDataRequestProto.AcctCode = &acctCode
+	}
+
+	return accountDataRequestProto
+}
+
+func createManagedAccountsRequestProto() *protobuf.ManagedAccountsRequest {
+	return &protobuf.ManagedAccountsRequest{}
+}
+
+func createPositionsRequestProto() *protobuf.PositionsRequest {
+	return &protobuf.PositionsRequest{}
+}
+
+func createCancelPositionsRequestProto() *protobuf.CancelPositions {
+	return &protobuf.CancelPositions{}
+}
+
+func createAccountSummaryRequestProto(reqID int64, group string, tags string) *protobuf.AccountSummaryRequest {
+	accountSummaryRequestProto := &protobuf.AccountSummaryRequest{}
+
+	if isValidInt64Value(reqID) {
+		id := int32(reqID)
+		accountSummaryRequestProto.ReqId = &id
+	}
+
+	if !stringIsEmpty(group) {
+		accountSummaryRequestProto.Group = &group
+	}
+
+	if !stringIsEmpty(tags) {
+		accountSummaryRequestProto.Tags = &tags
+	}
+
+	return accountSummaryRequestProto
+}
+
+func createCancelAccountSummaryRequestProto(reqID int64) *protobuf.CancelAccountSummary {
+	cancelAccountSummaryProto := &protobuf.CancelAccountSummary{}
+
+	if isValidInt64Value(reqID) {
+		id := int32(reqID)
+		cancelAccountSummaryProto.ReqId = &id
+	}
+
+	return cancelAccountSummaryProto
+}
+
+func createPositionsMultiRequestProto(reqID int64, account string, modelCode string) *protobuf.PositionsMultiRequest {
+	positionsMultiRequestProto := &protobuf.PositionsMultiRequest{}
+
+	if isValidInt64Value(reqID) {
+		id := int32(reqID)
+		positionsMultiRequestProto.ReqId = &id
+	}
+
+	if !stringIsEmpty(account) {
+		positionsMultiRequestProto.Account = &account
+	}
+
+	if !stringIsEmpty(modelCode) {
+		positionsMultiRequestProto.ModelCode = &modelCode
+	}
+
+	return positionsMultiRequestProto
+}
+
+func createCancelPositionsMultiRequestProto(reqID int64) *protobuf.CancelPositionsMulti {
+	cancelPositionsMultiProto := &protobuf.CancelPositionsMulti{}
+
+	if isValidInt64Value(reqID) {
+		id := int32(reqID)
+		cancelPositionsMultiProto.ReqId = &id
+	}
+
+	return cancelPositionsMultiProto
+}
+
+func createAccountUpdatesMultiRequestProto(reqID int64, account string, modelCode string, ledgerAndNLV bool) *protobuf.AccountUpdatesMultiRequest {
+	accountUpdatesMultiRequestProto := &protobuf.AccountUpdatesMultiRequest{}
+
+	if isValidInt64Value(reqID) {
+		id := int32(reqID)
+		accountUpdatesMultiRequestProto.ReqId = &id
+	}
+
+	if !stringIsEmpty(account) {
+		accountUpdatesMultiRequestProto.Account = &account
+	}
+
+	if !stringIsEmpty(modelCode) {
+		accountUpdatesMultiRequestProto.ModelCode = &modelCode
+	}
+
+	if ledgerAndNLV {
+		accountUpdatesMultiRequestProto.LedgerAndNLV = &ledgerAndNLV
+	}
+
+	return accountUpdatesMultiRequestProto
+}
+
+func createCancelAccountUpdatesMultiRequestProto(reqID int64) *protobuf.CancelAccountUpdatesMulti {
+	cancelAccountUpdatesMultiProto := &protobuf.CancelAccountUpdatesMulti{}
+
+	if isValidInt64Value(reqID) {
+		id := int32(reqID)
+		cancelAccountUpdatesMultiProto.ReqId = &id
+	}
+
+	return cancelAccountUpdatesMultiProto
+}

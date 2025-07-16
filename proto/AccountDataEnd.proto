@@ -4,6 +4,6 @@ package protobuf;
 
 option go_package = ".;protobuf";
 
-message AllOpenOrdersRequest {
-   // empty
+message AccountDataEnd {
+    optional string accountName = 1;
 }

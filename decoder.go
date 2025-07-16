@@ -86,6 +86,32 @@ func (d *EDecoder) interpret(msgBytes []byte) {
 			d.processMarketDataTypeMsgProtoBuf(msgBuf)
 		case TICK_REQ_PARAMS:
 			d.processTickReqParamsMsgProtoBuf(msgBuf)
+		case ACCT_VALUE:
+			d.processAccountValueMsgProtoBuf(msgBuf)
+		case PORTFOLIO_VALUE:
+			d.processPortfolioValueMsgProtoBuf(msgBuf)
+		case ACCT_UPDATE_TIME:
+			d.processAcctUpdateTimeMsgProtoBuf(msgBuf)
+		case ACCT_DOWNLOAD_END:
+			d.processAccountDataEndMsgProtoBuf(msgBuf)
+		case MANAGED_ACCTS:
+			d.processManagedAccountsMsgProtoBuf(msgBuf)
+		case POSITION_DATA:
+			d.processPositionMsgProtoBuf(msgBuf)
+		case POSITION_END:
+			d.processPositionEndMsgProtoBuf(msgBuf)
+		case ACCOUNT_SUMMARY:
+			d.processAccountSummaryMsgProtoBuf(msgBuf)
+		case ACCOUNT_SUMMARY_END:
+			d.processAccountSummaryEndMsgProtoBuf(msgBuf)
+		case POSITION_MULTI:
+			d.processPositionMultiMsgProtoBuf(msgBuf)
+		case POSITION_MULTI_END:
+			d.processPositionMultiEndMsgProtoBuf(msgBuf)
+		case ACCOUNT_UPDATE_MULTI:
+			d.processAccountUpdateMultiMsgProtoBuf(msgBuf)
+		case ACCOUNT_UPDATE_MULTI_END:
+			d.processAccountUpdateMultiEndMsgProtoBuf(msgBuf)
 		default:
 			d.wrapper.Error(msgID, currentTimeMillis(), UNKNOWN_ID.Code, UNKNOWN_ID.Msg, "")
 		}
@@ -950,6 +976,40 @@ func (d *EDecoder) processAcctValueMsg(msgBuf *MsgBuffer) {
 	d.wrapper.UpdateAccountValue(tag, val, currency, accountName)
 }
 
+func (d *EDecoder) processAccountValueMsgProtoBuf(msgBuf *MsgBuffer) {
+
+	var accountValueProto protobuf.AccountValue
+	err := proto.Unmarshal(msgBuf.bs, &accountValueProto)
+	if err != nil {
+		log.Error().Err(err).Msg("failed to unmarshal AccountValue message")
+		return
+	}
+
+	d.wrapper.UpdateAccountValueProtoBuf(&accountValueProto)
+
+	var key string
+	if accountValueProto.Key != nil {
+		key = accountValueProto.GetKey()
+	}
+
+	var value string
+	if accountValueProto.Value != nil {
+		value = accountValueProto.GetValue()
+	}
+
+	var currency string
+	if accountValueProto.Currency != nil {
+		currency = accountValueProto.GetCurrency()
+	}
+
+	var accountName string
+	if accountValueProto.AccountName != nil {
+		accountName = accountValueProto.GetAccountName()
+	}
+
+	d.wrapper.UpdateAccountValue(key, value, currency, accountName)
+}
+
 func (d *EDecoder) processPortfolioValueMsg(msgBuf *MsgBuffer) {
 
 	version := msgBuf.decodeInt64()
@@ -991,11 +1051,87 @@ func (d *EDecoder) processPortfolioValueMsg(msgBuf *MsgBuffer) {
 
 }
 
+func (d *EDecoder) processPortfolioValueMsgProtoBuf(msgBuf *MsgBuffer) {
+
+	var portfolioValueProto protobuf.PortfolioValue
+	err := proto.Unmarshal(msgBuf.bs, &portfolioValueProto)
+	if err != nil {
+		log.Error().Err(err).Msg("failed to unmarshal PortfolioValue message")
+		return
+	}
+
+	d.wrapper.UpdatePortfolioProtoBuf(&portfolioValueProto)
+
+	if portfolioValueProto.Contract == nil {
+		return
+	}
+
+	contract := decodeContract(portfolioValueProto.GetContract())
+
+	var position Decimal
+	if portfolioValueProto.Position != nil {
+		position = StringToDecimal(portfolioValueProto.GetPosition())
+	} else {
+		position = UNSET_DECIMAL
+	}
+
+	var marketPrice float64
+	if portfolioValueProto.MarketPrice != nil {
+		marketPrice = portfolioValueProto.GetMarketPrice()
+	}
+
+	var marketValue float64
+	if portfolioValueProto.MarketValue != nil {
+		marketValue = portfolioValueProto.GetMarketValue()
+	}
+
+	var averageCost float64
+	if portfolioValueProto.AverageCost != nil {
+		averageCost = portfolioValueProto.GetAverageCost()
+	}
+
+	var unrealizedPNL float64
+	if portfolioValueProto.UnrealizedPNL != nil {
+		unrealizedPNL = portfolioValueProto.GetUnrealizedPNL()
+	}
+
+	var realizedPNL float64
+	if portfolioValueProto.RealizedPNL != nil {
+		realizedPNL = portfolioValueProto.GetRealizedPNL()
+	}
+
+	var accountName string
+	if portfolioValueProto.AccountName != nil {
+		accountName = portfolioValueProto.GetAccountName()
+	}
+
+	d.wrapper.UpdatePortfolio(contract, position, marketPrice, marketValue, averageCost, unrealizedPNL, realizedPNL, accountName)
+}
+
 func (d *EDecoder) processAcctUpdateTimeMsg(msgBuf *MsgBuffer) {
 
 	msgBuf.decode() // version
 
 	timeStamp := msgBuf.decodeString()
+
+	d.wrapper.UpdateAccountTime(timeStamp)
+}
+
+func (d *EDecoder) processAcctUpdateTimeMsgProtoBuf(msgBuf *MsgBuffer) {
+
+	var accountUpdateTimeProto protobuf.AccountUpdateTime
+	err := proto.Unmarshal(msgBuf.bs, &accountUpdateTimeProto)
+	if err != nil {
+		log.Error().Err(err).Msg("failed to unmarshal AccountUpdateTime message")
+		return
+	}
+
+	d.wrapper.UpdateAccountTimeProtoBuf(&accountUpdateTimeProto)
+
+	var timeStamp string
+	if accountUpdateTimeProto.TimeStamp != nil {
+		timeStamp = accountUpdateTimeProto.GetTimeStamp()
+	}
 
 	d.wrapper.UpdateAccountTime(timeStamp)
 }
@@ -1538,6 +1674,26 @@ func (d *EDecoder) processManagedAcctsMsg(msgBuf *MsgBuffer) {
 	d.wrapper.ManagedAccounts(accountsList)
 }
 
+func (d *EDecoder) processManagedAccountsMsgProtoBuf(msgBuf *MsgBuffer) {
+
+	var managedAccountsProto protobuf.ManagedAccounts
+	err := proto.Unmarshal(msgBuf.bs, &managedAccountsProto)
+	if err != nil {
+		log.Error().Err(err).Msg("failed to unmarshal ManagedAccounts message")
+		return
+	}
+
+	d.wrapper.ManagedAccountsProtoBuf(&managedAccountsProto)
+
+	var accounts string
+	if managedAccountsProto.AccountsList != nil {
+		accounts = managedAccountsProto.GetAccountsList()
+	}
+	accountsList := strings.Split(accounts, ",")
+
+	d.wrapper.ManagedAccounts(accountsList)
+}
+
 func (d *EDecoder) processReceiveFaMsg(msgBuf *MsgBuffer) {
 
 	msgBuf.decode() // version
@@ -1747,6 +1903,25 @@ func (d *EDecoder) processExecutionDetailsEndMsg(msgBuf *MsgBuffer) {
 	d.wrapper.ExecDetailsEnd(reqID)
 }
 
+func (d *EDecoder) processAccountDataEndMsgProtoBuf(msgBuf *MsgBuffer) {
+
+	var accountDataEndProto protobuf.AccountDataEnd
+	err := proto.Unmarshal(msgBuf.bs, &accountDataEndProto)
+	if err != nil {
+		log.Error().Err(err).Msg("failed to unmarshal AccountDataEnd message")
+		return
+	}
+
+	d.wrapper.AccountDataEndProtoBuf(&accountDataEndProto)
+
+	var accountName string
+	if accountDataEndProto.AccountName != nil {
+		accountName = accountDataEndProto.GetAccountName()
+	}
+
+	d.wrapper.AccountDownloadEnd(accountName)
+}
+
 func (d *EDecoder) processExecutionDetailsEndMsgProtoBuf(msgBuf *MsgBuffer) {
 
 	var executionDetailsEndProto protobuf.ExecutionDetailsEnd
@@ -1887,7 +2062,57 @@ func (d *EDecoder) processPositionDataMsg(msgBuf *MsgBuffer) {
 	d.wrapper.Position(account, contract, position, avgCost)
 }
 
+func (d *EDecoder) processPositionMsgProtoBuf(msgBuf *MsgBuffer) {
+
+	var positionProto protobuf.Position
+	err := proto.Unmarshal(msgBuf.bs, &positionProto)
+	if err != nil {
+		log.Error().Err(err).Msg("failed to unmarshal Position message")
+		return
+	}
+
+	d.wrapper.PositionProtoBuf(&positionProto)
+
+	if positionProto.Contract == nil {
+		return
+	}
+
+	contract := decodeContract(positionProto.GetContract())
+
+	var position Decimal
+	if positionProto.Position != nil {
+		position = StringToDecimal(positionProto.GetPosition())
+	} else {
+		position = UNSET_DECIMAL
+	}
+
+	var avgCost float64
+	if positionProto.AvgCost != nil {
+		avgCost = positionProto.GetAvgCost()
+	}
+
+	var account string
+	if positionProto.Account != nil {
+		account = positionProto.GetAccount()
+	}
+
+	d.wrapper.Position(account, contract, position, avgCost)
+}
+
 func (d *EDecoder) processPositionEndMsg(*MsgBuffer) {
+
+	d.wrapper.PositionEnd()
+}
+
+func (d *EDecoder) processPositionEndMsgProtoBuf(msgBuf *MsgBuffer) {
+	var positionEndProto protobuf.PositionEnd
+	err := proto.Unmarshal(msgBuf.bs, &positionEndProto)
+	if err != nil {
+		log.Error().Err(err).Msg("failed to unmarshal PositionEnd message")
+		return
+	}
+
+	d.wrapper.PositionEndProtoBuf(&positionEndProto)
 
 	d.wrapper.PositionEnd()
 }
@@ -1905,6 +2130,46 @@ func (d *EDecoder) processAccountSummaryMsg(msgBuf *MsgBuffer) {
 	d.wrapper.AccountSummary(reqID, account, tag, value, currency)
 }
 
+func (d *EDecoder) processAccountSummaryMsgProtoBuf(msgBuf *MsgBuffer) {
+	var accountSummaryProto protobuf.AccountSummary
+	err := proto.Unmarshal(msgBuf.bs, &accountSummaryProto)
+	if err != nil {
+		log.Error().Err(err).Msg("failed to unmarshal AccountSummary message")
+		return
+	}
+
+	d.wrapper.AccountSummaryProtoBuf(&accountSummaryProto)
+
+	var reqId int64
+	if accountSummaryProto.ReqId != nil {
+		reqId = int64(accountSummaryProto.GetReqId())
+	} else {
+		reqId = NO_VALID_ID
+	}
+
+	var account string
+	if accountSummaryProto.Account != nil {
+		account = accountSummaryProto.GetAccount()
+	}
+
+	var tag string
+	if accountSummaryProto.Tag != nil {
+		tag = accountSummaryProto.GetTag()
+	}
+
+	var value string
+	if accountSummaryProto.Value != nil {
+		value = accountSummaryProto.GetValue()
+	}
+
+	var currency string
+	if accountSummaryProto.Currency != nil {
+		currency = accountSummaryProto.GetCurrency()
+	}
+
+	d.wrapper.AccountSummary(reqId, account, tag, value, currency)
+}
+
 func (d *EDecoder) processAccountSummaryEndMsg(msgBuf *MsgBuffer) {
 
 	msgBuf.decode() // version
@@ -1912,6 +2177,26 @@ func (d *EDecoder) processAccountSummaryEndMsg(msgBuf *MsgBuffer) {
 	reqID := msgBuf.decodeInt64()
 
 	d.wrapper.AccountSummaryEnd(reqID)
+}
+
+func (d *EDecoder) processAccountSummaryEndMsgProtoBuf(msgBuf *MsgBuffer) {
+	var accountSummaryEndProto protobuf.AccountSummaryEnd
+	err := proto.Unmarshal(msgBuf.bs, &accountSummaryEndProto)
+	if err != nil {
+		log.Error().Err(err).Msg("failed to unmarshal AccountSummaryEnd message")
+		return
+	}
+
+	d.wrapper.AccountSummaryEndProtoBuf(&accountSummaryEndProto)
+
+	var reqId int64
+	if accountSummaryEndProto.ReqId != nil {
+		reqId = int64(accountSummaryEndProto.GetReqId())
+	} else {
+		reqId = NO_VALID_ID
+	}
+
+	d.wrapper.AccountSummaryEnd(reqId)
 }
 
 func (d *EDecoder) processVerifyMessageApiMsg(msgBuf *MsgBuffer) {
@@ -2002,6 +2287,54 @@ func (d *EDecoder) processPositionMultiMsg(msgBuf *MsgBuffer) {
 	d.wrapper.PositionMulti(reqID, account, modelCode, contract, pos, avgCost)
 }
 
+func (d *EDecoder) processPositionMultiMsgProtoBuf(msgBuf *MsgBuffer) {
+	var positionMultiProto protobuf.PositionMulti
+	err := proto.Unmarshal(msgBuf.bs, &positionMultiProto)
+	if err != nil {
+		log.Error().Err(err).Msg("failed to unmarshal PositionMulti message")
+		return
+	}
+
+	d.wrapper.PositionMultiProtoBuf(&positionMultiProto)
+
+	var reqId int64
+	if positionMultiProto.ReqId != nil {
+		reqId = int64(positionMultiProto.GetReqId())
+	} else {
+		reqId = NO_VALID_ID
+	}
+
+	var account string
+	if positionMultiProto.Account != nil {
+		account = positionMultiProto.GetAccount()
+	}
+
+	var modelCode string
+	if positionMultiProto.ModelCode != nil {
+		modelCode = positionMultiProto.GetModelCode()
+	}
+
+	if positionMultiProto.Contract == nil {
+		return
+	}
+
+	contract := decodeContract(positionMultiProto.GetContract())
+
+	var position Decimal
+	if positionMultiProto.Position != nil {
+		position = StringToDecimal(positionMultiProto.GetPosition())
+	} else {
+		position = UNSET_DECIMAL
+	}
+
+	var avgCost float64
+	if positionMultiProto.AvgCost != nil {
+		avgCost = positionMultiProto.GetAvgCost()
+	}
+
+	d.wrapper.PositionMulti(reqId, account, modelCode, contract, position, avgCost)
+}
+
 func (d *EDecoder) processPositionMultiEndMsg(msgBuf *MsgBuffer) {
 
 	msgBuf.decode() // version
@@ -2009,6 +2342,26 @@ func (d *EDecoder) processPositionMultiEndMsg(msgBuf *MsgBuffer) {
 	reqID := msgBuf.decodeInt64()
 
 	d.wrapper.PositionMultiEnd(reqID)
+}
+
+func (d *EDecoder) processPositionMultiEndMsgProtoBuf(msgBuf *MsgBuffer) {
+	var positionMultiEndProto protobuf.PositionMultiEnd
+	err := proto.Unmarshal(msgBuf.bs, &positionMultiEndProto)
+	if err != nil {
+		log.Error().Err(err).Msg("failed to unmarshal PositionMultiEnd message")
+		return
+	}
+
+	d.wrapper.PositionMultiEndProtoBuf(&positionMultiEndProto)
+
+	var reqId int64
+	if positionMultiEndProto.ReqId != nil {
+		reqId = int64(positionMultiEndProto.GetReqId())
+	} else {
+		reqId = NO_VALID_ID
+	}
+
+	d.wrapper.PositionMultiEnd(reqId)
 }
 
 func (d *EDecoder) processAccountUpdateMultiMsg(msgBuf *MsgBuffer) {
@@ -2025,6 +2378,51 @@ func (d *EDecoder) processAccountUpdateMultiMsg(msgBuf *MsgBuffer) {
 	d.wrapper.AccountUpdateMulti(reqID, account, modelCode, key, value, currency)
 }
 
+func (d *EDecoder) processAccountUpdateMultiMsgProtoBuf(msgBuf *MsgBuffer) {
+	var accountUpdateMultiProto protobuf.AccountUpdateMulti
+	err := proto.Unmarshal(msgBuf.bs, &accountUpdateMultiProto)
+	if err != nil {
+		log.Error().Err(err).Msg("failed to unmarshal AccountUpdateMulti message")
+		return
+	}
+
+	d.wrapper.AccountUpdateMultiProtoBuf(&accountUpdateMultiProto)
+
+	var reqId int64
+	if accountUpdateMultiProto.ReqId != nil {
+		reqId = int64(accountUpdateMultiProto.GetReqId())
+	} else {
+		reqId = NO_VALID_ID
+	}
+
+	var account string
+	if accountUpdateMultiProto.Account != nil {
+		account = accountUpdateMultiProto.GetAccount()
+	}
+
+	var modelCode string
+	if accountUpdateMultiProto.ModelCode != nil {
+		modelCode = accountUpdateMultiProto.GetModelCode()
+	}
+
+	var key string
+	if accountUpdateMultiProto.Key != nil {
+		key = accountUpdateMultiProto.GetKey()
+	}
+
+	var value string
+	if accountUpdateMultiProto.Value != nil {
+		value = accountUpdateMultiProto.GetValue()
+	}
+
+	var currency string
+	if accountUpdateMultiProto.Currency != nil {
+		currency = accountUpdateMultiProto.GetCurrency()
+	}
+
+	d.wrapper.AccountUpdateMulti(reqId, account, modelCode, key, value, currency)
+}
+
 func (d *EDecoder) processAccountUpdateMultiEndMsg(msgBuf *MsgBuffer) {
 
 	msgBuf.decode() // version
@@ -2032,6 +2430,26 @@ func (d *EDecoder) processAccountUpdateMultiEndMsg(msgBuf *MsgBuffer) {
 	reqID := msgBuf.decodeInt64()
 
 	d.wrapper.AccountUpdateMultiEnd(reqID)
+}
+
+func (d *EDecoder) processAccountUpdateMultiEndMsgProtoBuf(msgBuf *MsgBuffer) {
+	var accountUpdateMultiEndProto protobuf.AccountUpdateMultiEnd
+	err := proto.Unmarshal(msgBuf.bs, &accountUpdateMultiEndProto)
+	if err != nil {
+		log.Error().Err(err).Msg("failed to unmarshal AccountUpdateMultiEnd message")
+		return
+	}
+
+	d.wrapper.AccountUpdateMultiEndProtoBuf(&accountUpdateMultiEndProto)
+
+	var reqId int64
+	if accountUpdateMultiEndProto.ReqId != nil {
+		reqId = int64(accountUpdateMultiEndProto.GetReqId())
+	} else {
+		reqId = NO_VALID_ID
+	}
+
+	d.wrapper.AccountUpdateMultiEnd(reqId)
 }
 
 func (d *EDecoder) processSecurityDefinitionOptionalParameterMsg(msgBuf *MsgBuffer) {

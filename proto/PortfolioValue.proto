@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package protobuf;
+
+import "Contract.proto";
+
+option go_package = ".;protobuf";
+
+message PortfolioValue {
+	optional Contract contract = 1;
+    optional string position = 2;
+    optional double marketPrice = 3;
+    optional double marketValue = 4;
+    optional double averageCost = 5;
+    optional double unrealizedPNL = 6;
+    optional double realizedPNL = 7;
+    optional string accountName = 8;
+}

@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+package protobuf;
+
+option go_package = ".;protobuf";
+
+message AccountDataRequest {
+	optional bool subscribe = 1;
+	optional string acctCode = 2;
+}

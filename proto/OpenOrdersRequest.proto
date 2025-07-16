@@ -5,4 +5,5 @@ package protobuf;
 option go_package = ".;protobuf";
 
 message OpenOrdersRequest {
+   // empty
 }

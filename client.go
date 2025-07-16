@@ -806,7 +806,7 @@ func (c *EClient) reqMarketDataProtoBuf(marketDataRequestProto *protobuf.MarketD
 
 	msg, err := proto.Marshal(marketDataRequestProto)
 	if err != nil {
-		c.wrapper.Error(reqID, currentTimeMillis(), 0, "Failed to marshal MarketDataRequest: "+err.Error(), "")
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
 		return
 	}
 
@@ -854,7 +854,7 @@ func (c *EClient) cancelMarketDataProtoBuf(cancelMarketDataProto *protobuf.Cance
 
 	msg, err := proto.Marshal(cancelMarketDataProto)
 	if err != nil {
-		c.wrapper.Error(reqID, currentTimeMillis(), 0, "Failed to marshal CancelMarketData: "+err.Error(), "")
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
 		return
 	}
 
@@ -918,7 +918,7 @@ func (c *EClient) reqMarketDataTypeProtoBuf(marketDataTypeRequestProto *protobuf
 
 	msg, err := proto.Marshal(marketDataTypeRequestProto)
 	if err != nil {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), 0, "Failed to marshal MarketDataTypeRequest: "+err.Error(), "")
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
 		return
 	}
 
@@ -2004,8 +2004,7 @@ func (c *EClient) placeOrderProtoBuf(placeOrderRequestProto *protobuf.PlaceOrder
 
 	msg, err := proto.Marshal(placeOrderRequestProto)
 	if err != nil {
-		c.wrapper.Error(orderID, currentTimeMillis(), 0, "Failed to marshal PlaceOrderRequest: "+err.Error(), "")
-		return
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
 	}
 
 	me.encodeProto(msg)
@@ -2083,7 +2082,7 @@ func (c *EClient) cancelOrderProtoBuf(cancelOrderRequestProto *protobuf.CancelOr
 
 	msg, err := proto.Marshal(cancelOrderRequestProto)
 	if err != nil {
-		c.wrapper.Error(orderID, currentTimeMillis(), 0, "Failed to marshal CancelOrderRequest: "+err.Error(), "")
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
 		return
 	}
 
@@ -2132,7 +2131,7 @@ func (c *EClient) reqOpenOrdersProtoBuf(openOrdersRequestProto *protobuf.OpenOrd
 
 	msg, err := proto.Marshal(openOrdersRequestProto)
 	if err != nil {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), 0, "Failed to marshal OpenOrdersRequest: "+err.Error(), "")
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
 		return
 	}
 
@@ -2181,7 +2180,7 @@ func (c *EClient) reqAutoOpenOrdersProtoBuf(autoOpenOrdersRequestProto *protobuf
 
 	msg, err := proto.Marshal(autoOpenOrdersRequestProto)
 	if err != nil {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), 0, "Failed to marshal AutoOpenOrdersRequest: "+err.Error(), "")
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
 		return
 	}
 
@@ -2227,7 +2226,7 @@ func (c *EClient) reqAllOpenOrdersProtoBuf(allOpenOrdersRequestProto *protobuf.A
 
 	msg, err := proto.Marshal(allOpenOrdersRequestProto)
 	if err != nil {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), 0, "Failed to marshal AllOpenOrdersRequest: "+err.Error(), "")
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
 		return
 	}
 
@@ -2283,7 +2282,7 @@ func (c *EClient) reqGlobalCancelProtoBuf(globalCancelRequestProto *protobuf.Glo
 
 	msg, err := proto.Marshal(globalCancelRequestProto)
 	if err != nil {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), 0, "Failed to marshal GlobalCancelRequest: "+err.Error(), "")
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
 		return
 	}
 
@@ -2322,6 +2321,11 @@ func (c *EClient) ReqIDs(numIds int64) {
 // it is returned via EWrapper.updateAccountValue(), EWrapperi.updatePortfolio() and Wrapper.updateAccountTime().
 func (c *EClient) ReqAccountUpdates(subscribe bool, accountName string) {
 
+	if c.useProtoBuf(REQ_ACCT_DATA) {
+		c.reqAccountUpdatesProtoBuf(createAccountDataRequestProto(subscribe, accountName))
+		return
+	}
+
 	if !c.IsConnected() {
 		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
@@ -2337,6 +2341,26 @@ func (c *EClient) ReqAccountUpdates(subscribe bool, accountName string) {
 
 	// Send the account code. This will only be used for FA clients
 	me.encodeString(accountName) // srv v9 and above
+
+	c.reqChan <- me.Bytes()
+}
+
+func (c *EClient) reqAccountUpdatesProtoBuf(accountDataRequestProto *protobuf.AccountDataRequest) {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
+	me := NewMsgEncoder(4, c)
+	me.encodeMsgID(REQ_ACCT_DATA + PROTOBUF_MSG_ID)
+
+	msg, err := proto.Marshal(accountDataRequestProto)
+	if err != nil {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
+	}
+
+	me.encodeProto(msg)
 
 	c.reqChan <- me.Bytes()
 }
@@ -2385,6 +2409,11 @@ func (c *EClient) ReqAccountUpdates(subscribe bool, accountName string) {
 //	$LEDGER:ALL - Single flag to relay all cash balance tags* in all currencies.
 func (c *EClient) ReqAccountSummary(reqID int64, groupName string, tags string) {
 
+	if c.useProtoBuf(REQ_ACCOUNT_SUMMARY) {
+		c.reqAccountSummaryProtoBuf(createAccountSummaryRequestProto(reqID, groupName, tags))
+		return
+	}
+
 	if !c.IsConnected() {
 		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
@@ -2403,9 +2432,35 @@ func (c *EClient) ReqAccountSummary(reqID int64, groupName string, tags string) 
 	c.reqChan <- me.Bytes()
 }
 
+func (c *EClient) reqAccountSummaryProtoBuf(accountSummaryRequestProto *protobuf.AccountSummaryRequest) {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
+	me := NewMsgEncoder(5, c)
+	me.encodeMsgID(REQ_ACCOUNT_SUMMARY + PROTOBUF_MSG_ID)
+
+	msg, err := proto.Marshal(accountSummaryRequestProto)
+	if err != nil {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
+		return
+	}
+
+	me.encodeProto(msg)
+
+	c.reqChan <- me.Bytes()
+}
+
 // CancelAccountSummary cancels the request for Account Window Summary tab data.
 // reqId is the ID of the data request being canceled.
 func (c *EClient) CancelAccountSummary(reqID int64) {
+
+	if c.useProtoBuf(CANCEL_ACCOUNT_SUMMARY) {
+		c.cancelAccountSummaryProtoBuf(createCancelAccountSummaryRequestProto(reqID))
+		return
+	}
 
 	if !c.IsConnected() {
 		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
@@ -2423,8 +2478,34 @@ func (c *EClient) CancelAccountSummary(reqID int64) {
 	c.reqChan <- me.Bytes()
 }
 
+func (c *EClient) cancelAccountSummaryProtoBuf(cancelAccountSummaryRequestProto *protobuf.CancelAccountSummary) {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
+	me := NewMsgEncoder(3, c)
+	me.encodeMsgID(CANCEL_ACCOUNT_SUMMARY + PROTOBUF_MSG_ID)
+
+	msg, err := proto.Marshal(cancelAccountSummaryRequestProto)
+	if err != nil {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
+		return
+	}
+
+	me.encodeProto(msg)
+
+	c.reqChan <- me.Bytes()
+}
+
 // ReqPositions requests real-time position data for all accounts.
 func (c *EClient) ReqPositions() {
+
+	if c.useProtoBuf(REQ_POSITIONS) {
+		c.reqPositionsProtoBuf(createPositionsRequestProto())
+		return
+	}
 
 	if !c.IsConnected() {
 		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
@@ -2446,8 +2527,34 @@ func (c *EClient) ReqPositions() {
 	c.reqChan <- me.Bytes()
 }
 
+func (c *EClient) reqPositionsProtoBuf(positionsRequestProto *protobuf.PositionsRequest) {
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
+	me := NewMsgEncoder(2, c)
+	me.encodeMsgID(REQ_POSITIONS + PROTOBUF_MSG_ID)
+
+	msg, err := proto.Marshal(positionsRequestProto)
+	if err != nil {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
+		return
+	}
+
+	me.encodeProto(msg)
+
+	c.reqChan <- me.Bytes()
+
+}
+
 // CancelPositions cancels real-time position updates.
 func (c *EClient) CancelPositions() {
+
+	if c.useProtoBuf(CANCEL_POSITIONS) {
+		c.cancelPositionsProtoBuf(createCancelPositionsRequestProto())
+		return
+	}
 
 	if !c.IsConnected() {
 		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
@@ -2469,9 +2576,33 @@ func (c *EClient) CancelPositions() {
 	c.reqChan <- me.Bytes()
 }
 
+func (c *EClient) cancelPositionsProtoBuf(cancelPositionsRequestProto *protobuf.CancelPositions) {
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+	me := NewMsgEncoder(2, c)
+	me.encodeMsgID(CANCEL_POSITIONS + PROTOBUF_MSG_ID)
+
+	msg, err := proto.Marshal(cancelPositionsRequestProto)
+	if err != nil {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
+		return
+	}
+
+	me.encodeProto(msg)
+
+	c.reqChan <- me.Bytes()
+}
+
 // ReqPositionsMulti requests the positions for account and/or model.
 // Results are delivered via EWrapper.positionMulti() and EWrapper.positionMultiEnd().
 func (c *EClient) ReqPositionsMulti(reqID int64, account string, modelCode string) {
+
+	if c.useProtoBuf(REQ_POSITIONS_MULTI) {
+		c.reqPositionsMultiProtoBuf(createPositionsMultiRequestProto(reqID, account, modelCode))
+		return
+	}
 
 	if !c.IsConnected() {
 		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
@@ -2496,8 +2627,34 @@ func (c *EClient) ReqPositionsMulti(reqID int64, account string, modelCode strin
 	c.reqChan <- me.Bytes()
 }
 
+func (c *EClient) reqPositionsMultiProtoBuf(positionsMultiRequestProto *protobuf.PositionsMultiRequest) {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
+	me := NewMsgEncoder(5, c)
+	me.encodeMsgID(REQ_POSITIONS_MULTI + PROTOBUF_MSG_ID)
+
+	msg, err := proto.Marshal(positionsMultiRequestProto)
+	if err != nil {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
+		return
+	}
+
+	me.encodeProto(msg)
+
+	c.reqChan <- me.Bytes()
+}
+
 // CancelPositionsMulti cancels the positions update of assigned account.
 func (c *EClient) CancelPositionsMulti(reqID int64) {
+
+	if c.useProtoBuf(CANCEL_POSITIONS_MULTI) {
+		c.cancelPositionsMultiProtoBuf(createCancelPositionsMultiRequestProto(reqID))
+		return
+	}
 
 	if !c.IsConnected() {
 		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
@@ -2520,8 +2677,34 @@ func (c *EClient) CancelPositionsMulti(reqID int64) {
 	c.reqChan <- me.Bytes()
 }
 
+func (c *EClient) cancelPositionsMultiProtoBuf(cancelPositionsMultiRequestProto *protobuf.CancelPositionsMulti) {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
+	me := NewMsgEncoder(3, c)
+	me.encodeMsgID(CANCEL_POSITIONS_MULTI + PROTOBUF_MSG_ID)
+
+	msg, err := proto.Marshal(cancelPositionsMultiRequestProto)
+	if err != nil {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
+		return
+	}
+
+	me.encodeProto(msg)
+
+	c.reqChan <- me.Bytes()
+}
+
 // ReqAccountUpdatesMulti requests account updates for account and/or model.
 func (c *EClient) ReqAccountUpdatesMulti(reqID int64, account string, modelCode string, ledgerAndNLV bool) {
+
+	if c.useProtoBuf(REQ_ACCOUNT_UPDATES_MULTI) {
+		c.reqAccountUpdatesMultiProtoBuf(createAccountUpdatesMultiRequestProto(reqID, account, modelCode, ledgerAndNLV))
+		return
+	}
 
 	if !c.IsConnected() {
 		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
@@ -2547,8 +2730,34 @@ func (c *EClient) ReqAccountUpdatesMulti(reqID int64, account string, modelCode 
 	c.reqChan <- me.Bytes()
 }
 
+func (c *EClient) reqAccountUpdatesMultiProtoBuf(accountUpdatesMultiRequestProto *protobuf.AccountUpdatesMultiRequest) {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
+	me := NewMsgEncoder(6, c)
+	me.encodeMsgID(REQ_ACCOUNT_UPDATES_MULTI + PROTOBUF_MSG_ID)
+
+	msg, err := proto.Marshal(accountUpdatesMultiRequestProto)
+	if err != nil {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
+		return
+	}
+
+	me.encodeProto(msg)
+
+	c.reqChan <- me.Bytes()
+}
+
 // CancelAccountUpdatesMulti cancels account update for reqID.
 func (c *EClient) CancelAccountUpdatesMulti(reqID int64) {
+
+	if c.useProtoBuf(CANCEL_ACCOUNT_UPDATES_MULTI) {
+		c.cancelAccountUpdatesMultiProtoBuf(createCancelAccountUpdatesMultiRequestProto(reqID))
+		return
+	}
 
 	if !c.IsConnected() {
 		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
@@ -2567,6 +2776,27 @@ func (c *EClient) CancelAccountUpdatesMulti(reqID int64) {
 	me.encodeMsgID(CANCEL_ACCOUNT_UPDATES_MULTI)
 	me.encodeInt(VERSION)
 	me.encodeInt64(reqID)
+
+	c.reqChan <- me.Bytes()
+}
+
+func (c *EClient) cancelAccountUpdatesMultiProtoBuf(cancelAccountUpdatesMultiRequestProto *protobuf.CancelAccountUpdatesMulti) {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
+	me := NewMsgEncoder(3, c)
+	me.encodeMsgID(CANCEL_ACCOUNT_UPDATES_MULTI + PROTOBUF_MSG_ID)
+
+	msg, err := proto.Marshal(cancelAccountUpdatesMultiRequestProto)
+	if err != nil {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
+		return
+	}
+
+	me.encodeProto(msg)
 
 	c.reqChan <- me.Bytes()
 }
@@ -2733,12 +2963,12 @@ func (c *EClient) reqExecutionProtobuf(executionRequestProto *protobuf.Execution
 		return
 	}
 
-	me := NewMsgEncoder(0, c)
+	me := NewMsgEncoder(14, c)
 	me.encodeMsgID(REQ_EXECUTIONS + PROTOBUF_MSG_ID)
 
 	msg, err := proto.Marshal(executionRequestProto)
 	if err != nil {
-		log.Panic().Err(err).Msg("reqExecutionProtobuf marshal error")
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
 	}
 
 	me.encodeProto(msg)
@@ -2852,7 +3082,7 @@ func (c *EClient) reqContractDataProtoBuf(contractDataRequestProto *protobuf.Con
 
 	msg, err := proto.Marshal(contractDataRequestProto)
 	if err != nil {
-		c.wrapper.Error(reqID, currentTimeMillis(), 0, "Failed to marshal PlaceOrderRequest: "+err.Error(), "")
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
 		return
 	}
 
@@ -2989,7 +3219,7 @@ func (c *EClient) reqMarketDepthProtoBuf(marketDepthRequestProto *protobuf.Marke
 
 	msg, err := proto.Marshal(marketDepthRequestProto)
 	if err != nil {
-		c.wrapper.Error(reqID, currentTimeMillis(), 0, "Failed to marshal MarketDepthRequest: "+err.Error(), "")
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
 		return
 	}
 
@@ -3044,11 +3274,11 @@ func (c *EClient) cancelMarketDepthProtoBuf(cancelMarketDepthProto *protobuf.Can
 	}
 
 	me := NewMsgEncoder(4, c)
-	me.encodeMsgID(REQ_MKT_DEPTH + PROTOBUF_MSG_ID)
+	me.encodeMsgID(CANCEL_MKT_DEPTH + PROTOBUF_MSG_ID)
 
 	msg, err := proto.Marshal(cancelMarketDepthProto)
 	if err != nil {
-		c.wrapper.Error(reqID, currentTimeMillis(), 0, "Failed to marshal CancelMarketDepth: "+err.Error(), "")
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
 		return
 	}
 
@@ -3111,6 +3341,11 @@ func (c *EClient) CancelNewsBulletins() {
 // This request can only be made when connected to a FA managed account.
 func (c *EClient) ReqManagedAccts() {
 
+	if c.useProtoBuf(REQ_MANAGED_ACCTS) {
+		c.reqManagedAcctsProtoBuf(createManagedAccountsRequestProto())
+		return
+	}
+
 	if !c.IsConnected() {
 		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
@@ -3124,6 +3359,27 @@ func (c *EClient) ReqManagedAccts() {
 	me.encodeInt(VERSION)
 
 	c.reqChan <- me.Bytes()
+}
+
+func (c *EClient) reqManagedAcctsProtoBuf(managedAccountsRequestProto *protobuf.ManagedAccountsRequest) {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
+	me := NewMsgEncoder(2, c)
+	me.encodeMsgID(REQ_MANAGED_ACCTS + PROTOBUF_MSG_ID)
+
+	msg, err := proto.Marshal(managedAccountsRequestProto)
+	if err != nil {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
+	}
+
+	me.encodeProto(msg)
+
+	c.reqChan <- me.Bytes()
+
 }
 
 // RequestFA requests fa.
@@ -4177,7 +4433,7 @@ func (c *EClient) reqCompletedOrdersProtoBuf(completedOrdersRequestProto *protob
 
 	msg, err := proto.Marshal(completedOrdersRequestProto)
 	if err != nil {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), 0, "Failed to marshal CompletedOrdersRequest: "+err.Error(), "")
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
 		return
 	}
 
