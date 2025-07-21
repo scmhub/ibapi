@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package protobuf;
+
+option go_package = ".;protobuf";
+
+message HistoricalDataEnd {
+    optional int32 reqId = 1;
+    optional string startDateStr = 2;
+    optional string endDateStr = 3;
+}

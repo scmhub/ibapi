@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+package protobuf;
+
+import "HistogramDataEntry.proto";
+
+option go_package = ".;protobuf";
+
+message HistogramData {
+    optional int32 reqId = 1;
+	repeated HistogramDataEntry histogramDataEntries = 2;
+}

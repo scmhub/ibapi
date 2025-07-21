@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package protobuf;
+
+import "HistoricalTickBidAsk.proto";
+
+option go_package = ".;protobuf";
+
+message HistoricalTicksBidAsk {
+    optional int32 reqId = 1;
+	repeated HistoricalTickBidAsk historicalTicksBidAsk = 2;
+	optional bool isDone = 3;
+}

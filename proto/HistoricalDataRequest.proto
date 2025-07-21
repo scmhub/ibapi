@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package protobuf;
+
+import "Contract.proto";
+
+option go_package = ".;protobuf";
+
+message HistoricalDataRequest {
+    optional int32 reqId = 1;
+	optional Contract contract = 2;
+	optional string endDateTime = 3;
+	optional string barSizeSetting = 4;
+	optional string duration = 5;
+	optional bool useRTH = 6;
+	optional string whatToShow = 7;
+    optional int32 formatDate = 8;
+	optional bool keepUpToDate = 9;
+    map<string, string> chartOptions = 10;
+}

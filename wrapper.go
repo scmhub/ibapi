@@ -353,6 +353,26 @@ type EWrapper interface {
 	AccountUpdateMultiProtoBuf(accountUpdateMultiProto *protobuf.AccountUpdateMulti)
 	// AccountUpdateMultiEndProtoBuf .
 	AccountUpdateMultiEndProtoBuf(accountUpdateMultiEndProto *protobuf.AccountUpdateMultiEnd)
+	// HistoricalDataProtoBuf .
+	HistoricalDataProtoBuf(historicalDataProto *protobuf.HistoricalData)
+	// HistoricalDataUpdateProtoBuf .
+	HistoricalDataUpdateProtoBuf(historicalDataUpdateProto *protobuf.HistoricalDataUpdate)
+	// HistoricalDataEndProtoBuf .
+	HistoricalDataEndProtoBuf(historicalDataEndProto *protobuf.HistoricalDataEnd)
+	// RealTimeBarTickProtoBuf .
+	RealTimeBarTickProtoBuf(realTimeBarTickProto *protobuf.RealTimeBarTick)
+	// HeadTimestampProtoBuf .
+	HeadTimestampProtoBuf(headTimestampProto *protobuf.HeadTimestamp)
+	// HistogramDataProtoBuf .
+	HistogramDataProtoBuf(histogramDataProto *protobuf.HistogramData)
+	// HistoricalTicksProtoBuf .
+	HistoricalTicksProtoBuf(historicalTicksProto *protobuf.HistoricalTicks)
+	// HistoricalTicksBidAskProtoBuf .
+	HistoricalTicksBidAskProtoBuf(historicalTicksBidAskProto *protobuf.HistoricalTicksBidAsk)
+	// HistoricalTicksLastProtoBuf .
+	HistoricalTicksLastProtoBuf(historicalTicksLastProto *protobuf.HistoricalTicksLast)
+	// TickByTickDataProtoBuf .
+	TickByTickDataProtoBuf(tickByTickDataProto *protobuf.TickByTickData)
 }
 
 var _ EWrapper = (*Wrapper)(nil)
@@ -909,4 +929,44 @@ func (w Wrapper) AccountUpdateMultiProtoBuf(accountUpdateMultiProto *protobuf.Ac
 
 func (w Wrapper) AccountUpdateMultiEndProtoBuf(accountUpdateMultiEndProto *protobuf.AccountUpdateMultiEnd) {
 	log.Debug().Stringer("accountUpdateMultiEndProto", accountUpdateMultiEndProto).Msg("<AccountUpdateMultiEndProtoBuf>")
+}
+
+func (w Wrapper) HistoricalDataProtoBuf(historicalDataProto *protobuf.HistoricalData) {
+	log.Debug().Stringer("historicalDataProto", historicalDataProto).Msg("<HistoricalDataProtoBuf>")
+}
+
+func (w Wrapper) HistoricalDataUpdateProtoBuf(historicalDataUpdateProto *protobuf.HistoricalDataUpdate) {
+	log.Debug().Stringer("historicalDataUpdateProto", historicalDataUpdateProto).Msg("<HistoricalDataUpdateProtoBuf>")
+}
+
+func (w Wrapper) HistoricalDataEndProtoBuf(historicalDataEndProto *protobuf.HistoricalDataEnd) {
+	log.Debug().Stringer("historicalDataEndProto", historicalDataEndProto).Msg("<HistoricalDataEndProtoBuf>")
+}
+
+func (w Wrapper) RealTimeBarTickProtoBuf(realTimeBarTickProto *protobuf.RealTimeBarTick) {
+	log.Debug().Stringer("realTimeBarTickProto", realTimeBarTickProto).Msg("<RealTimeBarTickProtoBuf>")
+}
+
+func (w Wrapper) HeadTimestampProtoBuf(headTimestampProto *protobuf.HeadTimestamp) {
+	log.Debug().Stringer("headTimestampProto", headTimestampProto).Msg("<HeadTimestampProtoBuf>")
+}
+
+func (w Wrapper) HistogramDataProtoBuf(histogramDataProto *protobuf.HistogramData) {
+	log.Debug().Stringer("histogramDataProto", histogramDataProto).Msg("<HistogramDataProtoBuf>")
+}
+
+func (w Wrapper) HistoricalTicksProtoBuf(historicalTicksProto *protobuf.HistoricalTicks) {
+	log.Debug().Stringer("historicalTicksProto", historicalTicksProto).Msg("<HistoricalTicksProtoBuf>")
+}
+
+func (w Wrapper) HistoricalTicksBidAskProtoBuf(historicalTicksBidAskProto *protobuf.HistoricalTicksBidAsk) {
+	log.Debug().Stringer("historicalTicksBidAskProto", historicalTicksBidAskProto).Msg("<HistoricalTicksBidAskProtoBuf>")
+}
+
+func (w Wrapper) HistoricalTicksLastProtoBuf(historicalTicksLastProto *protobuf.HistoricalTicksLast) {
+	log.Debug().Stringer("historicalTicksLastProto", historicalTicksLastProto).Msg("<HistoricalTicksLastProtoBuf>")
+}
+
+func (w Wrapper) TickByTickDataProtoBuf(tickByTickDataProto *protobuf.TickByTickData) {
+	log.Debug().Stringer("tickByTickDataProto", tickByTickDataProto).Msg("<TickByTickDataProtoBuf>")
 }

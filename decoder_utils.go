@@ -1147,3 +1147,112 @@ func setLastTradeDate(lastTradeDateOrContractMonth string, contract *ContractDet
 func FloatToString(f float64) string {
 	return strconv.FormatFloat(f, 'f', -1, 64)
 }
+
+// decodeHistoricalTick translates protobuf HistoricalTick to Go HistoricalTick
+func decodeHistoricalTick(proto *protobuf.HistoricalTick) *HistoricalTick {
+	tick := &HistoricalTick{}
+	if proto.Time != nil {
+		tick.Time = proto.GetTime()
+	}
+	if proto.Price != nil {
+		tick.Price = proto.GetPrice()
+	}
+	if proto.Size != nil {
+		tick.Size = StringToDecimal(proto.GetSize())
+	}
+	return tick
+}
+
+// decodeHistoricalTickBidAsk translates protobuf HistoricalTickBidAsk to Go HistoricalTickBidAsk
+func decodeHistoricalTickBidAsk(proto *protobuf.HistoricalTickBidAsk) *HistoricalTickBidAsk {
+	tick := &HistoricalTickBidAsk{}
+	if proto.Time != nil {
+		tick.Time = proto.GetTime()
+	}
+	if proto.TickAttribBidAsk != nil {
+		attrib := proto.GetTickAttribBidAsk()
+		tick.TickAttribBidAsk.AskPastHigh = attrib.GetAskPastHigh()
+		tick.TickAttribBidAsk.BidPastLow = attrib.GetBidPastLow()
+	}
+	if proto.PriceBid != nil {
+		tick.PriceBid = proto.GetPriceBid()
+	}
+	if proto.PriceAsk != nil {
+		tick.PriceAsk = proto.GetPriceAsk()
+	}
+	if proto.SizeBid != nil {
+		tick.SizeBid = StringToDecimal(proto.GetSizeBid())
+	}
+	if proto.SizeAsk != nil {
+		tick.SizeAsk = StringToDecimal(proto.GetSizeAsk())
+	}
+	return tick
+}
+
+// decodeHistoricalTickLast translates protobuf HistoricalTickLast to Go HistoricalTickLast
+func decodeHistoricalTickLast(proto *protobuf.HistoricalTickLast) *HistoricalTickLast {
+	tick := &HistoricalTickLast{}
+	if proto.Time != nil {
+		tick.Time = proto.GetTime()
+	}
+	if proto.TickAttribLast != nil {
+		attrib := proto.GetTickAttribLast()
+		tick.TickAttribLast.PastLimit = attrib.GetPastLimit()
+		tick.TickAttribLast.Unreported = attrib.GetUnreported()
+	}
+	if proto.Price != nil {
+		tick.Price = proto.GetPrice()
+	}
+	if proto.Size != nil {
+		tick.Size = StringToDecimal(proto.GetSize())
+	}
+	if proto.Exchange != nil {
+		tick.Exchange = proto.GetExchange()
+	}
+	if proto.SpecialConditions != nil {
+		tick.SpecialConditions = proto.GetSpecialConditions()
+	}
+	return tick
+}
+
+// decodeHistogramDataEntry translates protobuf HistogramDataEntry to Go HistogramEntry
+func decodeHistogramDataEntry(proto *protobuf.HistogramDataEntry) *HistogramData {
+	entry := &HistogramData{}
+	if proto.Price != nil {
+		entry.Price = proto.GetPrice()
+	}
+	if proto.Size != nil {
+		entry.Size = StringToDecimal(proto.GetSize())
+	}
+	return entry
+}
+
+// decodeHistoricalDataBar translates protobuf HistoricalDataBar to Go Bar
+func decodeHistoricalDataBar(proto *protobuf.HistoricalDataBar) *Bar {
+	bar := &Bar{}
+	if proto.Date != nil {
+		bar.Date = proto.GetDate()
+	}
+	if proto.Open != nil {
+		bar.Open = proto.GetOpen()
+	}
+	if proto.High != nil {
+		bar.High = proto.GetHigh()
+	}
+	if proto.Low != nil {
+		bar.Low = proto.GetLow()
+	}
+	if proto.Close != nil {
+		bar.Close = proto.GetClose()
+	}
+	if proto.Volume != nil {
+		bar.Volume = StringToDecimal(proto.GetVolume())
+	}
+	if proto.BarCount != nil {
+		bar.BarCount = int64(proto.GetBarCount())
+	}
+	if proto.WAP != nil {
+		bar.Wap = StringToDecimal(proto.GetWAP())
+	}
+	return bar
+}

@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package protobuf;
+
+option go_package = ".;protobuf";
+
+message RealTimeBarTick {
+    optional int32 reqId = 1;
+    optional int64 time = 2;
+    optional double open = 3;
+    optional double high = 4;
+    optional double low = 5;
+    optional double close = 6;
+	optional string volume = 7;
+	optional string WAP = 8;
+    optional int32 count = 9;
+}

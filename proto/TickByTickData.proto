@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package protobuf;
+
+import "HistoricalTickLast.proto";
+import "HistoricalTickBidAsk.proto";
+import "HistoricalTick.proto";
+
+
+
+option go_package = ".;protobuf";
+
+message TickByTickData {
+    optional int32 reqId = 1;
+    optional int32 tickType = 2;
+	oneof tick {
+		HistoricalTickLast historicalTickLast = 3;
+		HistoricalTickBidAsk historicalTickBidAsk = 4;
+		HistoricalTick historicalTickMidPoint = 5;
+	}
+}

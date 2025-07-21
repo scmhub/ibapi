@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package protobuf;
+
+import "HistoricalTick.proto";
+
+option go_package = ".;protobuf";
+
+message HistoricalTicks {
+    optional int32 reqId = 1;
+	repeated HistoricalTick historicalTicks = 2;
+	optional bool isDone = 3;
+}

@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package protobuf;
+
+import "HistoricalDataBar.proto";
+
+option go_package = ".;protobuf";
+
+message HistoricalDataUpdate {
+    optional int32 reqId = 1;
+    optional HistoricalDataBar historicalDataBar = 2;
+}
+

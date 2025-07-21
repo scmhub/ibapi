@@ -974,6 +974,11 @@ func (c *EClient) ReqMarketRule(marketRuleID int64) {
 // Result will be delivered via wrapper.TickByTickAllLast() wrapper.TickByTickBidAsk() wrapper.TickByTickMidPoint().
 func (c *EClient) ReqTickByTickData(reqID int64, contract *Contract, tickType string, numberOfTicks int64, ignoreSize bool) {
 
+	if c.useProtoBuf(REQ_TICK_BY_TICK_DATA) {
+		c.reqTickByTickDataProtoBuf(createTickByTickRequestProto(reqID, contract, tickType, numberOfTicks, ignoreSize))
+		return
+	}
+
 	if !c.IsConnected() {
 		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
@@ -1015,8 +1020,34 @@ func (c *EClient) ReqTickByTickData(reqID int64, contract *Contract, tickType st
 	c.reqChan <- me.Bytes()
 }
 
+func (c *EClient) reqTickByTickDataProtoBuf(tickByTickRequestProto *protobuf.TickByTickRequest) {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
+	me := NewMsgEncoder(17, c)
+	me.encodeMsgID(REQ_TICK_BY_TICK_DATA + PROTOBUF_MSG_ID)
+
+	msg, err := proto.Marshal(tickByTickRequestProto)
+	if err != nil {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
+		return
+	}
+
+	me.encodeProto(msg)
+
+	c.reqChan <- me.Bytes()
+}
+
 // CancelTickByTickData cancel the tick-by-tick data
 func (c *EClient) CancelTickByTickData(reqID int64) {
+
+	if c.useProtoBuf(CANCEL_TICK_BY_TICK_DATA) {
+		c.cancelTickByTickDataProtoBuf(createCancelTickByTickProto(reqID))
+		return
+	}
 
 	if !c.IsConnected() {
 		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
@@ -1031,6 +1062,27 @@ func (c *EClient) CancelTickByTickData(reqID int64) {
 	me := NewMsgEncoder(2, c)
 
 	me.encodeMsgID(CANCEL_TICK_BY_TICK_DATA).encodeInt64(reqID)
+
+	c.reqChan <- me.Bytes()
+}
+
+func (c *EClient) cancelTickByTickDataProtoBuf(cancelTickByTickProto *protobuf.CancelTickByTick) {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
+	me := NewMsgEncoder(2, c)
+	me.encodeMsgID(CANCEL_TICK_BY_TICK_DATA + PROTOBUF_MSG_ID)
+
+	msg, err := proto.Marshal(cancelTickByTickProto)
+	if err != nil {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
+		return
+	}
+
+	me.encodeProto(msg)
 
 	c.reqChan <- me.Bytes()
 }
@@ -3496,6 +3548,11 @@ func (c *EClient) ReplaceFA(reqID int64, faDataType FaDataType, cxml string) {
 
 func (c *EClient) ReqHistoricalData(reqID int64, contract *Contract, endDateTime string, duration string, barSize string, whatToShow string, useRTH bool, formatDate int, keepUpToDate bool, chartOptions []TagValue) {
 
+	if c.useProtoBuf(REQ_HISTORICAL_DATA) {
+		c.reqHistoricalDataProtoBuf(createHistoricalDataRequestProto(reqID, contract, endDateTime, duration, barSize, whatToShow, useRTH, formatDate, keepUpToDate, chartOptions))
+		return
+	}
+
 	if !c.IsConnected() {
 		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
@@ -3567,10 +3624,36 @@ func (c *EClient) ReqHistoricalData(reqID int64, contract *Contract, endDateTime
 	c.reqChan <- me.Bytes()
 }
 
+func (c *EClient) reqHistoricalDataProtoBuf(historicalDataRequestProto *protobuf.HistoricalDataRequest) {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
+	me := NewMsgEncoder(20, c)
+	me.encodeMsgID(REQ_HISTORICAL_DATA + PROTOBUF_MSG_ID)
+
+	msg, err := proto.Marshal(historicalDataRequestProto)
+	if err != nil {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
+		return
+	}
+
+	me.encodeProto(msg)
+
+	c.reqChan <- me.Bytes()
+}
+
 // CancelHistoricalData cancels the update of historical data.
 // Used if an internet disconnect has occurred or the results of a query are otherwise delayed and the application is no longer interested in receiving the data.
 // reqId, the ticker ID, must be a unique value.
 func (c *EClient) CancelHistoricalData(reqID int64) {
+
+	if c.useProtoBuf(CANCEL_HISTORICAL_DATA) {
+		c.cancelHistoricalDataProtoBuf(createCancelHistoricalDataProto(reqID))
+		return
+	}
 
 	if !c.IsConnected() {
 		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
@@ -3588,9 +3671,35 @@ func (c *EClient) CancelHistoricalData(reqID int64) {
 	c.reqChan <- me.Bytes()
 }
 
+func (c *EClient) cancelHistoricalDataProtoBuf(cancelHistoricalDataProto *protobuf.CancelHistoricalData) {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
+	me := NewMsgEncoder(3, c)
+	me.encodeMsgID(CANCEL_HISTORICAL_DATA + PROTOBUF_MSG_ID)
+
+	msg, err := proto.Marshal(cancelHistoricalDataProto)
+	if err != nil {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
+		return
+	}
+
+	me.encodeProto(msg)
+
+	c.reqChan <- me.Bytes()
+}
+
 // ReqHeadTimeStamp request the head timestamp of assigned contract.
 // call this func to get the headmost data you can get
 func (c *EClient) ReqHeadTimeStamp(reqID int64, contract *Contract, whatToShow string, useRTH bool, formatDate int) {
+
+	if c.useProtoBuf(REQ_HEAD_TIMESTAMP) {
+		c.reqHeadTimestampProtoBuf(createHeadTimestampRequestProto(reqID, contract, whatToShow, useRTH, formatDate))
+		return
+	}
 
 	if !c.IsConnected() {
 		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
@@ -3614,8 +3723,34 @@ func (c *EClient) ReqHeadTimeStamp(reqID int64, contract *Contract, whatToShow s
 	c.reqChan <- me.Bytes()
 }
 
+func (c *EClient) reqHeadTimestampProtoBuf(headTimestampRequestProto *protobuf.HeadTimestampRequest) {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
+	me := NewMsgEncoder(19, c)
+	me.encodeMsgID(REQ_HEAD_TIMESTAMP + PROTOBUF_MSG_ID)
+
+	msg, err := proto.Marshal(headTimestampRequestProto)
+	if err != nil {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
+		return
+	}
+
+	me.encodeProto(msg)
+
+	c.reqChan <- me.Bytes()
+}
+
 // CancelHeadTimeStamp cancels the head timestamp data.
 func (c *EClient) CancelHeadTimeStamp(reqID int64) {
+
+	if c.useProtoBuf(CANCEL_HEAD_TIMESTAMP) {
+		c.cancelHeadTimestampProtoBuf(createCancelHeadTimestampProto(reqID))
+		return
+	}
 
 	if !c.IsConnected() {
 		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
@@ -3635,8 +3770,34 @@ func (c *EClient) CancelHeadTimeStamp(reqID int64) {
 	c.reqChan <- me.Bytes()
 }
 
+func (c *EClient) cancelHeadTimestampProtoBuf(cancelHeadTimestampProto *protobuf.CancelHeadTimestamp) {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
+	me := NewMsgEncoder(2, c)
+	me.encodeMsgID(CANCEL_HEAD_TIMESTAMP + PROTOBUF_MSG_ID)
+
+	msg, err := proto.Marshal(cancelHeadTimestampProto)
+	if err != nil {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
+		return
+	}
+
+	me.encodeProto(msg)
+
+	c.reqChan <- me.Bytes()
+}
+
 // ReqHistogramData requests histogram data.
 func (c *EClient) ReqHistogramData(reqID int64, contract *Contract, useRTH bool, timePeriod string) {
+
+	if c.useProtoBuf(REQ_HISTOGRAM_DATA) {
+		c.reqHistogramDataProtoBuf(createHistogramDataRequestProto(reqID, contract, useRTH, timePeriod))
+		return
+	}
 
 	if !c.IsConnected() {
 		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
@@ -3659,8 +3820,34 @@ func (c *EClient) ReqHistogramData(reqID int64, contract *Contract, useRTH bool,
 	c.reqChan <- me.Bytes()
 }
 
+func (c *EClient) reqHistogramDataProtoBuf(histogramDataRequestProto *protobuf.HistogramDataRequest) {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
+	me := NewMsgEncoder(5, c)
+	me.encodeMsgID(REQ_HISTOGRAM_DATA + PROTOBUF_MSG_ID)
+
+	msg, err := proto.Marshal(histogramDataRequestProto)
+	if err != nil {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
+		return
+	}
+
+	me.encodeProto(msg)
+
+	c.reqChan <- me.Bytes()
+}
+
 // CancelHistogramData cancels histogram data.
 func (c *EClient) CancelHistogramData(reqID int64) {
+
+	if c.useProtoBuf(CANCEL_HISTOGRAM_DATA) {
+		c.cancelHistogramDataProtoBuf(createCancelHistogramDataProto(reqID))
+		return
+	}
 
 	if !c.IsConnected() {
 		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
@@ -3680,8 +3867,34 @@ func (c *EClient) CancelHistogramData(reqID int64) {
 	c.reqChan <- me.Bytes()
 }
 
+func (c *EClient) cancelHistogramDataProtoBuf(cancelHistogramDataProto *protobuf.CancelHistogramData) {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
+	me := NewMsgEncoder(2, c)
+	me.encodeMsgID(CANCEL_HISTOGRAM_DATA + PROTOBUF_MSG_ID)
+
+	msg, err := proto.Marshal(cancelHistogramDataProto)
+	if err != nil {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
+		return
+	}
+
+	me.encodeProto(msg)
+
+	c.reqChan <- me.Bytes()
+}
+
 // ReqHistoricalTicks requests historical ticks.
 func (c *EClient) ReqHistoricalTicks(reqID int64, contract *Contract, startDateTime string, endDateTime string, numberOfTicks int, whatToShow string, useRTH bool, ignoreSize bool, miscOptions []TagValue) {
+
+	if c.useProtoBuf(REQ_HISTORICAL_TICKS) {
+		c.reqHistoricalTicksProtoBuf(createHistoricalTicksRequestProto(reqID, contract, startDateTime, endDateTime, numberOfTicks, whatToShow, useRTH, ignoreSize, miscOptions))
+		return
+	}
 
 	if !c.IsConnected() {
 		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
@@ -3705,6 +3918,27 @@ func (c *EClient) ReqHistoricalTicks(reqID int64, contract *Contract, startDateT
 	me.encodeBool(useRTH)
 	me.encodeBool(ignoreSize)
 	me.encodeTagValues(miscOptions)
+
+	c.reqChan <- me.Bytes()
+}
+
+func (c *EClient) reqHistoricalTicksProtoBuf(historicalTicksRequestProto *protobuf.HistoricalTicksRequest) {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
+	me := NewMsgEncoder(22, c)
+	me.encodeMsgID(REQ_HISTORICAL_TICKS + PROTOBUF_MSG_ID)
+
+	msg, err := proto.Marshal(historicalTicksRequestProto)
+	if err != nil {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
+		return
+	}
+
+	me.encodeProto(msg)
 
 	c.reqChan <- me.Bytes()
 }
@@ -3842,6 +4076,11 @@ func (c *EClient) CancelScannerSubscription(reqID int64) {
 // realTimeBarOptions is for internal use only. Use default value XYZ.
 func (c *EClient) ReqRealTimeBars(reqID int64, contract *Contract, barSize int, whatToShow string, useRTH bool, realTimeBarsOptions []TagValue) {
 
+	if c.useProtoBuf(REQ_REAL_TIME_BARS) {
+		c.reqRealTimeBarsProtoBuf(createRealTimeBarsRequestProto(reqID, contract, barSize, whatToShow, useRTH, realTimeBarsOptions))
+		return
+	}
+
 	if !c.IsConnected() {
 		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
@@ -3890,8 +4129,34 @@ func (c *EClient) ReqRealTimeBars(reqID int64, contract *Contract, barSize int, 
 	c.reqChan <- me.Bytes()
 }
 
+func (c *EClient) reqRealTimeBarsProtoBuf(realTimeBarsRequestProto *protobuf.RealTimeBarsRequest) {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
+	me := NewMsgEncoder(19, c)
+	me.encodeMsgID(REQ_REAL_TIME_BARS + PROTOBUF_MSG_ID)
+
+	msg, err := proto.Marshal(realTimeBarsRequestProto)
+	if err != nil {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
+		return
+	}
+
+	me.encodeProto(msg)
+
+	c.reqChan <- me.Bytes()
+}
+
 // CancelRealTimeBars cancels realtime bars.
 func (c *EClient) CancelRealTimeBars(reqID int64) {
+
+	if c.useProtoBuf(CANCEL_REAL_TIME_BARS) {
+		c.cancelRealTimeBarsProtoBuf(createCancelRealTimeBarsProto(reqID))
+		return
+	}
 
 	if !c.IsConnected() {
 		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
@@ -3905,6 +4170,27 @@ func (c *EClient) CancelRealTimeBars(reqID int64) {
 	me.encodeMsgID(CANCEL_REAL_TIME_BARS)
 	me.encodeInt(VERSION)
 	me.encodeInt64(reqID)
+
+	c.reqChan <- me.Bytes()
+}
+
+func (c *EClient) cancelRealTimeBarsProtoBuf(cancelRealTimeBarsProto *protobuf.CancelRealTimeBars) {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
+	me := NewMsgEncoder(3, c)
+	me.encodeMsgID(CANCEL_REAL_TIME_BARS + PROTOBUF_MSG_ID)
+
+	msg, err := proto.Marshal(cancelRealTimeBarsProto)
+	if err != nil {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
+		return
+	}
+
+	me.encodeProto(msg)
 
 	c.reqChan <- me.Bytes()
 }

@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package protobuf;
+
+import "Contract.proto";
+
+option go_package = ".;protobuf";
+
+message HistogramDataRequest {
+    optional int32 reqId = 1;
+	optional Contract contract = 2;
+	optional bool useRTH = 3;
+	optional string timePeriod = 4;
+}

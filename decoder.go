@@ -112,6 +112,26 @@ func (d *EDecoder) interpret(msgBytes []byte) {
 			d.processAccountUpdateMultiMsgProtoBuf(msgBuf)
 		case ACCOUNT_UPDATE_MULTI_END:
 			d.processAccountUpdateMultiEndMsgProtoBuf(msgBuf)
+		case HISTORICAL_DATA:
+			d.processHistoricalDataMsgProtoBuf(msgBuf)
+		case HISTORICAL_DATA_UPDATE:
+			d.processHistoricalDataUpdateMsgProtoBuf(msgBuf)
+		case HISTORICAL_DATA_END:
+			d.processHistoricalDataEndMsgProtoBuf(msgBuf)
+		case REAL_TIME_BARS:
+			d.processRealTimeBarsMsgProtoBuf(msgBuf)
+		case HEAD_TIMESTAMP:
+			d.processHeadTimestampMsgProtoBuf(msgBuf)
+		case HISTOGRAM_DATA:
+			d.processHistogramDataMsgProtoBuf(msgBuf)
+		case HISTORICAL_TICKS:
+			d.processHistoricalTicksMsgProtoBuf(msgBuf)
+		case HISTORICAL_TICKS_BID_ASK:
+			d.processHistoricalTicksBidAskMsgProtoBuf(msgBuf)
+		case HISTORICAL_TICKS_LAST:
+			d.processHistoricalTicksLastMsgProtoBuf(msgBuf)
+		case TICK_BY_TICK:
+			d.processTickByTickMsgProtoBuf(msgBuf)
 		default:
 			d.wrapper.Error(msgID, currentTimeMillis(), UNKNOWN_ID.Code, UNKNOWN_ID.Msg, "")
 		}
@@ -1745,6 +1765,26 @@ func (d *EDecoder) processHistoricalDataMsg(msgBuf *MsgBuffer) {
 	}
 }
 
+func (d *EDecoder) processHistoricalDataMsgProtoBuf(msgBuf *MsgBuffer) {
+	var historicalDataProto protobuf.HistoricalData
+	if err := proto.Unmarshal(msgBuf.bs, &historicalDataProto); err != nil {
+		log.Error().Err(err).Msg("failed to unmarshal HistoricalData message")
+		return
+	}
+
+	d.wrapper.HistoricalDataProtoBuf(&historicalDataProto)
+
+	reqID := NO_VALID_ID
+	if historicalDataProto.ReqId != nil {
+		reqID = int64(historicalDataProto.GetReqId())
+	}
+
+	for _, barProto := range historicalDataProto.GetHistoricalDataBars() {
+		bar := decodeHistoricalDataBar(barProto)
+		d.wrapper.HistoricalData(reqID, bar)
+	}
+}
+
 func (d *EDecoder) processHistoricalDataEndMsg(msgBuf *MsgBuffer) {
 
 	reqID := msgBuf.decodeInt64()
@@ -1752,6 +1792,31 @@ func (d *EDecoder) processHistoricalDataEndMsg(msgBuf *MsgBuffer) {
 	endDateStr := msgBuf.decodeString()
 
 	d.wrapper.HistoricalDataEnd(reqID, startDateStr, endDateStr)
+}
+
+func (d *EDecoder) processHistoricalDataEndMsgProtoBuf(msgBuf *MsgBuffer) {
+	var historicalDataEndProto protobuf.HistoricalDataEnd
+	if err := proto.Unmarshal(msgBuf.bs, &historicalDataEndProto); err != nil {
+		log.Error().Err(err).Msg("failed to unmarshal HistoricalDataEnd message")
+		return
+	}
+
+	d.wrapper.HistoricalDataEndProtoBuf(&historicalDataEndProto)
+
+	reqID := NO_VALID_ID
+	if historicalDataEndProto.ReqId != nil {
+		reqID = int64(historicalDataEndProto.GetReqId())
+	}
+
+	var startDate, endDate string
+	if historicalDataEndProto.StartDateStr != nil {
+		startDate = historicalDataEndProto.GetStartDateStr()
+	}
+	if historicalDataEndProto.EndDateStr != nil {
+		endDate = historicalDataEndProto.GetEndDateStr()
+	}
+
+	d.wrapper.HistoricalDataEnd(reqID, startDate, endDate)
 }
 
 func (d *EDecoder) processScannerDataMsg(msgBuf *MsgBuffer) {
@@ -1826,6 +1891,55 @@ func (d *EDecoder) processRealTimeBarsMsg(msgBuf *MsgBuffer) {
 
 	d.wrapper.RealtimeBar(reqID, time, open, high, low, close, volume, wap, count)
 
+}
+
+func (d *EDecoder) processRealTimeBarsMsgProtoBuf(msgBuf *MsgBuffer) {
+	var realTimeBarTickProto protobuf.RealTimeBarTick
+	if err := proto.Unmarshal(msgBuf.bs, &realTimeBarTickProto); err != nil {
+		log.Error().Err(err).Msg("failed to unmarshal RealTimeBarTick message")
+		return
+	}
+
+	d.wrapper.RealTimeBarTickProtoBuf(&realTimeBarTickProto)
+
+	reqID := NO_VALID_ID
+	if realTimeBarTickProto.ReqId != nil {
+		reqID = int64(realTimeBarTickProto.GetReqId())
+	}
+
+	var t int64
+	if realTimeBarTickProto.Time != nil {
+		t = realTimeBarTickProto.GetTime()
+	}
+
+	var open, high, low, close float64
+	if realTimeBarTickProto.Open != nil {
+		open = realTimeBarTickProto.GetOpen()
+	}
+	if realTimeBarTickProto.High != nil {
+		high = realTimeBarTickProto.GetHigh()
+	}
+	if realTimeBarTickProto.Low != nil {
+		low = realTimeBarTickProto.GetLow()
+	}
+	if realTimeBarTickProto.Close != nil {
+		close = realTimeBarTickProto.GetClose()
+	}
+
+	var volume, wap Decimal
+	if realTimeBarTickProto.Volume != nil {
+		volume = StringToDecimal(realTimeBarTickProto.GetVolume())
+	}
+	if realTimeBarTickProto.WAP != nil {
+		wap = StringToDecimal(realTimeBarTickProto.GetWAP())
+	}
+
+	var count int64
+	if realTimeBarTickProto.Count != nil {
+		count = int64(realTimeBarTickProto.GetCount())
+	}
+
+	d.wrapper.RealtimeBar(reqID, t, open, high, low, close, volume, wap, count)
 }
 
 func (d *EDecoder) processFundamentalDataMsg(msgBuf *MsgBuffer) {
@@ -2709,6 +2823,28 @@ func (d *EDecoder) processHeadTimestampMsg(msgBuf *MsgBuffer) {
 	d.wrapper.HeadTimestamp(reqID, headTimestamp)
 }
 
+func (d *EDecoder) processHeadTimestampMsgProtoBuf(msgBuf *MsgBuffer) {
+	var headTimestampProto protobuf.HeadTimestamp
+	if err := proto.Unmarshal(msgBuf.bs, &headTimestampProto); err != nil {
+		log.Error().Err(err).Msg("failed to unmarshal HeadTimestamp message")
+		return
+	}
+
+	d.wrapper.HeadTimestampProtoBuf(&headTimestampProto)
+
+	reqID := NO_VALID_ID
+	if headTimestampProto.ReqId != nil {
+		reqID = int64(headTimestampProto.GetReqId())
+	}
+
+	var timestamp string
+	if headTimestampProto.HeadTimestamp != nil {
+		timestamp = headTimestampProto.GetHeadTimestamp()
+	}
+
+	d.wrapper.HeadTimestamp(reqID, timestamp)
+}
+
 func (d *EDecoder) processHistogramDataMsg(msgBuf *MsgBuffer) {
 
 	reqID := msgBuf.decodeInt64()
@@ -2726,6 +2862,29 @@ func (d *EDecoder) processHistogramDataMsg(msgBuf *MsgBuffer) {
 	d.wrapper.HistogramData(reqID, data)
 }
 
+func (d *EDecoder) processHistogramDataMsgProtoBuf(msgBuf *MsgBuffer) {
+	var histogramDataProto protobuf.HistogramData
+	if err := proto.Unmarshal(msgBuf.bs, &histogramDataProto); err != nil {
+		log.Error().Err(err).Msg("failed to unmarshal HistogramData message")
+		return
+	}
+
+	d.wrapper.HistogramDataProtoBuf(&histogramDataProto)
+
+	reqID := NO_VALID_ID
+	if histogramDataProto.ReqId != nil {
+		reqID = int64(histogramDataProto.GetReqId())
+	}
+
+	var histogramData []HistogramData
+	for _, entryProto := range histogramDataProto.GetHistogramDataEntries() {
+		histogramEntry := decodeHistogramDataEntry(entryProto)
+		histogramData = append(histogramData, *histogramEntry)
+	}
+
+	d.wrapper.HistogramData(reqID, histogramData)
+}
+
 func (d *EDecoder) processHistoricalDataUpdateMsg(msgBuf *MsgBuffer) {
 
 	reqID := msgBuf.decodeInt64()
@@ -2741,6 +2900,26 @@ func (d *EDecoder) processHistoricalDataUpdateMsg(msgBuf *MsgBuffer) {
 	bar.Volume = msgBuf.decodeDecimal()
 
 	d.wrapper.HistoricalDataUpdate(reqID, &bar)
+}
+
+func (d *EDecoder) processHistoricalDataUpdateMsgProtoBuf(msgBuf *MsgBuffer) {
+	var historicalDataUpdateProto protobuf.HistoricalDataUpdate
+	if err := proto.Unmarshal(msgBuf.bs, &historicalDataUpdateProto); err != nil {
+		log.Error().Err(err).Msg("failed to unmarshal HistoricalDataUpdate message")
+		return
+	}
+
+	d.wrapper.HistoricalDataUpdateProtoBuf(&historicalDataUpdateProto)
+
+	reqID := NO_VALID_ID
+	if historicalDataUpdateProto.ReqId != nil {
+		reqID = int64(historicalDataUpdateProto.GetReqId())
+	}
+
+	if historicalDataUpdateProto.GetHistoricalDataBar() != nil {
+		bar := decodeHistoricalDataBar(historicalDataUpdateProto.GetHistoricalDataBar())
+		d.wrapper.HistoricalDataUpdate(reqID, bar)
+	}
 }
 
 func (d *EDecoder) processRerouteMktDataReqMsg(msgBuf *MsgBuffer) {
@@ -2844,6 +3023,34 @@ func (d *EDecoder) processHistoricalTicks(msgBuf *MsgBuffer) {
 	d.wrapper.HistoricalTicks(reqID, ticks, done)
 }
 
+func (d *EDecoder) processHistoricalTicksMsgProtoBuf(msgBuf *MsgBuffer) {
+	var historicalTicksProto protobuf.HistoricalTicks
+	if err := proto.Unmarshal(msgBuf.bs, &historicalTicksProto); err != nil {
+		log.Error().Err(err).Msg("failed to unmarshal HistoricalTicks message")
+		return
+	}
+
+	d.wrapper.HistoricalTicksProtoBuf(&historicalTicksProto)
+
+	reqID := NO_VALID_ID
+	if historicalTicksProto.ReqId != nil {
+		reqID = int64(historicalTicksProto.GetReqId())
+	}
+
+	isDone := false
+	if historicalTicksProto.IsDone != nil {
+		isDone = historicalTicksProto.GetIsDone()
+	}
+
+	var historicalTicks []HistoricalTick
+	for _, tickProto := range historicalTicksProto.GetHistoricalTicks() {
+		tick := decodeHistoricalTick(tickProto)
+		historicalTicks = append(historicalTicks, *tick)
+	}
+
+	d.wrapper.HistoricalTicks(reqID, historicalTicks, isDone)
+}
+
 func (d *EDecoder) processHistoricalTicksBidAsk(msgBuf *MsgBuffer) {
 
 	reqID := msgBuf.decodeInt64()
@@ -2859,7 +3066,7 @@ func (d *EDecoder) processHistoricalTicksBidAsk(msgBuf *MsgBuffer) {
 		tickAttribBidAsk := NewTickAttribBidAsk()
 		tickAttribBidAsk.AskPastHigh = mask&1 != 0
 		tickAttribBidAsk.BidPastLow = mask&2 != 0
-		historicalTickBidAsk.TickAttirbBidAsk = tickAttribBidAsk
+		historicalTickBidAsk.TickAttribBidAsk = tickAttribBidAsk
 		historicalTickBidAsk.PriceBid = msgBuf.decodeFloat64()
 		historicalTickBidAsk.PriceAsk = msgBuf.decodeFloat64()
 		historicalTickBidAsk.SizeBid = msgBuf.decodeDecimal()
@@ -2870,6 +3077,34 @@ func (d *EDecoder) processHistoricalTicksBidAsk(msgBuf *MsgBuffer) {
 	done := msgBuf.decodeBool()
 
 	d.wrapper.HistoricalTicksBidAsk(reqID, ticks, done)
+}
+
+func (d *EDecoder) processHistoricalTicksBidAskMsgProtoBuf(msgBuf *MsgBuffer) {
+	var protoBA protobuf.HistoricalTicksBidAsk
+	if err := proto.Unmarshal(msgBuf.bs, &protoBA); err != nil {
+		log.Error().Err(err).Msg("failed to unmarshal HistoricalTicksBidAsk message")
+		return
+	}
+
+	d.wrapper.HistoricalTicksBidAskProtoBuf(&protoBA)
+
+	reqID := NO_VALID_ID
+	if protoBA.ReqId != nil {
+		reqID = int64(protoBA.GetReqId())
+	}
+
+	done := false
+	if protoBA.IsDone != nil {
+		done = protoBA.GetIsDone()
+	}
+
+	var ticksBA []HistoricalTickBidAsk
+	for _, baProto := range protoBA.GetHistoricalTicksBidAsk() {
+		ba := decodeHistoricalTickBidAsk(baProto)
+		ticksBA = append(ticksBA, *ba)
+	}
+
+	d.wrapper.HistoricalTicksBidAsk(reqID, ticksBA, done)
 }
 
 func (d *EDecoder) processHistoricalTicksLast(msgBuf *MsgBuffer) {
@@ -2900,6 +3135,34 @@ func (d *EDecoder) processHistoricalTicksLast(msgBuf *MsgBuffer) {
 	done := msgBuf.decodeBool()
 
 	d.wrapper.HistoricalTicksLast(reqID, ticks, done)
+}
+
+func (d *EDecoder) processHistoricalTicksLastMsgProtoBuf(msgBuf *MsgBuffer) {
+	var protoLast protobuf.HistoricalTicksLast
+	if err := proto.Unmarshal(msgBuf.bs, &protoLast); err != nil {
+		log.Error().Err(err).Msg("failed to unmarshal HistoricalTicksLast message")
+		return
+	}
+
+	d.wrapper.HistoricalTicksLastProtoBuf(&protoLast)
+
+	reqID := NO_VALID_ID
+	if protoLast.ReqId != nil {
+		reqID = int64(protoLast.GetReqId())
+	}
+
+	done := false
+	if protoLast.IsDone != nil {
+		done = protoLast.GetIsDone()
+	}
+
+	var ticksLast []HistoricalTickLast
+	for _, lastProto := range protoLast.GetHistoricalTicksLast() {
+		last := decodeHistoricalTickLast(lastProto)
+		ticksLast = append(ticksLast, *last)
+	}
+
+	d.wrapper.HistoricalTicksLast(reqID, ticksLast, done)
 }
 
 func (d *EDecoder) processTickByTickDataMsg(msgBuf *MsgBuffer) {
@@ -2942,6 +3205,67 @@ func (d *EDecoder) processTickByTickDataMsg(msgBuf *MsgBuffer) {
 		midPoint := msgBuf.decodeFloat64()
 
 		d.wrapper.TickByTickMidPoint(reqID, time, midPoint)
+	}
+}
+
+func (d *EDecoder) processTickByTickMsgProtoBuf(msgBuf *MsgBuffer) {
+	var tickByTickDataProto protobuf.TickByTickData
+	if err := proto.Unmarshal(msgBuf.bs, &tickByTickDataProto); err != nil {
+		log.Error().Err(err).Msg("failed to unmarshal TickByTickData message")
+		return
+	}
+
+	d.wrapper.TickByTickDataProtoBuf(&tickByTickDataProto)
+
+	reqID := NO_VALID_ID
+	if tickByTickDataProto.ReqId != nil {
+		reqID = int64(tickByTickDataProto.GetReqId())
+	}
+	var tickType int64
+	if tickByTickDataProto.TickType != nil {
+		tickType = int64(tickByTickDataProto.GetTickType())
+	}
+
+	switch tickType {
+	case 1, 2: // Last or AllLast
+		if tickByTickDataProto.GetHistoricalTickLast() != nil {
+			lastProto := tickByTickDataProto.GetHistoricalTickLast()
+			ht := decodeHistoricalTickLast(lastProto)
+			d.wrapper.TickByTickAllLast(
+				reqID,
+				tickType,
+				ht.Time,
+				ht.Price,
+				ht.Size,
+				ht.TickAttribLast,
+				ht.Exchange,
+				ht.SpecialConditions,
+			)
+		}
+	case 3: // BidAsk
+		if tickByTickDataProto.GetHistoricalTickBidAsk() != nil {
+			baProto := tickByTickDataProto.GetHistoricalTickBidAsk()
+			hba := decodeHistoricalTickBidAsk(baProto)
+			d.wrapper.TickByTickBidAsk(
+				reqID,
+				hba.Time,
+				hba.PriceBid,
+				hba.PriceAsk,
+				hba.SizeBid,
+				hba.SizeAsk,
+				hba.TickAttribBidAsk,
+			)
+		}
+	case 4: // MidPoint
+		if tickByTickDataProto.GetHistoricalTickMidPoint() != nil {
+			midProto := tickByTickDataProto.GetHistoricalTickMidPoint()
+			hm := decodeHistoricalTick(midProto)
+			d.wrapper.TickByTickMidPoint(
+				reqID,
+				hm.Time,
+				hm.Price,
+			)
+		}
 	}
 }
 

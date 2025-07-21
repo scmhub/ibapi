@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+package protobuf;
+
+option go_package = ".;protobuf";
+
+message TickAttribLast {
+    optional bool pastLimit = 1;
+    optional bool unreported = 2;
+}

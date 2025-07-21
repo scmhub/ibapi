@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package protobuf;
+
+import "TickAttribLast.proto";
+
+option go_package = ".;protobuf";
+
+message HistoricalTickLast {
+    optional int64 time = 1;
+	optional TickAttribLast tickAttribLast = 2;
+    optional double price = 3;
+    optional string size = 4;
+    optional string exchange = 5;
+    optional string specialConditions = 6;
+}

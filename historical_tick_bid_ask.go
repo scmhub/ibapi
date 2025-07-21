@@ -6,7 +6,7 @@ import "fmt"
 // Used when requesting historical tick data with whatToShow = BID_ASK.
 type HistoricalTickBidAsk struct {
 	Time             int64
-	TickAttirbBidAsk TickAttribBidAsk
+	TickAttribBidAsk TickAttribBidAsk
 	PriceBid         float64
 	PriceAsk         float64
 	SizeBid          Decimal
@@ -22,5 +22,5 @@ func NewHistoricalTickBidAsk() HistoricalTickBidAsk {
 
 func (h HistoricalTickBidAsk) String() string {
 	return fmt.Sprintf("Time: %d, TickAttriBidAsk: %s, PriceBid: %f, PriceAsk: %f, SizeBid: %s, SizeAsk: %s",
-		h.Time, h.TickAttirbBidAsk, h.PriceBid, h.PriceAsk, DecimalMaxString(h.SizeBid), DecimalMaxString(h.SizeAsk))
+		h.Time, h.TickAttribBidAsk, h.PriceBid, h.PriceAsk, DecimalMaxString(h.SizeBid), DecimalMaxString(h.SizeAsk))
 }

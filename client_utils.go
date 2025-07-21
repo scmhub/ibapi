@@ -1144,3 +1144,264 @@ func createCancelAccountUpdatesMultiRequestProto(reqID int64) *protobuf.CancelAc
 
 	return cancelAccountUpdatesMultiProto
 }
+
+func createHistoricalDataRequestProto(reqID int64, contract *Contract, endDateTime string, duration string,
+	barSizeSetting string, whatToShow string, useRTH bool, formatDate int, keepUpToDate bool, chartOptionsList []TagValue) *protobuf.HistoricalDataRequest {
+
+	historicalDataRequestProto := &protobuf.HistoricalDataRequest{}
+
+	if isValidInt64Value(reqID) {
+		id := int32(reqID)
+		historicalDataRequestProto.ReqId = &id
+	}
+
+	order := &Order{}
+	historicalDataRequestProto.Contract = createContractProto(contract, order)
+
+	if !stringIsEmpty(endDateTime) {
+		historicalDataRequestProto.EndDateTime = &endDateTime
+	}
+
+	if !stringIsEmpty(duration) {
+		historicalDataRequestProto.Duration = &duration
+	}
+
+	if !stringIsEmpty(barSizeSetting) {
+		historicalDataRequestProto.BarSizeSetting = &barSizeSetting
+	}
+
+	if !stringIsEmpty(whatToShow) {
+		historicalDataRequestProto.WhatToShow = &whatToShow
+	}
+
+	if useRTH {
+		historicalDataRequestProto.UseRTH = &useRTH
+	}
+
+	if isValidInt64Value(int64(formatDate)) {
+		formatDate := int32(formatDate)
+		historicalDataRequestProto.FormatDate = &formatDate
+	}
+
+	if keepUpToDate {
+		historicalDataRequestProto.KeepUpToDate = &keepUpToDate
+	}
+
+	chartOptionsMap := createStringStringMap(chartOptionsList)
+	if len(chartOptionsMap) > 0 {
+		historicalDataRequestProto.ChartOptions = chartOptionsMap
+	}
+
+	return historicalDataRequestProto
+}
+
+func createRealTimeBarsRequestProto(reqID int64, contract *Contract, barSize int, whatToShow string, useRTH bool,
+	realTimeBarsOptionsList []TagValue) *protobuf.RealTimeBarsRequest {
+
+	realTimeBarsRequestProto := &protobuf.RealTimeBarsRequest{}
+
+	if isValidInt64Value(reqID) {
+		id := int32(reqID)
+		realTimeBarsRequestProto.ReqId = &id
+	}
+
+	order := &Order{}
+	realTimeBarsRequestProto.Contract = createContractProto(contract, order)
+
+	if isValidInt64Value(int64(barSize)) {
+		barSize := int32(barSize)
+		realTimeBarsRequestProto.BarSize = &barSize
+	}
+
+	if !stringIsEmpty(whatToShow) {
+		realTimeBarsRequestProto.WhatToShow = &whatToShow
+	}
+
+	if useRTH {
+		realTimeBarsRequestProto.UseRTH = &useRTH
+	}
+
+	realTimeBarsOptionsMap := createStringStringMap(realTimeBarsOptionsList)
+	if len(realTimeBarsOptionsMap) > 0 {
+		realTimeBarsRequestProto.RealTimeBarsOptions = realTimeBarsOptionsMap
+	}
+
+	return realTimeBarsRequestProto
+}
+
+func createHeadTimestampRequestProto(reqID int64, contract *Contract, whatToShow string, useRTH bool, formatDate int) *protobuf.HeadTimestampRequest {
+	headTimestampRequestProto := &protobuf.HeadTimestampRequest{}
+
+	if isValidInt64Value(reqID) {
+		id := int32(reqID)
+		headTimestampRequestProto.ReqId = &id
+	}
+
+	order := &Order{}
+	headTimestampRequestProto.Contract = createContractProto(contract, order)
+
+	if !stringIsEmpty(whatToShow) {
+		headTimestampRequestProto.WhatToShow = &whatToShow
+	}
+
+	if useRTH {
+		headTimestampRequestProto.UseRTH = &useRTH
+	}
+
+	if isValidInt64Value(int64(formatDate)) {
+		formatDate := int32(formatDate)
+		headTimestampRequestProto.FormatDate = &formatDate
+	}
+
+	return headTimestampRequestProto
+}
+
+func createHistogramDataRequestProto(reqID int64, contract *Contract, useRTH bool, timePeriod string) *protobuf.HistogramDataRequest {
+	histogramDataRequestProto := &protobuf.HistogramDataRequest{}
+
+	if isValidInt64Value(reqID) {
+		id := int32(reqID)
+		histogramDataRequestProto.ReqId = &id
+	}
+
+	order := &Order{}
+	histogramDataRequestProto.Contract = createContractProto(contract, order)
+
+	if useRTH {
+		histogramDataRequestProto.UseRTH = &useRTH
+	}
+
+	if !stringIsEmpty(timePeriod) {
+		histogramDataRequestProto.TimePeriod = &timePeriod
+	}
+
+	return histogramDataRequestProto
+}
+
+func createHistoricalTicksRequestProto(reqID int64, contract *Contract, startDateTime string,
+	endDateTime string, numberOfTicks int, whatToShow string, useRTH bool, ignoreSize bool, miscOptionsList []TagValue) *protobuf.HistoricalTicksRequest {
+
+	historicalTicksRequestProto := &protobuf.HistoricalTicksRequest{}
+
+	if isValidInt64Value(reqID) {
+		id := int32(reqID)
+		historicalTicksRequestProto.ReqId = &id
+	}
+
+	order := &Order{}
+	historicalTicksRequestProto.Contract = createContractProto(contract, order)
+
+	if !stringIsEmpty(startDateTime) {
+		historicalTicksRequestProto.StartDateTime = &startDateTime
+	}
+
+	if !stringIsEmpty(endDateTime) {
+		historicalTicksRequestProto.EndDateTime = &endDateTime
+	}
+
+	if isValidInt64Value(int64(numberOfTicks)) {
+		numberOfTicks := int32(numberOfTicks)
+		historicalTicksRequestProto.NumberOfTicks = &numberOfTicks
+	}
+
+	if !stringIsEmpty(whatToShow) {
+		historicalTicksRequestProto.WhatToShow = &whatToShow
+	}
+
+	if useRTH {
+		historicalTicksRequestProto.UseRTH = &useRTH
+	}
+
+	if ignoreSize {
+		historicalTicksRequestProto.IgnoreSize = &ignoreSize
+	}
+
+	miscOptionsMap := createStringStringMap(miscOptionsList)
+	if len(miscOptionsMap) > 0 {
+		historicalTicksRequestProto.MiscOptions = miscOptionsMap
+	}
+
+	return historicalTicksRequestProto
+}
+
+func createTickByTickRequestProto(reqID int64, contract *Contract, tickType string, numberOfTicks int64, ignoreSize bool) *protobuf.TickByTickRequest {
+	tickByTickRequestProto := &protobuf.TickByTickRequest{}
+
+	if isValidInt64Value(reqID) {
+		id := int32(reqID)
+		tickByTickRequestProto.ReqId = &id
+	}
+
+	order := &Order{}
+	tickByTickRequestProto.Contract = createContractProto(contract, order)
+
+	if !stringIsEmpty(tickType) {
+		tickByTickRequestProto.TickType = &tickType
+	}
+
+	if isValidInt64Value(numberOfTicks) {
+		numberOfTicks := int32(numberOfTicks)
+		tickByTickRequestProto.NumberOfTicks = &numberOfTicks
+	}
+
+	if ignoreSize {
+		tickByTickRequestProto.IgnoreSize = &ignoreSize
+	}
+
+	return tickByTickRequestProto
+}
+
+func createCancelHistoricalDataProto(reqID int64) *protobuf.CancelHistoricalData {
+	cancelHistoricalDataProto := &protobuf.CancelHistoricalData{}
+
+	if isValidInt64Value(reqID) {
+		id := int32(reqID)
+		cancelHistoricalDataProto.ReqId = &id
+	}
+
+	return cancelHistoricalDataProto
+}
+
+func createCancelRealTimeBarsProto(reqID int64) *protobuf.CancelRealTimeBars {
+	cancelRealTimeBarsProto := &protobuf.CancelRealTimeBars{}
+
+	if isValidInt64Value(reqID) {
+		id := int32(reqID)
+		cancelRealTimeBarsProto.ReqId = &id
+	}
+
+	return cancelRealTimeBarsProto
+}
+
+func createCancelHeadTimestampProto(reqID int64) *protobuf.CancelHeadTimestamp {
+	cancelHeadTimestampProto := &protobuf.CancelHeadTimestamp{}
+
+	if isValidInt64Value(reqID) {
+		id := int32(reqID)
+		cancelHeadTimestampProto.ReqId = &id
+	}
+
+	return cancelHeadTimestampProto
+}
+
+func createCancelHistogramDataProto(reqID int64) *protobuf.CancelHistogramData {
+	cancelHistogramDataProto := &protobuf.CancelHistogramData{}
+
+	if isValidInt64Value(reqID) {
+		id := int32(reqID)
+		cancelHistogramDataProto.ReqId = &id
+	}
+
+	return cancelHistogramDataProto
+}
+
+func createCancelTickByTickProto(reqID int64) *protobuf.CancelTickByTick {
+	cancelTickByTickProto := &protobuf.CancelTickByTick{}
+
+	if isValidInt64Value(reqID) {
+		id := int32(reqID)
+		cancelTickByTickProto.ReqId = &id
+	}
+
+	return cancelTickByTickProto
+}

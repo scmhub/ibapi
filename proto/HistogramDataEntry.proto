@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+package protobuf;
+
+option go_package = ".;protobuf";
+
+message HistogramDataEntry {
+    optional double price = 1;
+	optional string size = 2;
+}

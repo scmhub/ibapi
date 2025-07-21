@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package protobuf;
+
+option go_package = ".;protobuf";
+
+message HistoricalTick {
+    optional int64 time = 1;
+    optional double price = 2;
+    optional string size = 3;
+}

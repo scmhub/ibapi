@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package protobuf;
+
+import "Contract.proto";
+
+option go_package = ".;protobuf";
+
+message HistoricalTicksRequest {
+    optional int32 reqId = 1;
+	optional Contract contract = 2;
+	optional string startDateTime = 3;
+	optional string endDateTime = 4;
+    optional int32 numberOfTicks = 5;
+	optional string whatToShow = 6;
+	optional bool useRTH = 7;
+	optional bool ignoreSize = 8;
+    map<string, string> miscOptions = 9;
+}

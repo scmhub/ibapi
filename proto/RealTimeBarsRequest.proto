@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package protobuf;
+
+import "Contract.proto";
+
+
+
+option go_package = ".;protobuf";
+
+message RealTimeBarsRequest {
+    optional int32 reqId = 1;
+	optional Contract contract = 2;
+    optional int32 barSize = 3;
+	optional string whatToShow = 4;
+	optional bool useRTH = 5;
+    map<string, string> realTimeBarsOptions = 6;
+}

@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package protobuf;
+
+import "TickAttribBidAsk.proto";
+
+option go_package = ".;protobuf";
+
+message HistoricalTickBidAsk {
+    optional int64 time = 1;
+	optional TickAttribBidAsk tickAttribBidAsk = 2;
+    optional double priceBid = 3;
+    optional double priceAsk = 4;
+    optional string sizeBid = 5;
+    optional string sizeAsk = 6;
+}
