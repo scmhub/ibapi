@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package protobuf;
+
+option go_package = ".;protobuf";
+
+message HistoricalNews {
+    optional int32 reqId = 1;
+    optional string time = 2;
+    optional string providerCode = 3;
+    optional string articleId = 4;
+    optional string headline = 5;
+}

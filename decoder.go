@@ -132,6 +132,22 @@ func (d *EDecoder) interpret(msgBytes []byte) {
 			d.processHistoricalTicksLastMsgProtoBuf(msgBuf)
 		case TICK_BY_TICK:
 			d.processTickByTickMsgProtoBuf(msgBuf)
+		case NEWS_BULLETINS:
+			d.processNewsBulletinMsgProtoBuf(msgBuf)
+		case NEWS_ARTICLE:
+			d.processNewsArticleMsgProtoBuf(msgBuf)
+		case NEWS_PROVIDERS:
+			d.processNewsProvidersMsgProtoBuf(msgBuf)
+		case HISTORICAL_NEWS:
+			d.processHistoricalNewsMsgProtoBuf(msgBuf)
+		case HISTORICAL_NEWS_END:
+			d.processHistoricalNewsEndMsgProtoBuf(msgBuf)
+		case WSH_META_DATA:
+			d.processWshMetaDataMsgProtoBuf(msgBuf)
+		case WSH_EVENT_DATA:
+			d.processWshEventDataMsgProtoBuf(msgBuf)
+		case TICK_NEWS:
+			d.processTickNewsMsgProtoBuf(msgBuf)
 		default:
 			d.wrapper.Error(msgID, currentTimeMillis(), UNKNOWN_ID.Code, UNKNOWN_ID.Msg, "")
 		}
@@ -1684,6 +1700,34 @@ func (d *EDecoder) processNewsBulletinsMsg(msgBuf *MsgBuffer) {
 	d.wrapper.UpdateNewsBulletin(msgID, msgType, newsMessage, originExch)
 }
 
+func (d *EDecoder) processNewsBulletinMsgProtoBuf(msgBuf *MsgBuffer) {
+	var newsBulletinProto protobuf.NewsBulletin
+	if err := proto.Unmarshal(msgBuf.bs, &newsBulletinProto); err != nil {
+		log.Error().Err(err).Msg("failed to unmarshal NewsBulletin message")
+		return
+	}
+	d.wrapper.UpdateNewsBulletinProtoBuf(&newsBulletinProto)
+
+	msgID := NO_VALID_ID
+	if newsBulletinProto.NewsMsgId != nil {
+		msgID = int64(newsBulletinProto.GetNewsMsgId())
+	}
+	var msgType int64
+	if newsBulletinProto.NewsMsgType != nil {
+		msgType = int64(newsBulletinProto.GetNewsMsgType())
+	}
+	newsMessage := ""
+	if newsBulletinProto.NewsMessage != nil {
+		newsMessage = newsBulletinProto.GetNewsMessage()
+	}
+	originExch := ""
+	if newsBulletinProto.OriginatingExch != nil {
+		originExch = newsBulletinProto.GetOriginatingExch()
+	}
+
+	d.wrapper.UpdateNewsBulletin(msgID, msgType, newsMessage, originExch)
+}
+
 func (d *EDecoder) processManagedAcctsMsg(msgBuf *MsgBuffer) {
 
 	msgBuf.decode() // version
@@ -2702,6 +2746,42 @@ func (d *EDecoder) processTickNewsMsg(msgBuf *MsgBuffer) {
 	d.wrapper.TickNews(tickerID, timeStamp, providerCode, articleID, headline, extraData)
 }
 
+func (d *EDecoder) processTickNewsMsgProtoBuf(msgBuf *MsgBuffer) {
+	var tickNewsProto protobuf.TickNews
+	if err := proto.Unmarshal(msgBuf.bs, &tickNewsProto); err != nil {
+		log.Error().Err(err).Msg("failed to unmarshal TickNews message")
+		return
+	}
+	d.wrapper.TickNewsProtoBuf(&tickNewsProto)
+
+	reqID := NO_VALID_ID
+	if tickNewsProto.ReqId != nil {
+		reqID = int64(tickNewsProto.GetReqId())
+	}
+	timestamp := int64(0)
+	if tickNewsProto.Timestamp != nil {
+		timestamp = tickNewsProto.GetTimestamp()
+	}
+	providerCode := ""
+	if tickNewsProto.ProviderCode != nil {
+		providerCode = tickNewsProto.GetProviderCode()
+	}
+	articleID := ""
+	if tickNewsProto.ArticleId != nil {
+		articleID = tickNewsProto.GetArticleId()
+	}
+	headline := ""
+	if tickNewsProto.Headline != nil {
+		headline = tickNewsProto.GetHeadline()
+	}
+	extraData := ""
+	if tickNewsProto.ExtraData != nil {
+		extraData = tickNewsProto.GetExtraData()
+	}
+
+	d.wrapper.TickNews(reqID, timestamp, providerCode, articleID, headline, extraData)
+}
+
 func (d *EDecoder) processTickReqParamsMsg(msgBuf *MsgBuffer) {
 
 	tickerID := msgBuf.decodeInt64()
@@ -2783,12 +2863,54 @@ func (d *EDecoder) processNewsProvidersMsg(msgBuf *MsgBuffer) {
 	d.wrapper.NewsProviders(newsProviders)
 }
 
+func (d *EDecoder) processNewsProvidersMsgProtoBuf(msgBuf *MsgBuffer) {
+	var newsProvidersProto protobuf.NewsProviders
+	if err := proto.Unmarshal(msgBuf.bs, &newsProvidersProto); err != nil {
+		log.Error().Err(err).Msg("failed to unmarshal NewsProviders message")
+		return
+	}
+	d.wrapper.NewsProvidersProtoBuf(&newsProvidersProto)
+
+	list := make([]NewsProvider, 0, len(newsProvidersProto.GetNewsProviders()))
+	for _, np := range newsProvidersProto.GetNewsProviders() {
+		provider := NewNewsProvider()
+		provider.Code = np.GetProviderCode()
+		provider.Name = np.GetProviderName()
+		list = append(list, provider)
+	}
+	d.wrapper.NewsProviders(list)
+}
+
 func (d *EDecoder) processNewsArticleMsg(msgBuf *MsgBuffer) {
 
 	reqID := msgBuf.decodeInt64()
 
 	articleType := msgBuf.decodeInt64()
 	articleText := msgBuf.decodeString()
+
+	d.wrapper.NewsArticle(reqID, articleType, articleText)
+}
+
+func (d *EDecoder) processNewsArticleMsgProtoBuf(msgBuf *MsgBuffer) {
+	var newsArticleProto protobuf.NewsArticle
+	if err := proto.Unmarshal(msgBuf.bs, &newsArticleProto); err != nil {
+		log.Error().Err(err).Msg("failed to unmarshal NewsArticle message")
+		return
+	}
+	d.wrapper.NewsArticleProtoBuf(&newsArticleProto)
+
+	reqID := NO_VALID_ID
+	if newsArticleProto.ReqId != nil {
+		reqID = int64(newsArticleProto.GetReqId())
+	}
+	articleType := int64(0)
+	if newsArticleProto.ArticleType != nil {
+		articleType = int64(newsArticleProto.GetArticleType())
+	}
+	articleText := ""
+	if newsArticleProto.ArticleText != nil {
+		articleText = newsArticleProto.GetArticleText()
+	}
 
 	d.wrapper.NewsArticle(reqID, articleType, articleText)
 }
@@ -2803,6 +2925,38 @@ func (d *EDecoder) processHistoricalNewsMsg(msgBuf *MsgBuffer) {
 	headline := msgBuf.decodeString()
 
 	d.wrapper.HistoricalNews(requestID, time, providerCode, articleID, headline)
+}
+
+func (d *EDecoder) processHistoricalNewsMsgProtoBuf(msgBuf *MsgBuffer) {
+	var historicalNewsProto protobuf.HistoricalNews
+	if err := proto.Unmarshal(msgBuf.bs, &historicalNewsProto); err != nil {
+		log.Error().Err(err).Msg("failed to unmarshal HistoricalNews message")
+		return
+	}
+	d.wrapper.HistoricalNewsProtoBuf(&historicalNewsProto)
+
+	reqID := NO_VALID_ID
+	if historicalNewsProto.ReqId != nil {
+		reqID = int64(historicalNewsProto.GetReqId())
+	}
+	timeStr := ""
+	if historicalNewsProto.Time != nil {
+		timeStr = historicalNewsProto.GetTime()
+	}
+	providerCode := ""
+	if historicalNewsProto.ProviderCode != nil {
+		providerCode = historicalNewsProto.GetProviderCode()
+	}
+	articleID := ""
+	if historicalNewsProto.ArticleId != nil {
+		articleID = historicalNewsProto.GetArticleId()
+	}
+	headline := ""
+	if historicalNewsProto.Headline != nil {
+		headline = historicalNewsProto.GetHeadline()
+	}
+
+	d.wrapper.HistoricalNews(reqID, timeStr, providerCode, articleID, headline)
 }
 
 func (d *EDecoder) processHistoricalNewsEndMsg(msgBuf *MsgBuffer) {
@@ -2821,6 +2975,26 @@ func (d *EDecoder) processHeadTimestampMsg(msgBuf *MsgBuffer) {
 	headTimestamp := msgBuf.decodeString()
 
 	d.wrapper.HeadTimestamp(reqID, headTimestamp)
+}
+
+func (d *EDecoder) processHistoricalNewsEndMsgProtoBuf(msgBuf *MsgBuffer) {
+	var historicalNewsEndProto protobuf.HistoricalNewsEnd
+	if err := proto.Unmarshal(msgBuf.bs, &historicalNewsEndProto); err != nil {
+		log.Error().Err(err).Msg("failed to unmarshal HistoricalNewsEnd message")
+		return
+	}
+	d.wrapper.HistoricalNewsEndProtoBuf(&historicalNewsEndProto)
+
+	reqID := NO_VALID_ID
+	if historicalNewsEndProto.ReqId != nil {
+		reqID = int64(historicalNewsEndProto.GetReqId())
+	}
+	hasMore := false
+	if historicalNewsEndProto.HasMore != nil {
+		hasMore = historicalNewsEndProto.GetHasMore()
+	}
+
+	d.wrapper.HistoricalNewsEnd(reqID, hasMore)
 }
 
 func (d *EDecoder) processHeadTimestampMsgProtoBuf(msgBuf *MsgBuffer) {
@@ -3442,10 +3616,50 @@ func (d *EDecoder) processWshMetaData(msgBuf *MsgBuffer) {
 	d.wrapper.WshMetaData(reqID, dataJSON)
 }
 
+func (d *EDecoder) processWshMetaDataMsgProtoBuf(msgBuf *MsgBuffer) {
+	var wshMetaDataProto protobuf.WshMetaData
+	if err := proto.Unmarshal(msgBuf.bs, &wshMetaDataProto); err != nil {
+		log.Error().Err(err).Msg("failed to unmarshal WshMetaData message")
+		return
+	}
+	d.wrapper.WshMetaDataProtoBuf(&wshMetaDataProto)
+
+	reqID := NO_VALID_ID
+	if wshMetaDataProto.ReqId != nil {
+		reqID = int64(wshMetaDataProto.GetReqId())
+	}
+	dataJSON := ""
+	if wshMetaDataProto.DataJson != nil {
+		dataJSON = wshMetaDataProto.GetDataJson()
+	}
+
+	d.wrapper.WshMetaData(reqID, dataJSON)
+}
+
 func (d *EDecoder) processWshEventData(msgBuf *MsgBuffer) {
 
 	reqID := msgBuf.decodeInt64()
 	dataJSON := msgBuf.decodeString()
+
+	d.wrapper.WshEventData(reqID, dataJSON)
+}
+
+func (d *EDecoder) processWshEventDataMsgProtoBuf(msgBuf *MsgBuffer) {
+	var wshEventDataProto protobuf.WshEventData
+	if err := proto.Unmarshal(msgBuf.bs, &wshEventDataProto); err != nil {
+		log.Error().Err(err).Msg("failed to unmarshal WshEventData message")
+		return
+	}
+	d.wrapper.WshEventDataProtoBuf(&wshEventDataProto)
+
+	reqID := NO_VALID_ID
+	if wshEventDataProto.ReqId != nil {
+		reqID = int64(wshEventDataProto.GetReqId())
+	}
+	dataJSON := ""
+	if wshEventDataProto.DataJson != nil {
+		dataJSON = wshEventDataProto.GetDataJson()
+	}
 
 	d.wrapper.WshEventData(reqID, dataJSON)
 }

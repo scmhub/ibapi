@@ -1405,3 +1405,161 @@ func createCancelTickByTickProto(reqID int64) *protobuf.CancelTickByTick {
 
 	return cancelTickByTickProto
 }
+
+func createNewsBulletinsRequestProto(allMessages bool) *protobuf.NewsBulletinsRequest {
+	newsBulletinsRequestProto := &protobuf.NewsBulletinsRequest{}
+
+	if allMessages {
+		newsBulletinsRequestProto.AllMessages = &allMessages
+	}
+
+	return newsBulletinsRequestProto
+}
+
+func createCancelNewsBulletinsProto() *protobuf.CancelNewsBulletins {
+	return &protobuf.CancelNewsBulletins{}
+}
+
+func createNewsArticleRequestProto(reqID int64, providerCode, articleID string, newsArticleOptionsList []TagValue) *protobuf.NewsArticleRequest {
+	newsArticleRequestProto := &protobuf.NewsArticleRequest{}
+
+	if isValidInt64Value(reqID) {
+		id := int32(reqID)
+		newsArticleRequestProto.ReqId = &id
+	}
+
+	if !stringIsEmpty(providerCode) {
+		newsArticleRequestProto.ProviderCode = &providerCode
+	}
+
+	if !stringIsEmpty(articleID) {
+		newsArticleRequestProto.ArticleId = &articleID
+	}
+
+	newsArticleOptionsMap := createStringStringMap(newsArticleOptionsList)
+	if len(newsArticleOptionsMap) > 0 {
+		newsArticleRequestProto.NewsArticleOptions = newsArticleOptionsMap
+	}
+
+	return newsArticleRequestProto
+}
+
+func createNewsProvidersRequestProto() *protobuf.NewsProvidersRequest {
+	return &protobuf.NewsProvidersRequest{}
+}
+
+func createHistoricalNewsRequestProto(reqID int64, conID int64, providerCodes, startDateTime, endDateTime string, totalResults int64, historicalNewsOptionsList []TagValue) *protobuf.HistoricalNewsRequest {
+	historicalNewsRequestProto := &protobuf.HistoricalNewsRequest{}
+
+	if isValidInt64Value(reqID) {
+		id := int32(reqID)
+		historicalNewsRequestProto.ReqId = &id
+	}
+
+	if isValidInt64Value(conID) {
+		cid := int32(conID)
+		historicalNewsRequestProto.ConId = &cid
+	}
+
+	if !stringIsEmpty(providerCodes) {
+		historicalNewsRequestProto.ProviderCodes = &providerCodes
+	}
+
+	if !stringIsEmpty(startDateTime) {
+		historicalNewsRequestProto.StartDateTime = &startDateTime
+	}
+
+	if !stringIsEmpty(endDateTime) {
+		historicalNewsRequestProto.EndDateTime = &endDateTime
+	}
+
+	if isValidInt64Value(totalResults) {
+		tr := int32(totalResults)
+		historicalNewsRequestProto.TotalResults = &tr
+	}
+
+	historicalNewsOptionsMap := createStringStringMap(historicalNewsOptionsList)
+	if len(historicalNewsOptionsMap) > 0 {
+		historicalNewsRequestProto.HistoricalNewsOptions = historicalNewsOptionsMap
+	}
+
+	return historicalNewsRequestProto
+}
+
+func createWshMetaDataRequestProto(reqID int64) *protobuf.WshMetaDataRequest {
+	wshMetaDataRequestProto := &protobuf.WshMetaDataRequest{}
+
+	if isValidInt64Value(reqID) {
+		id := int32(reqID)
+		wshMetaDataRequestProto.ReqId = &id
+	}
+
+	return wshMetaDataRequestProto
+}
+
+func createCancelWshMetaDataProto(reqID int64) *protobuf.CancelWshMetaData {
+	cancelWshMetaDataProto := &protobuf.CancelWshMetaData{}
+
+	if isValidInt64Value(reqID) {
+		id := int32(reqID)
+		cancelWshMetaDataProto.ReqId = &id
+	}
+
+	return cancelWshMetaDataProto
+}
+
+func createWshEventDataRequestProto(reqID int64, wshEventData *WshEventData) *protobuf.WshEventDataRequest {
+	wshEventDataRequestProto := &protobuf.WshEventDataRequest{}
+
+	if isValidInt64Value(reqID) {
+		id := int32(reqID)
+		wshEventDataRequestProto.ReqId = &id
+	}
+
+	if isValidInt64Value(int64(wshEventData.ConID)) {
+		cid := int32(wshEventData.ConID)
+		wshEventDataRequestProto.ConId = &cid
+	}
+
+	if !stringIsEmpty(wshEventData.Filter) {
+		wshEventDataRequestProto.Filter = &wshEventData.Filter
+	}
+
+	if wshEventData.FillWatchList {
+		wshEventDataRequestProto.FillWatchlist = &wshEventData.FillWatchList
+	}
+
+	if wshEventData.FillPortfolio {
+		wshEventDataRequestProto.FillPortfolio = &wshEventData.FillPortfolio
+	}
+
+	if wshEventData.FillCompetitors {
+		wshEventDataRequestProto.FillCompetitors = &wshEventData.FillCompetitors
+	}
+
+	if !stringIsEmpty(wshEventData.StartDate) {
+		wshEventDataRequestProto.StartDate = &wshEventData.StartDate
+	}
+
+	if !stringIsEmpty(wshEventData.EndDate) {
+		wshEventDataRequestProto.EndDate = &wshEventData.EndDate
+	}
+
+	if isValidInt64Value(int64(wshEventData.TotalLimit)) {
+		total := int32(wshEventData.TotalLimit)
+		wshEventDataRequestProto.TotalLimit = &total
+	}
+
+	return wshEventDataRequestProto
+}
+
+func createCancelWshEventDataProto(reqID int64) *protobuf.CancelWshEventData {
+	cancelWshEventDataProto := &protobuf.CancelWshEventData{}
+
+	if isValidInt64Value(reqID) {
+		id := int32(reqID)
+		cancelWshEventDataProto.ReqId = &id
+	}
+
+	return cancelWshEventDataProto
+}

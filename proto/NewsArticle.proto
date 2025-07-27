@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package protobuf;
+
+option go_package = ".;protobuf";
+
+message NewsArticle {
+    optional int32 reqId = 1;
+    optional int32 articleType = 2;
+    optional string articleText = 3;
+}

@@ -1,0 +1,9 @@
+syntax = "proto3";
+
+package protobuf;
+
+option go_package = ".;protobuf";
+
+message NewsBulletinsRequest {
+	optional bool allMessages = 1;
+}

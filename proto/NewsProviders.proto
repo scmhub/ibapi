@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package protobuf;
+
+import "NewsProvider.proto";
+
+option go_package = ".;protobuf";
+
+message NewsProviders {
+	repeated NewsProvider newsProviders = 1;
+}

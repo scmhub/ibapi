@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+package protobuf;
+
+option go_package = ".;protobuf";
+
+message NewsBulletin {
+	optional int32 newsMsgId = 1;
+	optional int32 newsMsgType = 2;
+    optional string newsMessage = 3;
+    optional string originatingExch = 4;
+}

@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package protobuf;
+
+option go_package = ".;protobuf";
+
+message HistoricalNewsRequest {
+    optional int32 reqId = 1;
+    optional int32 conId = 2;
+    optional string providerCodes = 3;
+    optional string startDateTime = 4;
+    optional string endDateTime = 5;
+    optional int32 totalResults = 6;
+    map<string, string> historicalNewsOptions = 7;
+}

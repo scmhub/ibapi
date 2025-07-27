@@ -802,6 +802,7 @@ func (c *EClient) reqMarketDataProtoBuf(marketDataRequestProto *protobuf.MarketD
 	}
 
 	me := NewMsgEncoder(30, c)
+
 	me.encodeMsgID(REQ_MKT_DATA + PROTOBUF_MSG_ID)
 
 	msg, err := proto.Marshal(marketDataRequestProto)
@@ -850,6 +851,7 @@ func (c *EClient) cancelMarketDataProtoBuf(cancelMarketDataProto *protobuf.Cance
 	}
 
 	me := NewMsgEncoder(3, c)
+
 	me.encodeMsgID(CANCEL_MKT_DATA + PROTOBUF_MSG_ID)
 
 	msg, err := proto.Marshal(cancelMarketDataProto)
@@ -914,6 +916,7 @@ func (c *EClient) reqMarketDataTypeProtoBuf(marketDataTypeRequestProto *protobuf
 	}
 
 	me := NewMsgEncoder(3, c)
+
 	me.encodeMsgID(REQ_MARKET_DATA_TYPE + PROTOBUF_MSG_ID)
 
 	msg, err := proto.Marshal(marketDataTypeRequestProto)
@@ -1028,6 +1031,7 @@ func (c *EClient) reqTickByTickDataProtoBuf(tickByTickRequestProto *protobuf.Tic
 	}
 
 	me := NewMsgEncoder(17, c)
+
 	me.encodeMsgID(REQ_TICK_BY_TICK_DATA + PROTOBUF_MSG_ID)
 
 	msg, err := proto.Marshal(tickByTickRequestProto)
@@ -1074,6 +1078,7 @@ func (c *EClient) cancelTickByTickDataProtoBuf(cancelTickByTickProto *protobuf.C
 	}
 
 	me := NewMsgEncoder(2, c)
+
 	me.encodeMsgID(CANCEL_TICK_BY_TICK_DATA + PROTOBUF_MSG_ID)
 
 	msg, err := proto.Marshal(cancelTickByTickProto)
@@ -2052,6 +2057,7 @@ func (c *EClient) placeOrderProtoBuf(placeOrderRequestProto *protobuf.PlaceOrder
 	}
 
 	me := NewMsgEncoder(150, c)
+
 	me.encodeMsgID(PLACE_ORDER + PROTOBUF_MSG_ID)
 
 	msg, err := proto.Marshal(placeOrderRequestProto)
@@ -2130,6 +2136,7 @@ func (c *EClient) cancelOrderProtoBuf(cancelOrderRequestProto *protobuf.CancelOr
 	}
 
 	me := NewMsgEncoder(9, c)
+
 	me.encodeMsgID(CANCEL_ORDER + PROTOBUF_MSG_ID)
 
 	msg, err := proto.Marshal(cancelOrderRequestProto)
@@ -2179,6 +2186,7 @@ func (c *EClient) reqOpenOrdersProtoBuf(openOrdersRequestProto *protobuf.OpenOrd
 	}
 
 	me := NewMsgEncoder(2, c)
+
 	me.encodeMsgID(REQ_OPEN_ORDERS + PROTOBUF_MSG_ID)
 
 	msg, err := proto.Marshal(openOrdersRequestProto)
@@ -2228,6 +2236,7 @@ func (c *EClient) reqAutoOpenOrdersProtoBuf(autoOpenOrdersRequestProto *protobuf
 	}
 
 	me := NewMsgEncoder(3, c)
+
 	me.encodeMsgID(REQ_AUTO_OPEN_ORDERS + PROTOBUF_MSG_ID)
 
 	msg, err := proto.Marshal(autoOpenOrdersRequestProto)
@@ -2274,6 +2283,7 @@ func (c *EClient) reqAllOpenOrdersProtoBuf(allOpenOrdersRequestProto *protobuf.A
 	}
 
 	me := NewMsgEncoder(2, c)
+
 	me.encodeMsgID(REQ_ALL_OPEN_ORDERS + PROTOBUF_MSG_ID)
 
 	msg, err := proto.Marshal(allOpenOrdersRequestProto)
@@ -2330,6 +2340,7 @@ func (c *EClient) reqGlobalCancelProtoBuf(globalCancelRequestProto *protobuf.Glo
 	}
 
 	me := NewMsgEncoder(4, c)
+
 	me.encodeMsgID(REQ_GLOBAL_CANCEL + PROTOBUF_MSG_ID)
 
 	msg, err := proto.Marshal(globalCancelRequestProto)
@@ -2405,6 +2416,7 @@ func (c *EClient) reqAccountUpdatesProtoBuf(accountDataRequestProto *protobuf.Ac
 	}
 
 	me := NewMsgEncoder(4, c)
+
 	me.encodeMsgID(REQ_ACCT_DATA + PROTOBUF_MSG_ID)
 
 	msg, err := proto.Marshal(accountDataRequestProto)
@@ -2492,6 +2504,7 @@ func (c *EClient) reqAccountSummaryProtoBuf(accountSummaryRequestProto *protobuf
 	}
 
 	me := NewMsgEncoder(5, c)
+
 	me.encodeMsgID(REQ_ACCOUNT_SUMMARY + PROTOBUF_MSG_ID)
 
 	msg, err := proto.Marshal(accountSummaryRequestProto)
@@ -2538,6 +2551,7 @@ func (c *EClient) cancelAccountSummaryProtoBuf(cancelAccountSummaryRequestProto 
 	}
 
 	me := NewMsgEncoder(3, c)
+
 	me.encodeMsgID(CANCEL_ACCOUNT_SUMMARY + PROTOBUF_MSG_ID)
 
 	msg, err := proto.Marshal(cancelAccountSummaryRequestProto)
@@ -2586,6 +2600,7 @@ func (c *EClient) reqPositionsProtoBuf(positionsRequestProto *protobuf.Positions
 	}
 
 	me := NewMsgEncoder(2, c)
+
 	me.encodeMsgID(REQ_POSITIONS + PROTOBUF_MSG_ID)
 
 	msg, err := proto.Marshal(positionsRequestProto)
@@ -2634,6 +2649,7 @@ func (c *EClient) cancelPositionsProtoBuf(cancelPositionsRequestProto *protobuf.
 		return
 	}
 	me := NewMsgEncoder(2, c)
+
 	me.encodeMsgID(CANCEL_POSITIONS + PROTOBUF_MSG_ID)
 
 	msg, err := proto.Marshal(cancelPositionsRequestProto)
@@ -2687,6 +2703,7 @@ func (c *EClient) reqPositionsMultiProtoBuf(positionsMultiRequestProto *protobuf
 	}
 
 	me := NewMsgEncoder(5, c)
+
 	me.encodeMsgID(REQ_POSITIONS_MULTI + PROTOBUF_MSG_ID)
 
 	msg, err := proto.Marshal(positionsMultiRequestProto)
@@ -2737,6 +2754,7 @@ func (c *EClient) cancelPositionsMultiProtoBuf(cancelPositionsMultiRequestProto 
 	}
 
 	me := NewMsgEncoder(3, c)
+
 	me.encodeMsgID(CANCEL_POSITIONS_MULTI + PROTOBUF_MSG_ID)
 
 	msg, err := proto.Marshal(cancelPositionsMultiRequestProto)
@@ -2790,6 +2808,7 @@ func (c *EClient) reqAccountUpdatesMultiProtoBuf(accountUpdatesMultiRequestProto
 	}
 
 	me := NewMsgEncoder(6, c)
+
 	me.encodeMsgID(REQ_ACCOUNT_UPDATES_MULTI + PROTOBUF_MSG_ID)
 
 	msg, err := proto.Marshal(accountUpdatesMultiRequestProto)
@@ -2840,6 +2859,7 @@ func (c *EClient) cancelAccountUpdatesMultiProtoBuf(cancelAccountUpdatesMultiReq
 	}
 
 	me := NewMsgEncoder(3, c)
+
 	me.encodeMsgID(CANCEL_ACCOUNT_UPDATES_MULTI + PROTOBUF_MSG_ID)
 
 	msg, err := proto.Marshal(cancelAccountUpdatesMultiRequestProto)
@@ -3016,6 +3036,7 @@ func (c *EClient) reqExecutionProtobuf(executionRequestProto *protobuf.Execution
 	}
 
 	me := NewMsgEncoder(14, c)
+
 	me.encodeMsgID(REQ_EXECUTIONS + PROTOBUF_MSG_ID)
 
 	msg, err := proto.Marshal(executionRequestProto)
@@ -3130,6 +3151,7 @@ func (c *EClient) reqContractDataProtoBuf(contractDataRequestProto *protobuf.Con
 	}
 
 	me := NewMsgEncoder(150, c)
+
 	me.encodeMsgID(REQ_CONTRACT_DATA + PROTOBUF_MSG_ID)
 
 	msg, err := proto.Marshal(contractDataRequestProto)
@@ -3267,6 +3289,7 @@ func (c *EClient) reqMarketDepthProtoBuf(marketDepthRequestProto *protobuf.Marke
 	}
 
 	me := NewMsgEncoder(17, c)
+
 	me.encodeMsgID(REQ_MKT_DEPTH + PROTOBUF_MSG_ID)
 
 	msg, err := proto.Marshal(marketDepthRequestProto)
@@ -3326,6 +3349,7 @@ func (c *EClient) cancelMarketDepthProtoBuf(cancelMarketDepthProto *protobuf.Can
 	}
 
 	me := NewMsgEncoder(4, c)
+
 	me.encodeMsgID(CANCEL_MKT_DEPTH + PROTOBUF_MSG_ID)
 
 	msg, err := proto.Marshal(cancelMarketDepthProto)
@@ -3350,6 +3374,11 @@ func (c *EClient) cancelMarketDepthProtoBuf(cancelMarketDepthProto *protobuf.Can
 // If allMsgs sets to FALSE, will only return new bulletins.
 func (c *EClient) ReqNewsBulletins(allMsgs bool) {
 
+	if c.useProtoBuf(REQ_NEWS_BULLETINS) {
+		c.reqNewsBulletinsProtoBuf(createNewsBulletinsRequestProto(allMsgs))
+		return
+	}
+
 	if !c.IsConnected() {
 		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
@@ -3366,8 +3395,34 @@ func (c *EClient) ReqNewsBulletins(allMsgs bool) {
 	c.reqChan <- me.Bytes()
 }
 
+func (c *EClient) reqNewsBulletinsProtoBuf(newsBulletinsRequestProto *protobuf.NewsBulletinsRequest) {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
+	me := NewMsgEncoder(3, c)
+
+	me.encodeMsgID(REQ_NEWS_BULLETINS + PROTOBUF_MSG_ID)
+
+	msg, err := proto.Marshal(newsBulletinsRequestProto)
+	if err != nil {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
+	}
+
+	me.encodeProto(msg)
+
+	c.reqChan <- me.Bytes()
+}
+
 // CancelNewsBulletins cancels the news bulletins updates
 func (c *EClient) CancelNewsBulletins() {
+
+	if c.useProtoBuf(CANCEL_NEWS_BULLETINS) {
+		c.cancelNewsBulletinsProtoBuf(createCancelNewsBulletinsProto())
+		return
+	}
 
 	if !c.IsConnected() {
 		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
@@ -3380,6 +3435,27 @@ func (c *EClient) CancelNewsBulletins() {
 
 	me.encodeMsgID(CANCEL_NEWS_BULLETINS)
 	me.encodeInt(VERSION)
+
+	c.reqChan <- me.Bytes()
+}
+
+func (c *EClient) cancelNewsBulletinsProtoBuf(cancelNewsBulletinsProto *protobuf.CancelNewsBulletins) {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
+	me := NewMsgEncoder(2, c)
+
+	me.encodeMsgID(CANCEL_NEWS_BULLETINS + PROTOBUF_MSG_ID)
+
+	msg, err := proto.Marshal(cancelNewsBulletinsProto)
+	if err != nil {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
+	}
+
+	me.encodeProto(msg)
 
 	c.reqChan <- me.Bytes()
 }
@@ -3421,6 +3497,7 @@ func (c *EClient) reqManagedAcctsProtoBuf(managedAccountsRequestProto *protobuf.
 	}
 
 	me := NewMsgEncoder(2, c)
+
 	me.encodeMsgID(REQ_MANAGED_ACCTS + PROTOBUF_MSG_ID)
 
 	msg, err := proto.Marshal(managedAccountsRequestProto)
@@ -3632,6 +3709,7 @@ func (c *EClient) reqHistoricalDataProtoBuf(historicalDataRequestProto *protobuf
 	}
 
 	me := NewMsgEncoder(20, c)
+
 	me.encodeMsgID(REQ_HISTORICAL_DATA + PROTOBUF_MSG_ID)
 
 	msg, err := proto.Marshal(historicalDataRequestProto)
@@ -3679,6 +3757,7 @@ func (c *EClient) cancelHistoricalDataProtoBuf(cancelHistoricalDataProto *protob
 	}
 
 	me := NewMsgEncoder(3, c)
+
 	me.encodeMsgID(CANCEL_HISTORICAL_DATA + PROTOBUF_MSG_ID)
 
 	msg, err := proto.Marshal(cancelHistoricalDataProto)
@@ -3731,6 +3810,7 @@ func (c *EClient) reqHeadTimestampProtoBuf(headTimestampRequestProto *protobuf.H
 	}
 
 	me := NewMsgEncoder(19, c)
+
 	me.encodeMsgID(REQ_HEAD_TIMESTAMP + PROTOBUF_MSG_ID)
 
 	msg, err := proto.Marshal(headTimestampRequestProto)
@@ -3778,6 +3858,7 @@ func (c *EClient) cancelHeadTimestampProtoBuf(cancelHeadTimestampProto *protobuf
 	}
 
 	me := NewMsgEncoder(2, c)
+
 	me.encodeMsgID(CANCEL_HEAD_TIMESTAMP + PROTOBUF_MSG_ID)
 
 	msg, err := proto.Marshal(cancelHeadTimestampProto)
@@ -3828,6 +3909,7 @@ func (c *EClient) reqHistogramDataProtoBuf(histogramDataRequestProto *protobuf.H
 	}
 
 	me := NewMsgEncoder(5, c)
+
 	me.encodeMsgID(REQ_HISTOGRAM_DATA + PROTOBUF_MSG_ID)
 
 	msg, err := proto.Marshal(histogramDataRequestProto)
@@ -3875,6 +3957,7 @@ func (c *EClient) cancelHistogramDataProtoBuf(cancelHistogramDataProto *protobuf
 	}
 
 	me := NewMsgEncoder(2, c)
+
 	me.encodeMsgID(CANCEL_HISTOGRAM_DATA + PROTOBUF_MSG_ID)
 
 	msg, err := proto.Marshal(cancelHistogramDataProto)
@@ -3930,6 +4013,7 @@ func (c *EClient) reqHistoricalTicksProtoBuf(historicalTicksRequestProto *protob
 	}
 
 	me := NewMsgEncoder(22, c)
+
 	me.encodeMsgID(REQ_HISTORICAL_TICKS + PROTOBUF_MSG_ID)
 
 	msg, err := proto.Marshal(historicalTicksRequestProto)
@@ -4137,6 +4221,7 @@ func (c *EClient) reqRealTimeBarsProtoBuf(realTimeBarsRequestProto *protobuf.Rea
 	}
 
 	me := NewMsgEncoder(19, c)
+
 	me.encodeMsgID(REQ_REAL_TIME_BARS + PROTOBUF_MSG_ID)
 
 	msg, err := proto.Marshal(realTimeBarsRequestProto)
@@ -4182,6 +4267,7 @@ func (c *EClient) cancelRealTimeBarsProtoBuf(cancelRealTimeBarsProto *protobuf.C
 	}
 
 	me := NewMsgEncoder(3, c)
+
 	me.encodeMsgID(CANCEL_REAL_TIME_BARS + PROTOBUF_MSG_ID)
 
 	msg, err := proto.Marshal(cancelRealTimeBarsProto)
@@ -4292,6 +4378,11 @@ func (c *EClient) CancelFundamentalData(reqID int64) {
 // ReqNewsProviders request news providers.
 func (c *EClient) ReqNewsProviders() {
 
+	if c.useProtoBuf(REQ_NEWS_PROVIDERS) {
+		c.reqNewsProvidersProtoBuf(createNewsProvidersRequestProto())
+		return
+	}
+
 	if !c.IsConnected() {
 		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
@@ -4309,8 +4400,35 @@ func (c *EClient) ReqNewsProviders() {
 	c.reqChan <- me.Bytes()
 }
 
+func (c *EClient) reqNewsProvidersProtoBuf(newsProvidersRequestProto *protobuf.NewsProvidersRequest) {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
+	me := NewMsgEncoder(3, c)
+
+	me.encodeMsgID(REQ_NEWS_PROVIDERS + PROTOBUF_MSG_ID)
+
+	msg, err := proto.Marshal(newsProvidersRequestProto)
+	if err != nil {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
+		return
+	}
+
+	me.encodeProto(msg)
+
+	c.reqChan <- me.Bytes()
+}
+
 // ReqNewsArticle request news article.
 func (c *EClient) ReqNewsArticle(reqID int64, providerCode string, articleID string, newsArticleOptions []TagValue) {
+
+	if c.useProtoBuf(REQ_NEWS_ARTICLE) {
+		c.reqNewsArticleProtoBuf(createNewsArticleRequestProto(reqID, providerCode, articleID, newsArticleOptions))
+		return
+	}
 
 	if !c.IsConnected() {
 		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
@@ -4336,8 +4454,35 @@ func (c *EClient) ReqNewsArticle(reqID int64, providerCode string, articleID str
 	c.reqChan <- me.Bytes()
 }
 
+func (c *EClient) reqNewsArticleProtoBuf(newsArticleRequestProto *protobuf.NewsArticleRequest) {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
+	me := NewMsgEncoder(5, c)
+
+	me.encodeMsgID(REQ_NEWS_ARTICLE + PROTOBUF_MSG_ID)
+
+	msg, err := proto.Marshal(newsArticleRequestProto)
+	if err != nil {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
+		return
+	}
+
+	me.encodeProto(msg)
+
+	c.reqChan <- me.Bytes()
+}
+
 // ReqHistoricalNews request historical news.
 func (c *EClient) ReqHistoricalNews(reqID int64, contractID int64, providerCode string, startDateTime string, endDateTime string, totalResults int64, historicalNewsOptions []TagValue) {
+
+	if c.useProtoBuf(REQ_HISTORICAL_NEWS) {
+		c.reqHistoricalNewsProtoBuf(createHistoricalNewsRequestProto(reqID, contractID, providerCode, startDateTime, endDateTime, totalResults, historicalNewsOptions))
+		return
+	}
 
 	if !c.IsConnected() {
 		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
@@ -4362,6 +4507,28 @@ func (c *EClient) ReqHistoricalNews(reqID int64, contractID int64, providerCode 
 	if c.serverVersion >= MIN_SERVER_VER_NEWS_QUERY_ORIGINS {
 		me.encodeTagValues(historicalNewsOptions)
 	}
+
+	c.reqChan <- me.Bytes()
+}
+
+func (c *EClient) reqHistoricalNewsProtoBuf(historicalNewsRequestProto *protobuf.HistoricalNewsRequest) {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
+	me := NewMsgEncoder(8, c)
+
+	me.encodeMsgID(REQ_HISTORICAL_NEWS + PROTOBUF_MSG_ID)
+
+	msg, err := proto.Marshal(historicalNewsRequestProto)
+	if err != nil {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
+		return
+	}
+
+	me.encodeProto(msg)
 
 	c.reqChan <- me.Bytes()
 }
@@ -4715,6 +4882,7 @@ func (c *EClient) reqCompletedOrdersProtoBuf(completedOrdersRequestProto *protob
 	}
 
 	me := NewMsgEncoder(3, c)
+
 	me.encodeMsgID(REQ_COMPLETED_ORDERS + PROTOBUF_MSG_ID)
 
 	msg, err := proto.Marshal(completedOrdersRequestProto)
@@ -4730,6 +4898,11 @@ func (c *EClient) reqCompletedOrdersProtoBuf(completedOrdersRequestProto *protob
 
 // ReqWshMetaData requests WSHE Meta data.
 func (c *EClient) ReqWshMetaData(reqID int64) {
+
+	if c.useProtoBuf(REQ_WSH_META_DATA) {
+		c.reqWshMetaDataProtoBuf(createWshMetaDataRequestProto(reqID))
+		return
+	}
 
 	if !c.IsConnected() {
 		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
@@ -4749,8 +4922,35 @@ func (c *EClient) ReqWshMetaData(reqID int64) {
 	c.reqChan <- me.Bytes()
 }
 
+func (c *EClient) reqWshMetaDataProtoBuf(wshMetaDataRequestProto *protobuf.WshMetaDataRequest) {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
+	me := NewMsgEncoder(2, c)
+
+	me.encodeMsgID(REQ_WSH_META_DATA + PROTOBUF_MSG_ID)
+
+	msg, err := proto.Marshal(wshMetaDataRequestProto)
+	if err != nil {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
+		return
+	}
+
+	me.encodeProto(msg)
+
+	c.reqChan <- me.Bytes()
+}
+
 // CancelWshMetaData cancels WSHE Meta data.
 func (c *EClient) CancelWshMetaData(reqID int64) {
+
+	if c.useProtoBuf(CANCEL_WSH_META_DATA) {
+		c.cancelWshMetaDataProtoBuf(createCancelWshMetaDataProto(reqID))
+		return
+	}
 
 	if !c.IsConnected() {
 		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
@@ -4770,8 +4970,35 @@ func (c *EClient) CancelWshMetaData(reqID int64) {
 	c.reqChan <- me.Bytes()
 }
 
+func (c *EClient) cancelWshMetaDataProtoBuf(cancelWshMetaDataProto *protobuf.CancelWshMetaData) {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
+	me := NewMsgEncoder(2, c)
+
+	me.encodeMsgID(CANCEL_WSH_META_DATA + PROTOBUF_MSG_ID)
+
+	msg, err := proto.Marshal(cancelWshMetaDataProto)
+	if err != nil {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
+		return
+	}
+
+	me.encodeProto(msg)
+
+	c.reqChan <- me.Bytes()
+}
+
 // ReqWshEventData requests WSHE Event data.
 func (c *EClient) ReqWshEventData(reqID int64, wshEventData WshEventData) {
+
+	if c.useProtoBuf(REQ_WSH_EVENT_DATA) {
+		c.reqWshEventDataProtoBuf(createWshEventDataRequestProto(reqID, &wshEventData))
+		return
+	}
 
 	if !c.IsConnected() {
 		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
@@ -4792,6 +5019,7 @@ func (c *EClient) ReqWshEventData(reqID int64, wshEventData WshEventData) {
 		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support WSHE event data date filters.", "")
 		return
 	}
+
 	me := NewMsgEncoder(10, c)
 
 	me.encodeMsgID(REQ_WSH_EVENT_DATA)
@@ -4814,8 +5042,35 @@ func (c *EClient) ReqWshEventData(reqID int64, wshEventData WshEventData) {
 	c.reqChan <- me.Bytes()
 }
 
+func (c *EClient) reqWshEventDataProtoBuf(wshEventDataRequestProto *protobuf.WshEventDataRequest) {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
+	me := NewMsgEncoder(10, c)
+
+	me.encodeMsgID(REQ_WSH_EVENT_DATA + PROTOBUF_MSG_ID)
+
+	msg, err := proto.Marshal(wshEventDataRequestProto)
+	if err != nil {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
+		return
+	}
+
+	me.encodeProto(msg)
+
+	c.reqChan <- me.Bytes()
+}
+
 // CancelWshEventData cancels WSHE Event data.
 func (c *EClient) CancelWshEventData(reqID int64) {
+
+	if c.useProtoBuf(CANCEL_WSH_EVENT_DATA) {
+		c.cancelWshEventDataProtoBuf(createCancelWshEventDataProto(reqID))
+		return
+	}
 
 	if !c.IsConnected() {
 		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
@@ -4831,6 +5086,28 @@ func (c *EClient) CancelWshEventData(reqID int64) {
 
 	me.encodeMsgID(CANCEL_WSH_EVENT_DATA)
 	me.encodeInt64(reqID)
+
+	c.reqChan <- me.Bytes()
+}
+
+func (c *EClient) cancelWshEventDataProtoBuf(cancelWshEventDataProto *protobuf.CancelWshEventData) {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
+	me := NewMsgEncoder(2, c)
+
+	me.encodeMsgID(CANCEL_WSH_EVENT_DATA + PROTOBUF_MSG_ID)
+
+	msg, err := proto.Marshal(cancelWshEventDataProto)
+	if err != nil {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
+		return
+	}
+
+	me.encodeProto(msg)
 
 	c.reqChan <- me.Bytes()
 }

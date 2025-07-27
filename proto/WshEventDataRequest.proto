@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package protobuf;
+
+option go_package = ".;protobuf";
+
+
+message WshEventDataRequest {
+    optional int32 reqId = 1;
+    optional int32 conId = 2;
+    optional string filter = 3;
+    optional bool fillWatchlist = 4;
+    optional bool fillPortfolio = 5;
+    optional bool fillCompetitors = 6;
+    optional string startDate = 7;
+    optional string endDate = 8;
+    optional int32 totalLimit = 9;
+}

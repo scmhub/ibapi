@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package protobuf;
+
+option go_package = ".;protobuf";
+
+
+message WshMetaData {
+    optional int32 reqId = 1;
+    optional string dataJson = 2;
+}
