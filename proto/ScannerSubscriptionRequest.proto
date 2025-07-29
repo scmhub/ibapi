@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+package protobuf;
+
+import "ScannerSubscription.proto";
+
+option go_package = ".;protobuf";
+
+message ScannerSubscriptionRequest {
+    optional int32 reqId = 1;
+	optional ScannerSubscription scannerSubscription = 2;
+}

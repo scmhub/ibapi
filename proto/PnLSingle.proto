@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package protobuf;
+
+option go_package = ".;protobuf";
+
+message PnLSingle {
+    optional int32 reqId = 1;
+    optional string position = 2;
+    optional double dailyPnL = 3;
+    optional double unrealizedPnL = 4;
+    optional double realizedPnL = 5;
+    optional double value = 6;
+}

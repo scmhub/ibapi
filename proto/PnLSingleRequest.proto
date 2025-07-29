@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+package protobuf;
+
+option go_package = ".;protobuf";
+
+message PnLSingleRequest {
+    optional int32 reqId = 1;
+	optional string account = 2;
+	optional string modelCode = 3;
+    optional int32 conId = 4;
+}

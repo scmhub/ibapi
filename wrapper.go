@@ -389,6 +389,16 @@ type EWrapper interface {
 	WshEventDataProtoBuf(wshEventDataProto *protobuf.WshEventData)
 	// TickNewsProtoBuf .
 	TickNewsProtoBuf(tickNewsProto *protobuf.TickNews)
+	// ScannerParametersProtoBuf .
+	ScannerParametersProtoBuf(scannerParametersProto *protobuf.ScannerParameters)
+	// ScannerDataProtoBuf .
+	ScannerDataProtoBuf(scannerDataProto *protobuf.ScannerData)
+	// FundamentalsDataProtoBuf .
+	FundamentalsDataProtoBuf(fundamentalsDataProto *protobuf.FundamentalsData)
+	// PnLProtoBuf .
+	PnLProtoBuf(pnlProto *protobuf.PnL)
+	// PnLSingleProtoBuf .
+	PnLSingleProtoBuf(pnlSingleProto *protobuf.PnLSingle)
 }
 
 var _ EWrapper = (*Wrapper)(nil)
@@ -1017,4 +1027,24 @@ func (w Wrapper) WshEventDataProtoBuf(wshEventDataProto *protobuf.WshEventData) 
 
 func (w Wrapper) TickNewsProtoBuf(tickNewsProto *protobuf.TickNews) {
 	log.Debug().Stringer("tickNewsProto", tickNewsProto).Msg("<TickNewsProtoBuf>")
+}
+
+func (w Wrapper) ScannerParametersProtoBuf(scannerParametersProto *protobuf.ScannerParameters) {
+	log.Debug().Stringer("scannerParametersProto", scannerParametersProto).Msg("<ScannerParametersProtoBuf>")
+}
+
+func (w Wrapper) ScannerDataProtoBuf(scannerDataProto *protobuf.ScannerData) {
+	log.Debug().Stringer("scannerDataProto", scannerDataProto).Msg("<ScannerDataProtoBuf>")
+}
+
+func (w Wrapper) FundamentalsDataProtoBuf(fundamentalsDataProto *protobuf.FundamentalsData) {
+	log.Debug().Stringer("fundamentalsDataProto", fundamentalsDataProto).Msg("<FundamentalsDataProtoBuf>")
+}
+
+func (w Wrapper) PnLProtoBuf(pnlProto *protobuf.PnL) {
+	log.Debug().Stringer("pnlProto", pnlProto).Msg("<PnLProtoBuf>")
+}
+
+func (w Wrapper) PnLSingleProtoBuf(pnlSingleProto *protobuf.PnLSingle) {
+	log.Debug().Stringer("pnlSingleProto", pnlSingleProto).Msg("<PnLSingleProtoBuf>")
 }

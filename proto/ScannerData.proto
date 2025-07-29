@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+package protobuf;
+
+import "ScannerDataElement.proto";
+
+option go_package = ".;protobuf";
+
+message ScannerData {
+    optional int32 reqId = 1;
+	repeated ScannerDataElement scannerDataElement = 2;
+}

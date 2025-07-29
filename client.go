@@ -934,12 +934,12 @@ func (c *EClient) reqMarketDataTypeProtoBuf(marketDataTypeRequestProto *protobuf
 func (c *EClient) ReqSmartComponents(reqID int64, bboExchange string) {
 
 	if !c.IsConnected() {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
 	}
 
 	if c.serverVersion < MIN_SERVER_VER_REQ_SMART_COMPONENTS {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+"  It does not support smart components request.", "")
+		c.wrapper.Error(reqID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+"  It does not support smart components request.", "")
 		return
 	}
 
@@ -983,17 +983,17 @@ func (c *EClient) ReqTickByTickData(reqID int64, contract *Contract, tickType st
 	}
 
 	if !c.IsConnected() {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
 	}
 
 	if c.serverVersion < MIN_SERVER_VER_TICK_BY_TICK {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support tick-by-tick data requests.", "")
+		c.wrapper.Error(reqID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support tick-by-tick data requests.", "")
 		return
 	}
 
 	if c.serverVersion < MIN_SERVER_VER_TICK_BY_TICK_IGNORE_SIZE {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support ignoreSize and numberOfTicks parameters in tick-by-tick data requests.", "")
+		c.wrapper.Error(reqID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support ignoreSize and numberOfTicks parameters in tick-by-tick data requests.", "")
 		return
 	}
 
@@ -1025,8 +1025,13 @@ func (c *EClient) ReqTickByTickData(reqID int64, contract *Contract, tickType st
 
 func (c *EClient) reqTickByTickDataProtoBuf(tickByTickRequestProto *protobuf.TickByTickRequest) {
 
+	reqID := NO_VALID_ID
+	if tickByTickRequestProto.ReqId != nil {
+		reqID = int64(*tickByTickRequestProto.ReqId)
+	}
+
 	if !c.IsConnected() {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
 	}
 
@@ -1036,7 +1041,7 @@ func (c *EClient) reqTickByTickDataProtoBuf(tickByTickRequestProto *protobuf.Tic
 
 	msg, err := proto.Marshal(tickByTickRequestProto)
 	if err != nil {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
+		c.wrapper.Error(reqID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
 		return
 	}
 
@@ -1054,12 +1059,12 @@ func (c *EClient) CancelTickByTickData(reqID int64) {
 	}
 
 	if !c.IsConnected() {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
 	}
 
 	if c.serverVersion < MIN_SERVER_VER_TICK_BY_TICK {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support tick-by-tick data requests.", "")
+		c.wrapper.Error(reqID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support tick-by-tick data requests.", "")
 		return
 	}
 
@@ -1072,8 +1077,13 @@ func (c *EClient) CancelTickByTickData(reqID int64) {
 
 func (c *EClient) cancelTickByTickDataProtoBuf(cancelTickByTickProto *protobuf.CancelTickByTick) {
 
+	reqID := NO_VALID_ID
+	if cancelTickByTickProto.ReqId != nil {
+		reqID = int64(*cancelTickByTickProto.ReqId)
+	}
+
 	if !c.IsConnected() {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
 	}
 
@@ -1083,7 +1093,7 @@ func (c *EClient) cancelTickByTickDataProtoBuf(cancelTickByTickProto *protobuf.C
 
 	msg, err := proto.Marshal(cancelTickByTickProto)
 	if err != nil {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
+		c.wrapper.Error(reqID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
 		return
 	}
 
@@ -2062,7 +2072,7 @@ func (c *EClient) placeOrderProtoBuf(placeOrderRequestProto *protobuf.PlaceOrder
 
 	msg, err := proto.Marshal(placeOrderRequestProto)
 	if err != nil {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
+		c.wrapper.Error(orderID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
 	}
 
 	me.encodeProto(msg)
@@ -2141,7 +2151,7 @@ func (c *EClient) cancelOrderProtoBuf(cancelOrderRequestProto *protobuf.CancelOr
 
 	msg, err := proto.Marshal(cancelOrderRequestProto)
 	if err != nil {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
+		c.wrapper.Error(orderID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
 		return
 	}
 
@@ -2479,7 +2489,7 @@ func (c *EClient) ReqAccountSummary(reqID int64, groupName string, tags string) 
 	}
 
 	if !c.IsConnected() {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
 	}
 
@@ -2498,8 +2508,13 @@ func (c *EClient) ReqAccountSummary(reqID int64, groupName string, tags string) 
 
 func (c *EClient) reqAccountSummaryProtoBuf(accountSummaryRequestProto *protobuf.AccountSummaryRequest) {
 
+	reqID := NO_VALID_ID
+	if accountSummaryRequestProto.ReqId != nil {
+		reqID = int64(*accountSummaryRequestProto.ReqId)
+	}
+
 	if !c.IsConnected() {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
 	}
 
@@ -2509,7 +2524,7 @@ func (c *EClient) reqAccountSummaryProtoBuf(accountSummaryRequestProto *protobuf
 
 	msg, err := proto.Marshal(accountSummaryRequestProto)
 	if err != nil {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
+		c.wrapper.Error(reqID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
 		return
 	}
 
@@ -2528,7 +2543,7 @@ func (c *EClient) CancelAccountSummary(reqID int64) {
 	}
 
 	if !c.IsConnected() {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
 	}
 
@@ -2545,8 +2560,13 @@ func (c *EClient) CancelAccountSummary(reqID int64) {
 
 func (c *EClient) cancelAccountSummaryProtoBuf(cancelAccountSummaryRequestProto *protobuf.CancelAccountSummary) {
 
+	reqID := NO_VALID_ID
+	if cancelAccountSummaryRequestProto.ReqId != nil {
+		reqID = int64(*cancelAccountSummaryRequestProto.ReqId)
+	}
+
 	if !c.IsConnected() {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
 	}
 
@@ -2556,7 +2576,7 @@ func (c *EClient) cancelAccountSummaryProtoBuf(cancelAccountSummaryRequestProto 
 
 	msg, err := proto.Marshal(cancelAccountSummaryRequestProto)
 	if err != nil {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
+		c.wrapper.Error(reqID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
 		return
 	}
 
@@ -2594,6 +2614,7 @@ func (c *EClient) ReqPositions() {
 }
 
 func (c *EClient) reqPositionsProtoBuf(positionsRequestProto *protobuf.PositionsRequest) {
+
 	if !c.IsConnected() {
 		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
@@ -2644,6 +2665,7 @@ func (c *EClient) CancelPositions() {
 }
 
 func (c *EClient) cancelPositionsProtoBuf(cancelPositionsRequestProto *protobuf.CancelPositions) {
+
 	if !c.IsConnected() {
 		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
@@ -2673,12 +2695,12 @@ func (c *EClient) ReqPositionsMulti(reqID int64, account string, modelCode strin
 	}
 
 	if !c.IsConnected() {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
 	}
 
 	if c.serverVersion < MIN_SERVER_VER_MODELS_SUPPORT {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support positions multi request.", "")
+		c.wrapper.Error(reqID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support positions multi request.", "")
 		return
 	}
 
@@ -2697,8 +2719,13 @@ func (c *EClient) ReqPositionsMulti(reqID int64, account string, modelCode strin
 
 func (c *EClient) reqPositionsMultiProtoBuf(positionsMultiRequestProto *protobuf.PositionsMultiRequest) {
 
+	reqID := NO_VALID_ID
+	if positionsMultiRequestProto.ReqId != nil {
+		reqID = int64(*positionsMultiRequestProto.ReqId)
+	}
+
 	if !c.IsConnected() {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
 	}
 
@@ -2708,7 +2735,7 @@ func (c *EClient) reqPositionsMultiProtoBuf(positionsMultiRequestProto *protobuf
 
 	msg, err := proto.Marshal(positionsMultiRequestProto)
 	if err != nil {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
+		c.wrapper.Error(reqID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
 		return
 	}
 
@@ -2726,12 +2753,12 @@ func (c *EClient) CancelPositionsMulti(reqID int64) {
 	}
 
 	if !c.IsConnected() {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
 	}
 
 	if c.serverVersion < MIN_SERVER_VER_MODELS_SUPPORT {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support cancel positions multi request.", "")
+		c.wrapper.Error(reqID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support cancel positions multi request.", "")
 		return
 	}
 
@@ -2748,8 +2775,13 @@ func (c *EClient) CancelPositionsMulti(reqID int64) {
 
 func (c *EClient) cancelPositionsMultiProtoBuf(cancelPositionsMultiRequestProto *protobuf.CancelPositionsMulti) {
 
+	reqID := NO_VALID_ID
+	if cancelPositionsMultiRequestProto.ReqId != nil {
+		reqID = int64(*cancelPositionsMultiRequestProto.ReqId)
+	}
+
 	if !c.IsConnected() {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
 	}
 
@@ -2759,7 +2791,7 @@ func (c *EClient) cancelPositionsMultiProtoBuf(cancelPositionsMultiRequestProto 
 
 	msg, err := proto.Marshal(cancelPositionsMultiRequestProto)
 	if err != nil {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
+		c.wrapper.Error(reqID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
 		return
 	}
 
@@ -2777,12 +2809,12 @@ func (c *EClient) ReqAccountUpdatesMulti(reqID int64, account string, modelCode 
 	}
 
 	if !c.IsConnected() {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
 	}
 
 	if c.serverVersion < MIN_SERVER_VER_MODELS_SUPPORT {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support account updates multi request.", "")
+		c.wrapper.Error(reqID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support account updates multi request.", "")
 		return
 	}
 
@@ -2802,8 +2834,13 @@ func (c *EClient) ReqAccountUpdatesMulti(reqID int64, account string, modelCode 
 
 func (c *EClient) reqAccountUpdatesMultiProtoBuf(accountUpdatesMultiRequestProto *protobuf.AccountUpdatesMultiRequest) {
 
+	reqID := NO_VALID_ID
+	if accountUpdatesMultiRequestProto.ReqId != nil {
+		reqID = int64(*accountUpdatesMultiRequestProto.ReqId)
+	}
+
 	if !c.IsConnected() {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
 	}
 
@@ -2813,7 +2850,7 @@ func (c *EClient) reqAccountUpdatesMultiProtoBuf(accountUpdatesMultiRequestProto
 
 	msg, err := proto.Marshal(accountUpdatesMultiRequestProto)
 	if err != nil {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
+		c.wrapper.Error(reqID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
 		return
 	}
 
@@ -2831,12 +2868,12 @@ func (c *EClient) CancelAccountUpdatesMulti(reqID int64) {
 	}
 
 	if !c.IsConnected() {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
 	}
 
 	if c.serverVersion < MIN_SERVER_VER_MODELS_SUPPORT {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support cancel account updates multi request.", "")
+		c.wrapper.Error(reqID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support cancel account updates multi request.", "")
 		return
 	}
 
@@ -2853,8 +2890,13 @@ func (c *EClient) CancelAccountUpdatesMulti(reqID int64) {
 
 func (c *EClient) cancelAccountUpdatesMultiProtoBuf(cancelAccountUpdatesMultiRequestProto *protobuf.CancelAccountUpdatesMulti) {
 
+	reqID := NO_VALID_ID
+	if cancelAccountUpdatesMultiRequestProto.ReqId != nil {
+		reqID = int64(*cancelAccountUpdatesMultiRequestProto.ReqId)
+	}
+
 	if !c.IsConnected() {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
 	}
 
@@ -2864,7 +2906,7 @@ func (c *EClient) cancelAccountUpdatesMultiProtoBuf(cancelAccountUpdatesMultiReq
 
 	msg, err := proto.Marshal(cancelAccountUpdatesMultiRequestProto)
 	if err != nil {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
+		c.wrapper.Error(reqID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
 		return
 	}
 
@@ -2880,13 +2922,18 @@ func (c *EClient) cancelAccountUpdatesMultiProtoBuf(cancelAccountUpdatesMultiReq
 // ReqPnL requests and subscribe the PnL of assigned account.
 func (c *EClient) ReqPnL(reqID int64, account string, modelCode string) {
 
+	if c.useProtoBuf(REQ_PNL) {
+		c.reqPnLProtoBuf(createPnLRequestProto(reqID, account, modelCode))
+		return
+	}
+
 	if !c.IsConnected() {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
 	}
 
 	if c.serverVersion < MIN_SERVER_VER_PNL {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support PnL request.", "")
+		c.wrapper.Error(reqID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support PnL request.", "")
 		return
 	}
 
@@ -2900,16 +2947,48 @@ func (c *EClient) ReqPnL(reqID int64, account string, modelCode string) {
 	c.reqChan <- me.Bytes()
 }
 
+func (c *EClient) reqPnLProtoBuf(pnlRequestProto *protobuf.PnLRequest) {
+
+	reqID := NO_VALID_ID
+	if pnlRequestProto.ReqId != nil {
+		reqID = int64(*pnlRequestProto.ReqId)
+	}
+
+	if !c.IsConnected() {
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
+	me := NewMsgEncoder(4, c)
+
+	me.encodeMsgID(REQ_PNL + PROTOBUF_MSG_ID)
+
+	msg, err := proto.Marshal(pnlRequestProto)
+	if err != nil {
+		c.wrapper.Error(reqID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
+		return
+	}
+
+	me.encodeProto(msg)
+
+	c.reqChan <- me.Bytes()
+}
+
 // CancelPnL cancels the PnL update of assigned account.
 func (c *EClient) CancelPnL(reqID int64) {
 
+	if c.useProtoBuf(CANCEL_PNL) {
+		c.cancelPnLProtoBuf(createCancelPnLProto(reqID))
+		return
+	}
+
 	if !c.IsConnected() {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
 	}
 
 	if c.serverVersion < MIN_SERVER_VER_PNL {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support PnL request.", "")
+		c.wrapper.Error(reqID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support PnL request.", "")
 		return
 	}
 
@@ -2921,16 +3000,48 @@ func (c *EClient) CancelPnL(reqID int64) {
 	c.reqChan <- me.Bytes()
 }
 
+func (c *EClient) cancelPnLProtoBuf(cancelPnLProto *protobuf.CancelPnL) {
+
+	reqID := NO_VALID_ID
+	if cancelPnLProto.ReqId != nil {
+		reqID = int64(*cancelPnLProto.ReqId)
+	}
+
+	if !c.IsConnected() {
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
+	me := NewMsgEncoder(2, c)
+
+	me.encodeMsgID(CANCEL_PNL + PROTOBUF_MSG_ID)
+
+	msg, err := proto.Marshal(cancelPnLProto)
+	if err != nil {
+		c.wrapper.Error(reqID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
+		return
+	}
+
+	me.encodeProto(msg)
+
+	c.reqChan <- me.Bytes()
+}
+
 // ReqPnLSingle request and subscribe the single contract PnL of assigned account.
 func (c *EClient) ReqPnLSingle(reqID int64, account string, modelCode string, contractID int64) {
 
+	if c.useProtoBuf(REQ_PNL_SINGLE) {
+		c.reqPnLSingleProtoBuf(createPnLSingleRequestProto(reqID, account, modelCode, contractID))
+		return
+	}
+
 	if !c.IsConnected() {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
 	}
 
 	if c.serverVersion < MIN_SERVER_VER_PNL {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+"  It does not support PnL request.", "")
+		c.wrapper.Error(reqID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+"  It does not support PnL request.", "")
 		return
 	}
 
@@ -2945,16 +3056,48 @@ func (c *EClient) ReqPnLSingle(reqID int64, account string, modelCode string, co
 	c.reqChan <- me.Bytes()
 }
 
+func (c *EClient) reqPnLSingleProtoBuf(pnlSingleRequestProto *protobuf.PnLSingleRequest) {
+
+	reqID := NO_VALID_ID
+	if pnlSingleRequestProto.ReqId != nil {
+		reqID = int64(*pnlSingleRequestProto.ReqId)
+	}
+
+	if !c.IsConnected() {
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
+	me := NewMsgEncoder(5, c)
+
+	me.encodeMsgID(REQ_PNL_SINGLE + PROTOBUF_MSG_ID)
+
+	msg, err := proto.Marshal(pnlSingleRequestProto)
+	if err != nil {
+		c.wrapper.Error(reqID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
+		return
+	}
+
+	me.encodeProto(msg)
+
+	c.reqChan <- me.Bytes()
+}
+
 // CancelPnLSingle cancel the single contract PnL update of assigned account.
 func (c *EClient) CancelPnLSingle(reqID int64) {
 
+	if c.useProtoBuf(CANCEL_PNL_SINGLE) {
+		c.cancelPnLSingleProtoBuf(createCancelPnLSingleProto(reqID))
+		return
+	}
+
 	if !c.IsConnected() {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
 	}
 
 	if c.serverVersion < MIN_SERVER_VER_PNL {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+"  It does not support PnL request.", "")
+		c.wrapper.Error(reqID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+"  It does not support PnL request.", "")
 		return
 	}
 
@@ -2962,6 +3105,33 @@ func (c *EClient) CancelPnLSingle(reqID int64) {
 
 	me.encodeMsgID(CANCEL_PNL_SINGLE)
 	me.encodeInt64(reqID)
+
+	c.reqChan <- me.Bytes()
+}
+
+func (c *EClient) cancelPnLSingleProtoBuf(cancelPnLSingleProto *protobuf.CancelPnLSingle) {
+
+	reqID := NO_VALID_ID
+	if cancelPnLSingleProto.ReqId != nil {
+		reqID = int64(*cancelPnLSingleProto.ReqId)
+	}
+
+	if !c.IsConnected() {
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
+	me := NewMsgEncoder(2, c)
+
+	me.encodeMsgID(CANCEL_PNL_SINGLE + PROTOBUF_MSG_ID)
+
+	msg, err := proto.Marshal(cancelPnLSingleProto)
+	if err != nil {
+		c.wrapper.Error(reqID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
+		return
+	}
+
+	me.encodeProto(msg)
 
 	c.reqChan <- me.Bytes()
 }
@@ -2983,7 +3153,7 @@ func (c *EClient) ReqExecutions(reqID int64, execFilter *ExecutionFilter) {
 	}
 
 	if !c.IsConnected() {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
 	}
 
@@ -3041,7 +3211,7 @@ func (c *EClient) reqExecutionProtobuf(executionRequestProto *protobuf.Execution
 
 	msg, err := proto.Marshal(executionRequestProto)
 	if err != nil {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
+		c.wrapper.Error(reqID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
 	}
 
 	me.encodeProto(msg)
@@ -3063,7 +3233,7 @@ func (c *EClient) ReqContractDetails(reqID int64, contract *Contract) {
 	}
 
 	if !c.IsConnected() {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
 	}
 
@@ -3150,13 +3320,13 @@ func (c *EClient) reqContractDataProtoBuf(contractDataRequestProto *protobuf.Con
 		return
 	}
 
-	me := NewMsgEncoder(150, c)
+	me := NewMsgEncoder(21, c)
 
 	me.encodeMsgID(REQ_CONTRACT_DATA + PROTOBUF_MSG_ID)
 
 	msg, err := proto.Marshal(contractDataRequestProto)
 	if err != nil {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
+		c.wrapper.Error(reqID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
 		return
 	}
 
@@ -3208,7 +3378,7 @@ func (c *EClient) ReqMktDepth(reqID int64, contract *Contract, numRows int, isSm
 	}
 
 	if !c.IsConnected() {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
 	}
 
@@ -3294,7 +3464,7 @@ func (c *EClient) reqMarketDepthProtoBuf(marketDepthRequestProto *protobuf.Marke
 
 	msg, err := proto.Marshal(marketDepthRequestProto)
 	if err != nil {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
+		c.wrapper.Error(reqID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
 		return
 	}
 
@@ -3312,7 +3482,7 @@ func (c *EClient) CancelMktDepth(reqID int64, isSmartDepth bool) {
 	}
 
 	if !c.IsConnected() {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
 	}
 
@@ -3354,7 +3524,7 @@ func (c *EClient) cancelMarketDepthProtoBuf(cancelMarketDepthProto *protobuf.Can
 
 	msg, err := proto.Marshal(cancelMarketDepthProto)
 	if err != nil {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
+		c.wrapper.Error(reqID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
 		return
 	}
 
@@ -3703,8 +3873,13 @@ func (c *EClient) ReqHistoricalData(reqID int64, contract *Contract, endDateTime
 
 func (c *EClient) reqHistoricalDataProtoBuf(historicalDataRequestProto *protobuf.HistoricalDataRequest) {
 
+	reqID := NO_VALID_ID
+	if historicalDataRequestProto.ReqId != nil {
+		reqID = int64(*historicalDataRequestProto.ReqId)
+	}
+
 	if !c.IsConnected() {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
 	}
 
@@ -3714,7 +3889,7 @@ func (c *EClient) reqHistoricalDataProtoBuf(historicalDataRequestProto *protobuf
 
 	msg, err := proto.Marshal(historicalDataRequestProto)
 	if err != nil {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
+		c.wrapper.Error(reqID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
 		return
 	}
 
@@ -3734,7 +3909,7 @@ func (c *EClient) CancelHistoricalData(reqID int64) {
 	}
 
 	if !c.IsConnected() {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
 	}
 
@@ -3751,8 +3926,13 @@ func (c *EClient) CancelHistoricalData(reqID int64) {
 
 func (c *EClient) cancelHistoricalDataProtoBuf(cancelHistoricalDataProto *protobuf.CancelHistoricalData) {
 
+	reqID := NO_VALID_ID
+	if cancelHistoricalDataProto.ReqId != nil {
+		reqID = int64(*cancelHistoricalDataProto.ReqId)
+	}
+
 	if !c.IsConnected() {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
 	}
 
@@ -3762,7 +3942,7 @@ func (c *EClient) cancelHistoricalDataProtoBuf(cancelHistoricalDataProto *protob
 
 	msg, err := proto.Marshal(cancelHistoricalDataProto)
 	if err != nil {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
+		c.wrapper.Error(reqID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
 		return
 	}
 
@@ -3781,7 +3961,7 @@ func (c *EClient) ReqHeadTimeStamp(reqID int64, contract *Contract, whatToShow s
 	}
 
 	if !c.IsConnected() {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
 	}
 
@@ -3804,8 +3984,13 @@ func (c *EClient) ReqHeadTimeStamp(reqID int64, contract *Contract, whatToShow s
 
 func (c *EClient) reqHeadTimestampProtoBuf(headTimestampRequestProto *protobuf.HeadTimestampRequest) {
 
+	reqID := NO_VALID_ID
+	if headTimestampRequestProto.ReqId != nil {
+		reqID = int64(*headTimestampRequestProto.ReqId)
+	}
+
 	if !c.IsConnected() {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
 	}
 
@@ -3815,7 +4000,7 @@ func (c *EClient) reqHeadTimestampProtoBuf(headTimestampRequestProto *protobuf.H
 
 	msg, err := proto.Marshal(headTimestampRequestProto)
 	if err != nil {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
+		c.wrapper.Error(reqID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
 		return
 	}
 
@@ -3833,7 +4018,7 @@ func (c *EClient) CancelHeadTimeStamp(reqID int64) {
 	}
 
 	if !c.IsConnected() {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
 	}
 
@@ -3852,8 +4037,13 @@ func (c *EClient) CancelHeadTimeStamp(reqID int64) {
 
 func (c *EClient) cancelHeadTimestampProtoBuf(cancelHeadTimestampProto *protobuf.CancelHeadTimestamp) {
 
+	reqID := NO_VALID_ID
+	if cancelHeadTimestampProto.ReqId != nil {
+		reqID = int64(*cancelHeadTimestampProto.ReqId)
+	}
+
 	if !c.IsConnected() {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
 	}
 
@@ -3863,7 +4053,7 @@ func (c *EClient) cancelHeadTimestampProtoBuf(cancelHeadTimestampProto *protobuf
 
 	msg, err := proto.Marshal(cancelHeadTimestampProto)
 	if err != nil {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
+		c.wrapper.Error(reqID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
 		return
 	}
 
@@ -3881,12 +4071,12 @@ func (c *EClient) ReqHistogramData(reqID int64, contract *Contract, useRTH bool,
 	}
 
 	if !c.IsConnected() {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
 	}
 
 	if c.serverVersion < MIN_SERVER_VER_REQ_HISTOGRAM {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support histogram requests..", "")
+		c.wrapper.Error(reqID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support histogram requests..", "")
 		return
 	}
 
@@ -3903,8 +4093,13 @@ func (c *EClient) ReqHistogramData(reqID int64, contract *Contract, useRTH bool,
 
 func (c *EClient) reqHistogramDataProtoBuf(histogramDataRequestProto *protobuf.HistogramDataRequest) {
 
+	reqID := NO_VALID_ID
+	if histogramDataRequestProto.ReqId != nil {
+		reqID = int64(*histogramDataRequestProto.ReqId)
+	}
+
 	if !c.IsConnected() {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
 	}
 
@@ -3914,7 +4109,7 @@ func (c *EClient) reqHistogramDataProtoBuf(histogramDataRequestProto *protobuf.H
 
 	msg, err := proto.Marshal(histogramDataRequestProto)
 	if err != nil {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
+		c.wrapper.Error(reqID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
 		return
 	}
 
@@ -3932,12 +4127,12 @@ func (c *EClient) CancelHistogramData(reqID int64) {
 	}
 
 	if !c.IsConnected() {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
 	}
 
 	if c.serverVersion < MIN_SERVER_VER_REQ_HISTOGRAM {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support histogram requests..", "")
+		c.wrapper.Error(reqID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support histogram requests..", "")
 		return
 	}
 
@@ -3951,8 +4146,13 @@ func (c *EClient) CancelHistogramData(reqID int64) {
 
 func (c *EClient) cancelHistogramDataProtoBuf(cancelHistogramDataProto *protobuf.CancelHistogramData) {
 
+	reqID := NO_VALID_ID
+	if cancelHistogramDataProto.ReqId != nil {
+		reqID = int64(*cancelHistogramDataProto.ReqId)
+	}
+
 	if !c.IsConnected() {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
 	}
 
@@ -3962,7 +4162,7 @@ func (c *EClient) cancelHistogramDataProtoBuf(cancelHistogramDataProto *protobuf
 
 	msg, err := proto.Marshal(cancelHistogramDataProto)
 	if err != nil {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
+		c.wrapper.Error(reqID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
 		return
 	}
 
@@ -3980,12 +4180,12 @@ func (c *EClient) ReqHistoricalTicks(reqID int64, contract *Contract, startDateT
 	}
 
 	if !c.IsConnected() {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
 	}
 
 	if c.serverVersion < MIN_SERVER_VER_HISTORICAL_TICKS {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+"  It does not support historical ticks requests..", "")
+		c.wrapper.Error(reqID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+"  It does not support historical ticks requests..", "")
 		return
 	}
 
@@ -4007,8 +4207,13 @@ func (c *EClient) ReqHistoricalTicks(reqID int64, contract *Contract, startDateT
 
 func (c *EClient) reqHistoricalTicksProtoBuf(historicalTicksRequestProto *protobuf.HistoricalTicksRequest) {
 
+	reqID := NO_VALID_ID
+	if historicalTicksRequestProto.ReqId != nil {
+		reqID = int64(*historicalTicksRequestProto.ReqId)
+	}
+
 	if !c.IsConnected() {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
 	}
 
@@ -4018,7 +4223,7 @@ func (c *EClient) reqHistoricalTicksProtoBuf(historicalTicksRequestProto *protob
 
 	msg, err := proto.Marshal(historicalTicksRequestProto)
 	if err != nil {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
+		c.wrapper.Error(reqID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
 		return
 	}
 
@@ -4033,6 +4238,11 @@ func (c *EClient) reqHistoricalTicksProtoBuf(historicalTicksRequestProto *protob
 
 // ReqScannerParameters requests an XML string that describes all possible scanner queries.
 func (c *EClient) ReqScannerParameters() {
+
+	if c.useProtoBuf(REQ_SCANNER_PARAMETERS) {
+		c.reqScannerParametersProtoBuf(createScannerParametersRequestProto())
+		return
+	}
 
 	if !c.IsConnected() {
 		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
@@ -4049,19 +4259,46 @@ func (c *EClient) ReqScannerParameters() {
 	c.reqChan <- me.Bytes()
 }
 
-// ReqScannerSubscription subcribes a scanner that matched the subcription.
-// reqId, the ticker ID, must be a unique value.
-// scannerSubscription contains possible parameters used to filter results.
-// scannerSubscriptionOptions is for internal use only.Use default value XYZ.
-func (c *EClient) ReqScannerSubscription(reqID int64, subscription *ScannerSubscription, scannerSubscriptionOptions []TagValue, scannerSubscriptionFilterOptions []TagValue) {
+func (c *EClient) reqScannerParametersProtoBuf(scannerParametersRequestProto *protobuf.ScannerParametersRequest) {
 
 	if !c.IsConnected() {
 		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
 	}
 
+	me := NewMsgEncoder(2, c)
+
+	me.encodeMsgID(REQ_SCANNER_PARAMETERS + PROTOBUF_MSG_ID)
+
+	msg, err := proto.Marshal(scannerParametersRequestProto)
+	if err != nil {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
+		return
+	}
+
+	me.encodeProto(msg)
+
+	c.reqChan <- me.Bytes()
+}
+
+// ReqScannerSubscription subcribes a scanner that matched the subcription.
+// reqId, the ticker ID, must be a unique value.
+// scannerSubscription contains possible parameters used to filter results.
+// scannerSubscriptionOptions is for internal use only.Use default value XYZ.
+func (c *EClient) ReqScannerSubscription(reqID int64, subscription *ScannerSubscription, scannerSubscriptionOptions []TagValue, scannerSubscriptionFilterOptions []TagValue) {
+
+	if c.useProtoBuf(REQ_SCANNER_SUBSCRIPTION) {
+		c.reqScannerSubscriptionProtoBuf(createScannerSubscriptionRequestProto(reqID, subscription, scannerSubscriptionOptions, scannerSubscriptionFilterOptions))
+		return
+	}
+
+	if !c.IsConnected() {
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
 	if c.serverVersion < MIN_SERVER_VER_SCANNER_GENERIC_OPTS && len(scannerSubscriptionFilterOptions) > 0 {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support API scanner subscription generic filter options", "")
+		c.wrapper.Error(reqID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support API scanner subscription generic filter options", "")
 		return
 	}
 
@@ -4109,12 +4346,44 @@ func (c *EClient) ReqScannerSubscription(reqID int64, subscription *ScannerSubsc
 	c.reqChan <- me.Bytes()
 }
 
+func (c *EClient) reqScannerSubscriptionProtoBuf(scannerSubscriptionRequestProto *protobuf.ScannerSubscriptionRequest) {
+
+	reqID := NO_VALID_ID
+	if scannerSubscriptionRequestProto.ReqId != nil {
+		reqID = int64(*scannerSubscriptionRequestProto.ReqId)
+	}
+
+	if !c.IsConnected() {
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
+	me := NewMsgEncoder(25, c)
+
+	me.encodeMsgID(REQ_SCANNER_SUBSCRIPTION + PROTOBUF_MSG_ID)
+
+	msg, err := proto.Marshal(scannerSubscriptionRequestProto)
+	if err != nil {
+		c.wrapper.Error(reqID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
+		return
+	}
+
+	me.encodeProto(msg)
+
+	c.reqChan <- me.Bytes()
+}
+
 // CancelScannerSubscription cancel scanner.
 // reqId is the unique ticker ID used for subscription.
 func (c *EClient) CancelScannerSubscription(reqID int64) {
 
+	if c.useProtoBuf(CANCEL_SCANNER_SUBSCRIPTION) {
+		c.cancelScannerSubscriptionProtoBuf(createCancelScannerSubscriptionProto(reqID))
+		return
+	}
+
 	if !c.IsConnected() {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
 	}
 
@@ -4125,6 +4394,33 @@ func (c *EClient) CancelScannerSubscription(reqID int64) {
 	me.encodeMsgID(CANCEL_SCANNER_SUBSCRIPTION)
 	me.encodeInt(VERSION)
 	me.encodeInt64(reqID)
+
+	c.reqChan <- me.Bytes()
+}
+
+func (c *EClient) cancelScannerSubscriptionProtoBuf(cancelScannerSubscriptionProto *protobuf.CancelScannerSubscription) {
+
+	reqID := NO_VALID_ID
+	if cancelScannerSubscriptionProto.ReqId != nil {
+		reqID = int64(*cancelScannerSubscriptionProto.ReqId)
+	}
+
+	if !c.IsConnected() {
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
+	me := NewMsgEncoder(3, c)
+
+	me.encodeMsgID(CANCEL_SCANNER_SUBSCRIPTION + PROTOBUF_MSG_ID)
+
+	msg, err := proto.Marshal(cancelScannerSubscriptionProto)
+	if err != nil {
+		c.wrapper.Error(reqID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
+		return
+	}
+
+	me.encodeProto(msg)
 
 	c.reqChan <- me.Bytes()
 }
@@ -4166,7 +4462,7 @@ func (c *EClient) ReqRealTimeBars(reqID int64, contract *Contract, barSize int, 
 	}
 
 	if !c.IsConnected() {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
 	}
 
@@ -4215,8 +4511,13 @@ func (c *EClient) ReqRealTimeBars(reqID int64, contract *Contract, barSize int, 
 
 func (c *EClient) reqRealTimeBarsProtoBuf(realTimeBarsRequestProto *protobuf.RealTimeBarsRequest) {
 
+	reqID := NO_VALID_ID
+	if realTimeBarsRequestProto.ReqId != nil {
+		reqID = int64(*realTimeBarsRequestProto.ReqId)
+	}
+
 	if !c.IsConnected() {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
 	}
 
@@ -4226,7 +4527,7 @@ func (c *EClient) reqRealTimeBarsProtoBuf(realTimeBarsRequestProto *protobuf.Rea
 
 	msg, err := proto.Marshal(realTimeBarsRequestProto)
 	if err != nil {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
+		c.wrapper.Error(reqID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
 		return
 	}
 
@@ -4244,7 +4545,7 @@ func (c *EClient) CancelRealTimeBars(reqID int64) {
 	}
 
 	if !c.IsConnected() {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
 	}
 
@@ -4261,8 +4562,13 @@ func (c *EClient) CancelRealTimeBars(reqID int64) {
 
 func (c *EClient) cancelRealTimeBarsProtoBuf(cancelRealTimeBarsProto *protobuf.CancelRealTimeBars) {
 
+	reqID := NO_VALID_ID
+	if cancelRealTimeBarsProto.ReqId != nil {
+		reqID = int64(*cancelRealTimeBarsProto.ReqId)
+	}
+
 	if !c.IsConnected() {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
 	}
 
@@ -4272,7 +4578,7 @@ func (c *EClient) cancelRealTimeBarsProtoBuf(cancelRealTimeBarsProto *protobuf.C
 
 	msg, err := proto.Marshal(cancelRealTimeBarsProto)
 	if err != nil {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
+		c.wrapper.Error(reqID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
 		return
 	}
 
@@ -4302,18 +4608,23 @@ func (c *EClient) cancelRealTimeBarsProtoBuf(cancelRealTimeBarsProto *protobuf.C
 //	CalendarReport (company calendar)
 func (c *EClient) ReqFundamentalData(reqID int64, contract *Contract, reportType string, fundamentalDataOptions []TagValue) {
 
+	if c.useProtoBuf(REQ_FUNDAMENTAL_DATA) {
+		c.reqFundamentalsDataProtoBuf(createFundamentalsDataRequestProto(reqID, contract, reportType, fundamentalDataOptions))
+		return
+	}
+
 	if !c.IsConnected() {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
 	}
 
 	if c.serverVersion < MIN_SERVER_VER_FUNDAMENTAL_DATA {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+"  It does not support fundamental data request.", "")
+		c.wrapper.Error(reqID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+"  It does not support fundamental data request.", "")
 		return
 	}
 
 	if c.serverVersion < MIN_SERVER_VER_TRADING_CLASS {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+"  It does not support conId parameter in reqFundamentalData.", "")
+		c.wrapper.Error(reqID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+"  It does not support conId parameter in reqFundamentalData.", "")
 		return
 	}
 
@@ -4346,16 +4657,48 @@ func (c *EClient) ReqFundamentalData(reqID int64, contract *Contract, reportType
 	c.reqChan <- me.Bytes()
 }
 
+func (c *EClient) reqFundamentalsDataProtoBuf(fundamentalsDataRequestProto *protobuf.FundamentalsDataRequest) {
+
+	reqID := NO_VALID_ID
+	if fundamentalsDataRequestProto.ReqId != nil {
+		reqID = int64(*fundamentalsDataRequestProto.ReqId)
+	}
+
+	if !c.IsConnected() {
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
+	me := NewMsgEncoder(12, c)
+
+	me.encodeMsgID(REQ_FUNDAMENTAL_DATA + PROTOBUF_MSG_ID)
+
+	msg, err := proto.Marshal(fundamentalsDataRequestProto)
+	if err != nil {
+		c.wrapper.Error(reqID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
+		return
+	}
+
+	me.encodeProto(msg)
+
+	c.reqChan <- me.Bytes()
+}
+
 // CancelFundamentalData cancels fundamental data.
 func (c *EClient) CancelFundamentalData(reqID int64) {
 
+	if c.useProtoBuf(CANCEL_FUNDAMENTAL_DATA) {
+		c.cancelFundamentalsDataProtoBuf(createCancelFundamentalsDataProto(reqID))
+		return
+	}
+
 	if !c.IsConnected() {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
 	}
 
 	if c.serverVersion < MIN_SERVER_VER_FUNDAMENTAL_DATA {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support fundamental data request.", "")
+		c.wrapper.Error(reqID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support fundamental data request.", "")
 		return
 	}
 
@@ -4369,6 +4712,33 @@ func (c *EClient) CancelFundamentalData(reqID int64) {
 
 	c.reqChan <- me.Bytes()
 
+}
+
+func (c *EClient) cancelFundamentalsDataProtoBuf(cancelFundamentalsDataProto *protobuf.CancelFundamentalsData) {
+
+	reqID := NO_VALID_ID
+	if cancelFundamentalsDataProto.ReqId != nil {
+		reqID = int64(*cancelFundamentalsDataProto.ReqId)
+	}
+
+	if !c.IsConnected() {
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
+	me := NewMsgEncoder(3, c)
+
+	me.encodeMsgID(CANCEL_FUNDAMENTAL_DATA + PROTOBUF_MSG_ID)
+
+	msg, err := proto.Marshal(cancelFundamentalsDataProto)
+	if err != nil {
+		c.wrapper.Error(reqID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
+		return
+	}
+
+	me.encodeProto(msg)
+
+	c.reqChan <- me.Bytes()
 }
 
 //	##########################################################################
@@ -4431,12 +4801,12 @@ func (c *EClient) ReqNewsArticle(reqID int64, providerCode string, articleID str
 	}
 
 	if !c.IsConnected() {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
 	}
 
 	if c.serverVersion < MIN_SERVER_VER_REQ_NEWS_ARTICLE {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support news article request.", "")
+		c.wrapper.Error(reqID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support news article request.", "")
 		return
 	}
 
@@ -4456,8 +4826,13 @@ func (c *EClient) ReqNewsArticle(reqID int64, providerCode string, articleID str
 
 func (c *EClient) reqNewsArticleProtoBuf(newsArticleRequestProto *protobuf.NewsArticleRequest) {
 
+	reqID := NO_VALID_ID
+	if newsArticleRequestProto.ReqId != nil {
+		reqID = int64(*newsArticleRequestProto.ReqId)
+	}
+
 	if !c.IsConnected() {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
 	}
 
@@ -4467,7 +4842,7 @@ func (c *EClient) reqNewsArticleProtoBuf(newsArticleRequestProto *protobuf.NewsA
 
 	msg, err := proto.Marshal(newsArticleRequestProto)
 	if err != nil {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
+		c.wrapper.Error(reqID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
 		return
 	}
 
@@ -4485,12 +4860,12 @@ func (c *EClient) ReqHistoricalNews(reqID int64, contractID int64, providerCode 
 	}
 
 	if !c.IsConnected() {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
 	}
 
 	if c.serverVersion < MIN_SERVER_VER_REQ_HISTORICAL_NEWS {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support historical news request.", "")
+		c.wrapper.Error(reqID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support historical news request.", "")
 		return
 	}
 
@@ -4513,8 +4888,13 @@ func (c *EClient) ReqHistoricalNews(reqID int64, contractID int64, providerCode 
 
 func (c *EClient) reqHistoricalNewsProtoBuf(historicalNewsRequestProto *protobuf.HistoricalNewsRequest) {
 
+	reqID := NO_VALID_ID
+	if historicalNewsRequestProto.ReqId != nil {
+		reqID = int64(*historicalNewsRequestProto.ReqId)
+	}
+
 	if !c.IsConnected() {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
 	}
 
@@ -4524,7 +4904,7 @@ func (c *EClient) reqHistoricalNewsProtoBuf(historicalNewsRequestProto *protobuf
 
 	msg, err := proto.Marshal(historicalNewsRequestProto)
 	if err != nil {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
+		c.wrapper.Error(reqID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
 		return
 	}
 
@@ -4541,12 +4921,12 @@ func (c *EClient) reqHistoricalNewsProtoBuf(historicalNewsRequestProto *protobuf
 func (c *EClient) QueryDisplayGroups(reqID int64) {
 
 	if !c.IsConnected() {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
 	}
 
 	if c.serverVersion < MIN_SERVER_VER_LINKING {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support queryDisplayGroups request.", "")
+		c.wrapper.Error(reqID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support queryDisplayGroups request.", "")
 		return
 	}
 
@@ -4567,12 +4947,12 @@ func (c *EClient) QueryDisplayGroups(reqID int64) {
 func (c *EClient) SubscribeToGroupEvents(reqID int64, groupID int) {
 
 	if !c.IsConnected() {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
 	}
 
 	if c.serverVersion < MIN_SERVER_VER_LINKING {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support subscribeToGroupEvents request.", "")
+		c.wrapper.Error(reqID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support subscribeToGroupEvents request.", "")
 		return
 	}
 
@@ -4600,12 +4980,12 @@ func (c *EClient) SubscribeToGroupEvents(reqID int64, groupID int) {
 func (c *EClient) UpdateDisplayGroup(reqID int64, contractInfo string) {
 
 	if !c.IsConnected() {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
 	}
 
 	if c.serverVersion < MIN_SERVER_VER_LINKING {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support updateDisplayGroup request.", "")
+		c.wrapper.Error(reqID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support updateDisplayGroup request.", "")
 		return
 	}
 
@@ -4625,12 +5005,12 @@ func (c *EClient) UpdateDisplayGroup(reqID int64, contractInfo string) {
 func (c *EClient) UnsubscribeFromGroupEvents(reqID int64) {
 
 	if !c.IsConnected() {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
 	}
 
 	if c.serverVersion < MIN_SERVER_VER_LINKING {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support unsubscribeFromGroupEvents request.", "")
+		c.wrapper.Error(reqID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support unsubscribeFromGroupEvents request.", "")
 		return
 	}
 
@@ -4770,12 +5150,12 @@ func (c *EClient) VerifyAndAuthMessage(apiData string, xyzResponse string) {
 func (c *EClient) ReqSecDefOptParams(reqID int64, underlyingSymbol string, futFopExchange string, underlyingSecurityType string, underlyingContractID int64) {
 
 	if !c.IsConnected() {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
 	}
 
 	if c.serverVersion < MIN_SERVER_VER_SEC_DEF_OPT_PARAMS_REQ {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support security definition option request.", "")
+		c.wrapper.Error(reqID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support security definition option request.", "")
 		return
 	}
 
@@ -4797,7 +5177,7 @@ func (c *EClient) ReqSecDefOptParams(reqID int64, underlyingSymbol string, futFo
 func (c *EClient) ReqSoftDollarTiers(reqID int64) {
 
 	if !c.IsConnected() {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
 	}
 
@@ -4833,12 +5213,12 @@ func (c *EClient) ReqFamilyCodes() {
 func (c *EClient) ReqMatchingSymbols(reqID int64, pattern string) {
 
 	if !c.IsConnected() {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
 	}
 
 	if c.serverVersion < MIN_SERVER_VER_REQ_MATCHING_SYMBOLS {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support matching symbols request.", "")
+		c.wrapper.Error(reqID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support matching symbols request.", "")
 		return
 	}
 
@@ -4905,12 +5285,12 @@ func (c *EClient) ReqWshMetaData(reqID int64) {
 	}
 
 	if !c.IsConnected() {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
 	}
 
 	if c.serverVersion < MIN_SERVER_VER_WSHE_CALENDAR {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support WSHE Calendar API.", "")
+		c.wrapper.Error(reqID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support WSHE Calendar API.", "")
 		return
 	}
 
@@ -4924,8 +5304,13 @@ func (c *EClient) ReqWshMetaData(reqID int64) {
 
 func (c *EClient) reqWshMetaDataProtoBuf(wshMetaDataRequestProto *protobuf.WshMetaDataRequest) {
 
+	reqID := NO_VALID_ID
+	if wshMetaDataRequestProto.ReqId != nil {
+		reqID = int64(*wshMetaDataRequestProto.ReqId)
+	}
+
 	if !c.IsConnected() {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
 	}
 
@@ -4935,7 +5320,7 @@ func (c *EClient) reqWshMetaDataProtoBuf(wshMetaDataRequestProto *protobuf.WshMe
 
 	msg, err := proto.Marshal(wshMetaDataRequestProto)
 	if err != nil {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
+		c.wrapper.Error(reqID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
 		return
 	}
 
@@ -4953,12 +5338,12 @@ func (c *EClient) CancelWshMetaData(reqID int64) {
 	}
 
 	if !c.IsConnected() {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
 	}
 
 	if c.serverVersion < MIN_SERVER_VER_WSHE_CALENDAR {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support WSHE Calendar API.", "")
+		c.wrapper.Error(reqID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support WSHE Calendar API.", "")
 		return
 	}
 
@@ -4972,8 +5357,13 @@ func (c *EClient) CancelWshMetaData(reqID int64) {
 
 func (c *EClient) cancelWshMetaDataProtoBuf(cancelWshMetaDataProto *protobuf.CancelWshMetaData) {
 
+	reqID := NO_VALID_ID
+	if cancelWshMetaDataProto.ReqId != nil {
+		reqID = int64(*cancelWshMetaDataProto.ReqId)
+	}
+
 	if !c.IsConnected() {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
 	}
 
@@ -4983,7 +5373,7 @@ func (c *EClient) cancelWshMetaDataProtoBuf(cancelWshMetaDataProto *protobuf.Can
 
 	msg, err := proto.Marshal(cancelWshMetaDataProto)
 	if err != nil {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
+		c.wrapper.Error(reqID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
 		return
 	}
 
@@ -5001,22 +5391,22 @@ func (c *EClient) ReqWshEventData(reqID int64, wshEventData WshEventData) {
 	}
 
 	if !c.IsConnected() {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
 	}
 
 	if c.serverVersion < MIN_SERVER_VER_WSHE_CALENDAR {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support WSHE Calendar API.", "")
+		c.wrapper.Error(reqID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support WSHE Calendar API.", "")
 		return
 	}
 	if c.serverVersion < MIN_SERVER_VER_WSH_EVENT_DATA_FILTERS &&
 		(wshEventData.Filter != "" || wshEventData.FillWatchList || wshEventData.FillPortfolio) {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support WSHE event data filters.", "")
+		c.wrapper.Error(reqID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support WSHE event data filters.", "")
 		return
 	}
 	if c.serverVersion < MIN_SERVER_VER_WSH_EVENT_DATA_FILTERS_DATE &&
 		(wshEventData.StartDate != "" || wshEventData.EndDate != "" || wshEventData.TotalLimit != UNSET_INT) {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support WSHE event data date filters.", "")
+		c.wrapper.Error(reqID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support WSHE event data date filters.", "")
 		return
 	}
 
@@ -5044,8 +5434,13 @@ func (c *EClient) ReqWshEventData(reqID int64, wshEventData WshEventData) {
 
 func (c *EClient) reqWshEventDataProtoBuf(wshEventDataRequestProto *protobuf.WshEventDataRequest) {
 
+	reqID := NO_VALID_ID
+	if wshEventDataRequestProto.ReqId != nil {
+		reqID = int64(*wshEventDataRequestProto.ReqId)
+	}
+
 	if !c.IsConnected() {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
 	}
 
@@ -5055,7 +5450,7 @@ func (c *EClient) reqWshEventDataProtoBuf(wshEventDataRequestProto *protobuf.Wsh
 
 	msg, err := proto.Marshal(wshEventDataRequestProto)
 	if err != nil {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
+		c.wrapper.Error(reqID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
 		return
 	}
 
@@ -5073,12 +5468,12 @@ func (c *EClient) CancelWshEventData(reqID int64) {
 	}
 
 	if !c.IsConnected() {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
 	}
 
 	if c.serverVersion < MIN_SERVER_VER_WSHE_CALENDAR {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support WSHE Calendar API.", "")
+		c.wrapper.Error(reqID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support WSHE Calendar API.", "")
 		return
 	}
 
@@ -5092,8 +5487,13 @@ func (c *EClient) CancelWshEventData(reqID int64) {
 
 func (c *EClient) cancelWshEventDataProtoBuf(cancelWshEventDataProto *protobuf.CancelWshEventData) {
 
+	reqID := NO_VALID_ID
+	if cancelWshEventDataProto.ReqId != nil {
+		reqID = int64(*cancelWshEventDataProto.ReqId)
+	}
+
 	if !c.IsConnected() {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
 	}
 
@@ -5103,7 +5503,7 @@ func (c *EClient) cancelWshEventDataProtoBuf(cancelWshEventDataProto *protobuf.C
 
 	msg, err := proto.Marshal(cancelWshEventDataProto)
 	if err != nil {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
+		c.wrapper.Error(reqID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
 		return
 	}
 
@@ -5116,12 +5516,12 @@ func (c *EClient) cancelWshEventDataProtoBuf(cancelWshEventDataProto *protobuf.C
 func (c *EClient) ReqUserInfo(reqID int64) {
 
 	if !c.IsConnected() {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
 	}
 
 	if c.serverVersion < MIN_SERVER_VER_USER_INFO {
-		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support user info requests.", "")
+		c.wrapper.Error(reqID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+" It does not support user info requests.", "")
 		return
 	}
 

@@ -1563,3 +1563,183 @@ func createCancelWshEventDataProto(reqID int64) *protobuf.CancelWshEventData {
 
 	return cancelWshEventDataProto
 }
+
+func createScannerParametersRequestProto() *protobuf.ScannerParametersRequest {
+	return &protobuf.ScannerParametersRequest{}
+}
+
+func createScannerSubscriptionRequestProto(reqID int64, subscription *ScannerSubscription, scannerSubscriptionOptionsList []TagValue, scannerSubscriptionFilterOptionsList []TagValue) *protobuf.ScannerSubscriptionRequest {
+	scannerSubscriptionRequestProto := &protobuf.ScannerSubscriptionRequest{}
+	if isValidInt64Value(reqID) {
+		id := int32(reqID)
+		scannerSubscriptionRequestProto.ReqId = &id
+	}
+	scannerSubscriptionRequestProto.ScannerSubscription = createScannerSubscriptionProto(
+		subscription, scannerSubscriptionOptionsList, scannerSubscriptionFilterOptionsList,
+	)
+	return scannerSubscriptionRequestProto
+}
+
+func createScannerSubscriptionProto(subscription *ScannerSubscription, scannerSubscriptionOptionsList []TagValue, scannerSubscriptionFilterOptionsList []TagValue) *protobuf.ScannerSubscription {
+	proto := &protobuf.ScannerSubscription{}
+	if isValidInt64Value(subscription.NumberOfRows) {
+		n := int32(subscription.NumberOfRows)
+		proto.NumberOfRows = &n
+	}
+	if !stringIsEmpty(subscription.Instrument) {
+		proto.Instrument = &subscription.Instrument
+	}
+	if !stringIsEmpty(subscription.LocationCode) {
+		proto.LocationCode = &subscription.LocationCode
+	}
+	if !stringIsEmpty(subscription.ScanCode) {
+		proto.ScanCode = &subscription.ScanCode
+	}
+	if isValidFloat64Value(subscription.AbovePrice) {
+		proto.AbovePrice = &subscription.AbovePrice
+	}
+	if isValidFloat64Value(subscription.BelowPrice) {
+		proto.BelowPrice = &subscription.BelowPrice
+	}
+	if isValidInt64Value(subscription.AboveVolume) {
+		proto.AboveVolume = &subscription.AboveVolume
+	}
+	if isValidInt64Value(subscription.AverageOptionVolumeAbove) {
+		proto.AverageOptionVolumeAbove = &subscription.AverageOptionVolumeAbove
+	}
+	if isValidFloat64Value(subscription.MarketCapAbove) {
+		proto.MarketCapAbove = &subscription.MarketCapAbove
+	}
+	if isValidFloat64Value(subscription.MarketCapBelow) {
+		proto.MarketCapBelow = &subscription.MarketCapBelow
+	}
+	if !stringIsEmpty(subscription.MoodyRatingAbove) {
+		proto.MoodyRatingAbove = &subscription.MoodyRatingAbove
+	}
+	if !stringIsEmpty(subscription.MoodyRatingBelow) {
+		proto.MoodyRatingBelow = &subscription.MoodyRatingBelow
+	}
+	if !stringIsEmpty(subscription.SpRatingAbove) {
+		proto.SpRatingAbove = &subscription.SpRatingAbove
+	}
+	if !stringIsEmpty(subscription.SpRatingBelow) {
+		proto.SpRatingBelow = &subscription.SpRatingBelow
+	}
+	if !stringIsEmpty(subscription.MaturityDateAbove) {
+		proto.MaturityDateAbove = &subscription.MaturityDateAbove
+	}
+	if !stringIsEmpty(subscription.MaturityDateBelow) {
+		proto.MaturityDateBelow = &subscription.MaturityDateBelow
+	}
+	if isValidFloat64Value(subscription.CouponRateAbove) {
+		proto.CouponRateAbove = &subscription.CouponRateAbove
+	}
+	if isValidFloat64Value(subscription.CouponRateBelow) {
+		proto.CouponRateBelow = &subscription.CouponRateBelow
+	}
+	if subscription.ExcludeConvertible {
+		proto.ExcludeConvertible = &subscription.ExcludeConvertible
+	}
+	if !stringIsEmpty(subscription.ScannerSettingPairs) {
+		proto.ScannerSettingPairs = &subscription.ScannerSettingPairs
+	}
+	if !stringIsEmpty(subscription.StockTypeFilter) {
+		proto.StockTypeFilter = &subscription.StockTypeFilter
+	}
+	opts := createStringStringMap(scannerSubscriptionOptionsList)
+	if len(opts) > 0 {
+		proto.ScannerSubscriptionOptions = opts
+	}
+	filt := createStringStringMap(scannerSubscriptionFilterOptionsList)
+	if len(filt) > 0 {
+		proto.ScannerSubscriptionFilterOptions = filt
+	}
+	return proto
+}
+
+func createFundamentalsDataRequestProto(reqID int64, contract *Contract, reportType string, fundamentalsDataOptionsList []TagValue) *protobuf.FundamentalsDataRequest {
+	req := &protobuf.FundamentalsDataRequest{}
+	if isValidInt64Value(reqID) {
+		id := int32(reqID)
+		req.ReqId = &id
+	}
+	req.Contract = createContractProto(contract, &Order{})
+	if !stringIsEmpty(reportType) {
+		req.ReportType = &reportType
+	}
+	opts := createStringStringMap(fundamentalsDataOptionsList)
+	if len(opts) > 0 {
+		req.FundamentalsDataOptions = opts
+	}
+	return req
+}
+
+func createCancelFundamentalsDataProto(reqID int64) *protobuf.CancelFundamentalsData {
+	cancel := &protobuf.CancelFundamentalsData{}
+	if isValidInt64Value(reqID) {
+		id := int32(reqID)
+		cancel.ReqId = &id
+	}
+	return cancel
+}
+
+func createPnLRequestProto(reqID int64, account, modelCode string) *protobuf.PnLRequest {
+	req := &protobuf.PnLRequest{}
+	if isValidInt64Value(reqID) {
+		id := int32(reqID)
+		req.ReqId = &id
+	}
+	if !stringIsEmpty(account) {
+		req.Account = &account
+	}
+	if !stringIsEmpty(modelCode) {
+		req.ModelCode = &modelCode
+	}
+	return req
+}
+
+func createCancelPnLProto(reqID int64) *protobuf.CancelPnL {
+	cancel := &protobuf.CancelPnL{}
+	if isValidInt64Value(reqID) {
+		id := int32(reqID)
+		cancel.ReqId = &id
+	}
+	return cancel
+}
+
+func createPnLSingleRequestProto(reqID int64, account, modelCode string, conID int64) *protobuf.PnLSingleRequest {
+	req := &protobuf.PnLSingleRequest{}
+	if isValidInt64Value(reqID) {
+		id := int32(reqID)
+		req.ReqId = &id
+	}
+	if !stringIsEmpty(account) {
+		req.Account = &account
+	}
+	if !stringIsEmpty(modelCode) {
+		req.ModelCode = &modelCode
+	}
+	if isValidInt64Value(conID) {
+		cid := int32(conID)
+		req.ConId = &cid
+	}
+	return req
+}
+
+func createCancelPnLSingleProto(reqID int64) *protobuf.CancelPnLSingle {
+	cancel := &protobuf.CancelPnLSingle{}
+	if isValidInt64Value(reqID) {
+		id := int32(reqID)
+		cancel.ReqId = &id
+	}
+	return cancel
+}
+
+func createCancelScannerSubscriptionProto(reqID int64) *protobuf.CancelScannerSubscription {
+	cancel := &protobuf.CancelScannerSubscription{}
+	if isValidInt64Value(reqID) {
+		id := int32(reqID)
+		cancel.ReqId = &id
+	}
+	return cancel
+}

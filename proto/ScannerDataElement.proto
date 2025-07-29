@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package protobuf;
+
+import "Contract.proto";
+
+option go_package = ".;protobuf";
+
+message ScannerDataElement {
+    optional int32 rank = 1;
+	optional Contract contract = 2;
+    optional string marketName = 3;
+    optional string distance = 4;
+    optional string benchmark = 5;
+    optional string projection = 6;
+    optional string comboKey = 7;
+}

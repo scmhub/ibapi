@@ -148,6 +148,16 @@ func (d *EDecoder) interpret(msgBytes []byte) {
 			d.processWshEventDataMsgProtoBuf(msgBuf)
 		case TICK_NEWS:
 			d.processTickNewsMsgProtoBuf(msgBuf)
+		case SCANNER_PARAMETERS:
+			d.processScannerParametersMsgProtoBuf(msgBuf)
+		case SCANNER_DATA:
+			d.processScannerDataMsgProtoBuf(msgBuf)
+		case FUNDAMENTAL_DATA:
+			d.processFundamentalsDataMsgProtoBuf(msgBuf)
+		case PNL:
+			d.processPnLMsgProtoBuf(msgBuf)
+		case PNL_SINGLE:
+			d.processPnLSingleMsgProtoBuf(msgBuf)
 		default:
 			d.wrapper.Error(msgID, currentTimeMillis(), UNKNOWN_ID.Code, UNKNOWN_ID.Msg, "")
 		}
@@ -1900,11 +1910,64 @@ func (d *EDecoder) processScannerDataMsg(msgBuf *MsgBuffer) {
 	d.wrapper.ScannerDataEnd(reqID)
 }
 
+func (d *EDecoder) processScannerDataMsgProtoBuf(msgBuf *MsgBuffer) {
+	var scannerDataProto protobuf.ScannerData
+	if err := proto.Unmarshal(msgBuf.bs, &scannerDataProto); err != nil {
+		log.Error().Err(err).Msg("failed to unmarshal ScannerData message")
+		return
+	}
+
+	d.wrapper.ScannerDataProtoBuf(&scannerDataProto)
+
+	reqID := NO_VALID_ID
+	if scannerDataProto.ReqId != nil {
+		reqID = int64(scannerDataProto.GetReqId())
+	}
+
+	for _, element := range scannerDataProto.GetScannerDataElement() {
+		rank := int64(element.GetRank())
+
+		// Decode contract details
+		var cd ContractDetails
+		if element.Contract != nil {
+			contract := decodeContract(element.GetContract())
+			cd.Contract = *contract
+		}
+		cd.MarketName = element.GetMarketName()
+
+		distance := element.GetDistance()
+		benchmark := element.GetBenchmark()
+		projection := element.GetProjection()
+		comboKey := element.GetComboKey()
+
+		d.wrapper.ScannerData(reqID, rank, &cd, distance, benchmark, projection, comboKey)
+	}
+
+	d.wrapper.ScannerDataEnd(reqID)
+}
+
 func (d *EDecoder) processScannerParametersMsg(msgBuf *MsgBuffer) {
 
 	msgBuf.decode() // version
 
 	xml := msgBuf.decodeString()
+
+	d.wrapper.ScannerParameters(xml)
+}
+
+func (d *EDecoder) processScannerParametersMsgProtoBuf(msgBuf *MsgBuffer) {
+	var scannerParametersProto protobuf.ScannerParameters
+	if err := proto.Unmarshal(msgBuf.bs, &scannerParametersProto); err != nil {
+		log.Error().Err(err).Msg("failed to unmarshal ScannerParameters message")
+		return
+	}
+
+	d.wrapper.ScannerParametersProtoBuf(&scannerParametersProto)
+
+	xml := ""
+	if scannerParametersProto.Xml != nil {
+		xml = scannerParametersProto.GetXml()
+	}
 
 	d.wrapper.ScannerParameters(xml)
 }
@@ -2003,6 +2066,27 @@ func (d *EDecoder) processContractDataEndMsg(msgBuf *MsgBuffer) {
 	reqID := msgBuf.decodeInt64()
 
 	d.wrapper.ContractDetailsEnd(reqID)
+}
+
+func (d *EDecoder) processFundamentalsDataMsgProtoBuf(msgBuf *MsgBuffer) {
+	var fundamentalsDataProto protobuf.FundamentalsData
+	if err := proto.Unmarshal(msgBuf.bs, &fundamentalsDataProto); err != nil {
+		log.Error().Err(err).Msg("failed to unmarshal FundamentalsData message")
+		return
+	}
+
+	d.wrapper.FundamentalsDataProtoBuf(&fundamentalsDataProto)
+
+	reqID := NO_VALID_ID
+	if fundamentalsDataProto.ReqId != nil {
+		reqID = int64(fundamentalsDataProto.GetReqId())
+	}
+	data := ""
+	if fundamentalsDataProto.Data != nil {
+		data = fundamentalsDataProto.GetData()
+	}
+
+	d.wrapper.FundamentalData(reqID, data)
 }
 
 func (d *EDecoder) processContractDataEndMsgProtoBuf(msgBuf *MsgBuffer) {
@@ -3153,6 +3237,35 @@ func (d *EDecoder) processPnLMsg(msgBuf *MsgBuffer) {
 	d.wrapper.Pnl(reqID, dailyPnL, unrealizedPnL, realizedPnL)
 }
 
+func (d *EDecoder) processPnLMsgProtoBuf(msgBuf *MsgBuffer) {
+	var pnlProto protobuf.PnL
+	if err := proto.Unmarshal(msgBuf.bs, &pnlProto); err != nil {
+		log.Error().Err(err).Msg("failed to unmarshal PnL message")
+		return
+	}
+
+	d.wrapper.PnLProtoBuf(&pnlProto)
+
+	reqID := NO_VALID_ID
+	if pnlProto.ReqId != nil {
+		reqID = int64(pnlProto.GetReqId())
+	}
+	dailyPnL := 0.0
+	if pnlProto.DailyPnL != nil {
+		dailyPnL = pnlProto.GetDailyPnL()
+	}
+	unrealizedPnL := 0.0
+	if pnlProto.UnrealizedPnL != nil {
+		unrealizedPnL = pnlProto.GetUnrealizedPnL()
+	}
+	realizedPnL := 0.0
+	if pnlProto.RealizedPnL != nil {
+		realizedPnL = pnlProto.GetRealizedPnL()
+	}
+
+	d.wrapper.Pnl(reqID, dailyPnL, unrealizedPnL, realizedPnL)
+}
+
 func (d *EDecoder) processPnLSingleMsg(msgBuf *MsgBuffer) {
 
 	reqID := msgBuf.decodeInt64()
@@ -3171,6 +3284,42 @@ func (d *EDecoder) processPnLSingleMsg(msgBuf *MsgBuffer) {
 	}
 
 	value := msgBuf.decodeFloat64()
+
+	d.wrapper.PnlSingle(reqID, pos, dailyPnL, unrealizedPnL, realizedPnL, value)
+}
+
+func (d *EDecoder) processPnLSingleMsgProtoBuf(msgBuf *MsgBuffer) {
+	var pnlSingleProto protobuf.PnLSingle
+	if err := proto.Unmarshal(msgBuf.bs, &pnlSingleProto); err != nil {
+		log.Error().Err(err).Msg("failed to unmarshal PnLSingle message")
+		return
+	}
+	d.wrapper.PnLSingleProtoBuf(&pnlSingleProto)
+
+	reqID := NO_VALID_ID
+	if pnlSingleProto.ReqId != nil {
+		reqID = int64(pnlSingleProto.GetReqId())
+	}
+	var pos Decimal
+	if pnlSingleProto.Position != nil {
+		pos = StringToDecimal(pnlSingleProto.GetPosition())
+	}
+	dailyPnL := 0.0
+	if pnlSingleProto.DailyPnL != nil {
+		dailyPnL = pnlSingleProto.GetDailyPnL()
+	}
+	unrealizedPnL := 0.0
+	if pnlSingleProto.UnrealizedPnL != nil {
+		unrealizedPnL = pnlSingleProto.GetUnrealizedPnL()
+	}
+	realizedPnL := 0.0
+	if pnlSingleProto.RealizedPnL != nil {
+		realizedPnL = pnlSingleProto.GetRealizedPnL()
+	}
+	value := 0.0
+	if pnlSingleProto.Value != nil {
+		value = pnlSingleProto.GetValue()
+	}
 
 	d.wrapper.PnlSingle(reqID, pos, dailyPnL, unrealizedPnL, realizedPnL, value)
 }
