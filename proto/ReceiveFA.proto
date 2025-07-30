@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+package protobuf;
+
+option go_package = ".;protobuf";
+
+message ReceiveFA {
+    optional int32 faDataType = 1;
+    optional string xml = 2;
+}

@@ -158,6 +158,18 @@ func (d *EDecoder) interpret(msgBytes []byte) {
 			d.processPnLMsgProtoBuf(msgBuf)
 		case PNL_SINGLE:
 			d.processPnLSingleMsgProtoBuf(msgBuf)
+		case RECEIVE_FA:
+			d.processReceiveFAMsgProtoBuf(msgBuf)
+		case REPLACE_FA_END:
+			d.processReplaceFAEndMsgProtoBuf(msgBuf)
+		case COMMISSION_AND_FEES_REPORT:
+			d.processCommissionAndFeesReportMsgProtoBuf(msgBuf)
+		case HISTORICAL_SCHEDULE:
+			d.processHistoricalScheduleMsgProtoBuf(msgBuf)
+		case REROUTE_MKT_DATA_REQ:
+			d.processRerouteMktDataReqMsgProtoBuf(msgBuf)
+		case REROUTE_MKT_DEPTH_REQ:
+			d.processRerouteMktDepthReqMsgProtoBuf(msgBuf)
 		default:
 			d.wrapper.Error(msgID, currentTimeMillis(), UNKNOWN_ID.Code, UNKNOWN_ID.Msg, "")
 		}
@@ -1778,6 +1790,28 @@ func (d *EDecoder) processReceiveFaMsg(msgBuf *MsgBuffer) {
 	d.wrapper.ReceiveFA(faDataType, cxml)
 }
 
+func (d *EDecoder) processReceiveFAMsgProtoBuf(msgBuf *MsgBuffer) {
+	var receiveFAProto protobuf.ReceiveFA
+	err := proto.Unmarshal(msgBuf.bs, &receiveFAProto)
+	if err != nil {
+		log.Error().Err(err).Msg("failed to unmarshal ReceiveFA message")
+		return
+	}
+
+	d.wrapper.ReceiveFAProtoBuf(&receiveFAProto)
+
+	faDataTypeInt := 0
+	if receiveFAProto.FaDataType != nil {
+		faDataTypeInt = int(receiveFAProto.GetFaDataType())
+	}
+	xml := ""
+	if receiveFAProto.Xml != nil {
+		xml = receiveFAProto.GetXml()
+	}
+
+	d.wrapper.ReceiveFA(FaDataType(faDataTypeInt), xml)
+}
+
 func (d *EDecoder) processHistoricalDataMsg(msgBuf *MsgBuffer) {
 
 	if d.serverVersion < MIN_SERVER_VER_SYNT_REALTIME_BARS {
@@ -2270,6 +2304,52 @@ func (d *EDecoder) processCommissionAndFeesReportMsg(msgBuf *MsgBuffer) {
 	commissionAndFeesReport.YieldRedemptionDate = msgBuf.decodeInt64()
 
 	d.wrapper.CommissionAndFeesReport(commissionAndFeesReport)
+}
+
+func (d *EDecoder) processCommissionAndFeesReportMsgProtoBuf(msgBuf *MsgBuffer) {
+	var commissionAndFeesReportProto protobuf.CommissionAndFeesReport
+	err := proto.Unmarshal(msgBuf.bs, &commissionAndFeesReportProto)
+	if err != nil {
+		log.Error().Err(err).Msg("failed to unmarshal CommissionAndFeesReport message")
+		return
+	}
+
+	d.wrapper.CommissionAndFeesReportProtoBuf(&commissionAndFeesReportProto)
+
+	// mirror C++ field-by-field defaults
+	report := CommissionAndFeesReport{
+		ExecID:              "",
+		CommissionAndFees:   0,
+		Currency:            "",
+		RealizedPNL:         0,
+		Yield:               0,
+		YieldRedemptionDate: 0,
+	}
+	if commissionAndFeesReportProto.ExecId != nil {
+		report.ExecID = commissionAndFeesReportProto.GetExecId()
+	}
+	if commissionAndFeesReportProto.CommissionAndFees != nil {
+		report.CommissionAndFees = commissionAndFeesReportProto.GetCommissionAndFees()
+	}
+	if commissionAndFeesReportProto.Currency != nil {
+		report.Currency = commissionAndFeesReportProto.GetCurrency()
+	}
+	if commissionAndFeesReportProto.RealizedPNL != nil {
+		report.RealizedPNL = commissionAndFeesReportProto.GetRealizedPNL()
+	}
+	if commissionAndFeesReportProto.BondYield != nil {
+		report.Yield = commissionAndFeesReportProto.GetBondYield()
+	}
+	if commissionAndFeesReportProto.YieldRedemptionDate != nil {
+		yrd, err := strconv.ParseInt(commissionAndFeesReportProto.GetYieldRedemptionDate(), 10, 64)
+		if err != nil {
+			log.Error().Err(err).Msg("failed to parse CommissionAndFeesReport YieldRedemptionDate")
+			return
+		}
+		report.YieldRedemptionDate = yrd
+	}
+
+	d.wrapper.CommissionAndFeesReport(report)
 }
 
 func (d *EDecoder) processPositionDataMsg(msgBuf *MsgBuffer) {
@@ -3190,12 +3270,64 @@ func (d *EDecoder) processRerouteMktDataReqMsg(msgBuf *MsgBuffer) {
 	d.wrapper.RerouteMktDataReq(reqID, conID, exchange)
 }
 
+func (d *EDecoder) processRerouteMktDataReqMsgProtoBuf(msgBuf *MsgBuffer) {
+	var rerouteProto protobuf.RerouteMarketDataRequest
+	err := proto.Unmarshal(msgBuf.bs, &rerouteProto)
+	if err != nil {
+		log.Error().Err(err).Msg("failed to unmarshal RerouteMarketDataRequest message")
+		return
+	}
+
+	d.wrapper.RerouteMarketDataRequestProtoBuf(&rerouteProto)
+
+	reqID := NO_VALID_ID
+	if rerouteProto.ReqId != nil {
+		reqID = int64(rerouteProto.GetReqId())
+	}
+	var conID int64
+	if rerouteProto.ConId != nil {
+		conID = int64(rerouteProto.GetConId())
+	}
+	var exchange string
+	if rerouteProto.Exchange != nil {
+		exchange = rerouteProto.GetExchange()
+	}
+
+	d.wrapper.RerouteMktDataReq(reqID, conID, exchange)
+}
+
 func (d *EDecoder) processRerouteMktDepthReqMsg(msgBuf *MsgBuffer) {
 
 	reqID := msgBuf.decodeInt64()
 
 	conID := msgBuf.decodeInt64()
 	exchange := msgBuf.decodeString()
+
+	d.wrapper.RerouteMktDepthReq(reqID, conID, exchange)
+}
+
+func (d *EDecoder) processRerouteMktDepthReqMsgProtoBuf(msgBuf *MsgBuffer) {
+	var rerouteDepthProto protobuf.RerouteMarketDepthRequest
+	err := proto.Unmarshal(msgBuf.bs, &rerouteDepthProto)
+	if err != nil {
+		log.Error().Err(err).Msg("failed to unmarshal RerouteMarketDepthRequest message")
+		return
+	}
+
+	d.wrapper.RerouteMarketDepthRequestProtoBuf(&rerouteDepthProto)
+
+	reqID := NO_VALID_ID
+	if rerouteDepthProto.ReqId != nil {
+		reqID = int64(rerouteDepthProto.GetReqId())
+	}
+	var conID int64
+	if rerouteDepthProto.ConId != nil {
+		conID = int64(rerouteDepthProto.GetConId())
+	}
+	var exchange string
+	if rerouteDepthProto.Exchange != nil {
+		exchange = rerouteDepthProto.GetExchange()
+	}
 
 	d.wrapper.RerouteMktDepthReq(reqID, conID, exchange)
 }
@@ -3765,6 +3897,28 @@ func (d *EDecoder) processWshMetaData(msgBuf *MsgBuffer) {
 	d.wrapper.WshMetaData(reqID, dataJSON)
 }
 
+func (d *EDecoder) processReplaceFAEndMsgProtoBuf(msgBuf *MsgBuffer) {
+	var replaceFAEndProto protobuf.ReplaceFAEnd
+	err := proto.Unmarshal(msgBuf.bs, &replaceFAEndProto)
+	if err != nil {
+		log.Error().Err(err).Msg("failed to unmarshal ReplaceFAEnd message")
+		return
+	}
+
+	d.wrapper.ReplaceFAEndProtoBuf(&replaceFAEndProto)
+
+	reqID := NO_VALID_ID
+	if replaceFAEndProto.ReqId != nil {
+		reqID = int64(replaceFAEndProto.GetReqId())
+	}
+	text := ""
+	if replaceFAEndProto.Text != nil {
+		text = replaceFAEndProto.GetText()
+	}
+
+	d.wrapper.ReplaceFAEnd(reqID, text)
+}
+
 func (d *EDecoder) processWshMetaDataMsgProtoBuf(msgBuf *MsgBuffer) {
 	var wshMetaDataProto protobuf.WshMetaData
 	if err := proto.Unmarshal(msgBuf.bs, &wshMetaDataProto); err != nil {
@@ -3831,6 +3985,51 @@ func (d *EDecoder) processHistoricalSchedule(msgBuf *MsgBuffer) {
 	}
 
 	d.wrapper.HistoricalSchedule(reqID, startDateTime, endDateTime, timeZone, sessions)
+}
+
+func (d *EDecoder) processHistoricalScheduleMsgProtoBuf(msgBuf *MsgBuffer) {
+	var historicalScheduleProto protobuf.HistoricalSchedule
+	err := proto.Unmarshal(msgBuf.bs, &historicalScheduleProto)
+	if err != nil {
+		log.Error().Err(err).Msg("failed to unmarshal HistoricalSchedule message")
+		return
+	}
+
+	d.wrapper.HistoricalScheduleProtoBuf(&historicalScheduleProto)
+
+	reqID := NO_VALID_ID
+	if historicalScheduleProto.ReqId != nil {
+		reqID = int64(historicalScheduleProto.GetReqId())
+	}
+	startDT := ""
+	if historicalScheduleProto.StartDateTime != nil {
+		startDT = historicalScheduleProto.GetEndDateTime()
+	}
+	endDT := ""
+	if historicalScheduleProto.EndDateTime != nil {
+		endDT = historicalScheduleProto.GetEndDateTime()
+	}
+	tz := ""
+	if historicalScheduleProto.TimeZone != nil {
+		tz = historicalScheduleProto.GetTimeZone()
+	}
+
+	var sessions []HistoricalSession
+	for _, s := range historicalScheduleProto.GetHistoricalSessions() {
+		var hs HistoricalSession
+		if s.StartDateTime != nil {
+			hs.StartDateTime = s.GetStartDateTime()
+		}
+		if s.EndDateTime != nil {
+			hs.EndDateTime = s.GetEndDateTime()
+		}
+		if s.RefDate != nil {
+			hs.RefDate = s.GetRefDate()
+		}
+		sessions = append(sessions, hs)
+	}
+
+	d.wrapper.HistoricalSchedule(reqID, startDT, endDT, tz, sessions)
 }
 
 func (d *EDecoder) processUserInfo(msgBuf *MsgBuffer) {

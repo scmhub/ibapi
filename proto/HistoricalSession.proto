@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package protobuf;
+
+option go_package = ".;protobuf";
+
+message HistoricalSession {
+    optional string startDateTime = 1;
+    optional string endDateTime = 2;
+    optional string refDate = 3;
+}

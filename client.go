@@ -1108,7 +1108,12 @@ func (c *EClient) cancelTickByTickDataProtoBuf(cancelTickByTickProto *protobuf.C
 
 // CalculateImpliedVolatility calculates the implied volatility of the option.
 // Result will be delivered via wrapper.TickOptionComputation().
-func (c *EClient) CalculateImpliedVolatility(reqID int64, contract *Contract, optionPrice float64, underPrice float64, impVolOptions []TagValue) {
+func (c *EClient) CalculateImpliedVolatility(reqID int64, contract *Contract, optionPrice float64, underPrice float64, miscOptions []TagValue) {
+
+	if c.useProtoBuf(REQ_CALC_IMPLIED_VOLAT) {
+		c.calculateImpliedVolatilityProtoBuf(createCalculateImpliedVolatilityRequestProto(reqID, contract, optionPrice, underPrice, miscOptions))
+		return
+	}
 
 	if !c.IsConnected() {
 		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
@@ -1154,14 +1159,46 @@ func (c *EClient) CalculateImpliedVolatility(reqID int64, contract *Contract, op
 	me.encodeFloat64(underPrice)
 
 	if c.serverVersion >= MIN_SERVER_VER_LINKING {
-		me.encodeTagValues(impVolOptions)
+		me.encodeTagValues(miscOptions)
 	}
+
+	c.reqChan <- me.Bytes()
+}
+
+func (c *EClient) calculateImpliedVolatilityProtoBuf(calculateImpliedVolatilityRequestProto *protobuf.CalculateImpliedVolatilityRequest) {
+
+	reqID := NO_VALID_ID
+	if calculateImpliedVolatilityRequestProto.ReqId != nil {
+		reqID = int64(*calculateImpliedVolatilityRequestProto.ReqId)
+	}
+
+	if !c.IsConnected() {
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
+	me := NewMsgEncoder(19, c)
+
+	me.encodeMsgID(REQ_CALC_IMPLIED_VOLAT + PROTOBUF_MSG_ID)
+
+	msg, err := proto.Marshal(calculateImpliedVolatilityRequestProto)
+	if err != nil {
+		c.wrapper.Error(reqID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
+		return
+	}
+
+	me.encodeProto(msg)
 
 	c.reqChan <- me.Bytes()
 }
 
 // CancelCalculateImpliedVolatility cancels a request to calculate volatility for a supplied option price and underlying price.
 func (c *EClient) CancelCalculateImpliedVolatility(reqID int64) {
+
+	if c.useProtoBuf(CANCEL_CALC_IMPLIED_VOLAT) {
+		c.cancelCalculateImpliedVolatilityProtoBuf(createCancelCalculateImpliedVolatilityProto(reqID))
+		return
+	}
 
 	if !c.IsConnected() {
 		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
@@ -1185,10 +1222,42 @@ func (c *EClient) CancelCalculateImpliedVolatility(reqID int64) {
 	c.reqChan <- me.Bytes()
 }
 
+func (c *EClient) cancelCalculateImpliedVolatilityProtoBuf(cancelCalculateImpliedVolatilityProto *protobuf.CancelCalculateImpliedVolatility) {
+
+	reqID := NO_VALID_ID
+	if cancelCalculateImpliedVolatilityProto.ReqId != nil {
+		reqID = int64(*cancelCalculateImpliedVolatilityProto.ReqId)
+	}
+
+	if !c.IsConnected() {
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
+	me := NewMsgEncoder(3, c)
+
+	me.encodeMsgID(CANCEL_CALC_IMPLIED_VOLAT + PROTOBUF_MSG_ID)
+
+	msg, err := proto.Marshal(cancelCalculateImpliedVolatilityProto)
+	if err != nil {
+		c.wrapper.Error(reqID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
+		return
+	}
+
+	me.encodeProto(msg)
+
+	c.reqChan <- me.Bytes()
+}
+
 // CalculateOptionPrice calculate the price of the option
 // Call this function to calculate price for a supplied option volatility and underlying price.
 // Result will be delivered via wrapper.TickOptionComputation().
-func (c *EClient) CalculateOptionPrice(reqID int64, contract *Contract, volatility float64, underPrice float64, optPrcOptions []TagValue) {
+func (c *EClient) CalculateOptionPrice(reqID int64, contract *Contract, volatility float64, underPrice float64, miscOptions []TagValue) {
+
+	if c.useProtoBuf(REQ_CALC_OPTION_PRICE) {
+		c.calculateOptionPriceProtoBuf(createCalculateOptionPriceRequestProto(reqID, contract, volatility, underPrice, miscOptions))
+		return
+	}
 
 	if !c.IsConnected() {
 		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
@@ -1234,14 +1303,46 @@ func (c *EClient) CalculateOptionPrice(reqID int64, contract *Contract, volatili
 	me.encodeFloat64(underPrice)
 
 	if c.serverVersion >= MIN_SERVER_VER_LINKING {
-		me.encodeTagValues(optPrcOptions)
+		me.encodeTagValues(miscOptions)
 	}
+
+	c.reqChan <- me.Bytes()
+}
+
+func (c *EClient) calculateOptionPriceProtoBuf(calculateOptionPriceRequestProto *protobuf.CalculateOptionPriceRequest) {
+
+	reqID := NO_VALID_ID
+	if calculateOptionPriceRequestProto.ReqId != nil {
+		reqID = int64(*calculateOptionPriceRequestProto.ReqId)
+	}
+
+	if !c.IsConnected() {
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
+	me := NewMsgEncoder(19, c)
+
+	me.encodeMsgID(REQ_CALC_OPTION_PRICE + PROTOBUF_MSG_ID)
+
+	msg, err := proto.Marshal(calculateOptionPriceRequestProto)
+	if err != nil {
+		c.wrapper.Error(reqID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
+		return
+	}
+
+	me.encodeProto(msg)
 
 	c.reqChan <- me.Bytes()
 }
 
 // CancelCalculateOptionPrice cancels the calculation of option price.
 func (c *EClient) CancelCalculateOptionPrice(reqID int64) {
+
+	if c.useProtoBuf(CANCEL_CALC_OPTION_PRICE) {
+		c.cancelCalculateOptionPriceProtoBuf(createCancelCalculateOptionPriceProto(reqID))
+		return
+	}
 
 	if !c.IsConnected() {
 		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
@@ -1265,6 +1366,33 @@ func (c *EClient) CancelCalculateOptionPrice(reqID int64) {
 	c.reqChan <- me.Bytes()
 }
 
+func (c *EClient) cancelCalculateOptionPriceProtoBuf(cancelCalculateOptionPriceProto *protobuf.CancelCalculateOptionPrice) {
+
+	reqID := NO_VALID_ID
+	if cancelCalculateOptionPriceProto.ReqId != nil {
+		reqID = int64(*cancelCalculateOptionPriceProto.ReqId)
+	}
+
+	if !c.IsConnected() {
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
+	me := NewMsgEncoder(3, c)
+
+	me.encodeMsgID(CANCEL_CALC_OPTION_PRICE + PROTOBUF_MSG_ID)
+
+	msg, err := proto.Marshal(cancelCalculateOptionPriceProto)
+	if err != nil {
+		c.wrapper.Error(reqID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
+		return
+	}
+
+	me.encodeProto(msg)
+
+	c.reqChan <- me.Bytes()
+}
+
 // ExerciseOptions exercises the option defined by the contract.
 // reqId is the ticker id and must be a unique value.
 // contract contains a description of the contract to be exercised.
@@ -1282,6 +1410,11 @@ func (c *EClient) CancelCalculateOptionPrice(reqID int64) {
 // customerAccount is the customer account.
 // professionalCustomer:bool - professional customer.
 func (c *EClient) ExerciseOptions(reqID TickerID, contract *Contract, exerciseAction int, exerciseQuantity int, account string, override int, manualOrderTime string, customerAccount string, professionalCustomer bool) {
+
+	if c.useProtoBuf(EXERCISE_OPTIONS) {
+		c.exerciseOptionsProtoBuf(createExerciseOptionsRequestProto(reqID, contract, int64(exerciseAction), int64(exerciseQuantity), account, override != 0, manualOrderTime, customerAccount, professionalCustomer))
+		return
+	}
 
 	if !c.IsConnected() {
 		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
@@ -1352,6 +1485,33 @@ func (c *EClient) ExerciseOptions(reqID TickerID, contract *Contract, exerciseAc
 	if c.serverVersion >= MIN_SERVER_VER_PROFESSIONAL_CUSTOMER {
 		me.encodeBool(professionalCustomer)
 	}
+
+	c.reqChan <- me.Bytes()
+}
+
+func (c *EClient) exerciseOptionsProtoBuf(exerciseOptionsRequestProto *protobuf.ExerciseOptionsRequest) {
+
+	orderID := NO_VALID_ID
+	if exerciseOptionsRequestProto.OrderId != nil {
+		orderID = int64(*exerciseOptionsRequestProto.OrderId)
+	}
+
+	if !c.IsConnected() {
+		c.wrapper.Error(orderID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
+	me := NewMsgEncoder(17, c)
+
+	me.encodeMsgID(EXERCISE_OPTIONS + PROTOBUF_MSG_ID)
+
+	msg, err := proto.Marshal(exerciseOptionsRequestProto)
+	if err != nil {
+		c.wrapper.Error(orderID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
+		return
+	}
+
+	me.encodeProto(msg)
 
 	c.reqChan <- me.Bytes()
 }
@@ -3686,6 +3846,11 @@ func (c *EClient) reqManagedAcctsProtoBuf(managedAccountsRequestProto *protobuf.
 // faData is 1->"GROUPS", 3->"ALIASES".
 func (c *EClient) RequestFA(faDataType FaDataType) {
 
+	if c.useProtoBuf(REQ_FA) {
+		c.reqFAProtoBuf(createFARequestProto(int64(faDataType)))
+		return
+	}
+
 	if !c.IsConnected() {
 		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
@@ -3707,6 +3872,28 @@ func (c *EClient) RequestFA(faDataType FaDataType) {
 	c.reqChan <- me.Bytes()
 }
 
+func (c *EClient) reqFAProtoBuf(faRequestProto *protobuf.FARequest) {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
+	me := NewMsgEncoder(3, c)
+
+	me.encodeMsgID(REQ_FA + PROTOBUF_MSG_ID)
+
+	msg, err := proto.Marshal(faRequestProto)
+	if err != nil {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
+	}
+
+	me.encodeProto(msg)
+
+	c.reqChan <- me.Bytes()
+
+}
+
 // ReplaceFA replaces the FA configuration information from the API.
 // Note that this can also be done manually in TWS itself.
 // faData specifies the type of Financial Advisor configuration data being requested.
@@ -3714,6 +3901,11 @@ func (c *EClient) RequestFA(faDataType FaDataType) {
 // 3 = ACCOUNT ALIASES
 // cxml is the XML string containing the new FA configuration information.
 func (c *EClient) ReplaceFA(reqID int64, faDataType FaDataType, cxml string) {
+
+	if c.useProtoBuf(REPLACE_FA) {
+		c.replaceFAProtoBuf(createFAReplaceProto(reqID, int64(faDataType), cxml))
+		return
+	}
 
 	if !c.IsConnected() {
 		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
@@ -3737,6 +3929,33 @@ func (c *EClient) ReplaceFA(reqID int64, faDataType FaDataType, cxml string) {
 	if c.serverVersion >= MIN_SERVER_VER_REPLACE_FA_END {
 		me.encodeInt64(reqID)
 	}
+
+	c.reqChan <- me.Bytes()
+}
+
+func (c *EClient) replaceFAProtoBuf(faReplaceProto *protobuf.FAReplace) {
+
+	reqID := NO_VALID_ID
+	if faReplaceProto.ReqId != nil {
+		reqID = int64(*faReplaceProto.ReqId)
+	}
+
+	if !c.IsConnected() {
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
+	me := NewMsgEncoder(5, c)
+
+	me.encodeMsgID(REPLACE_FA + PROTOBUF_MSG_ID)
+
+	msg, err := proto.Marshal(faReplaceProto)
+	if err != nil {
+		c.wrapper.Error(reqID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
+		return
+	}
+
+	me.encodeProto(msg)
 
 	c.reqChan <- me.Bytes()
 }

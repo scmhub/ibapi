@@ -1743,3 +1743,124 @@ func createCancelScannerSubscriptionProto(reqID int64) *protobuf.CancelScannerSu
 	}
 	return cancel
 }
+
+func createFARequestProto(faDataType int64) *protobuf.FARequest {
+	req := &protobuf.FARequest{}
+	if isValidInt64Value(faDataType) {
+		t := int32(faDataType)
+		req.FaDataType = &t
+	}
+	return req
+}
+
+func createFAReplaceProto(reqID int64, faDataType int64, xml string) *protobuf.FAReplace {
+	req := &protobuf.FAReplace{}
+	if isValidInt64Value(reqID) {
+		id := int32(reqID)
+		req.ReqId = &id
+	}
+	if isValidInt64Value(faDataType) {
+		t := int32(faDataType)
+		req.FaDataType = &t
+	}
+	if !stringIsEmpty(xml) {
+		req.Xml = &xml
+	}
+	return req
+}
+
+func createExerciseOptionsRequestProto(orderID int64, contract *Contract, exerciseAction, exerciseQuantity int64, account string, override bool, manualOrderTime, customerAccount string, professionalCustomer bool) *protobuf.ExerciseOptionsRequest {
+	req := &protobuf.ExerciseOptionsRequest{}
+	if isValidInt64Value(orderID) {
+		id := int32(orderID)
+		req.OrderId = &id
+	}
+	req.Contract = createContractProto(contract, &Order{})
+
+	if isValidInt64Value(exerciseAction) {
+		action := int32(exerciseAction)
+		req.ExerciseAction = &action
+	}
+	if isValidInt64Value(exerciseQuantity) {
+		qty := int32(exerciseQuantity)
+		req.ExerciseQuantity = &qty
+	}
+	if !stringIsEmpty(account) {
+		req.Account = &account
+	}
+	if override {
+		req.Override = &override
+	}
+	if !stringIsEmpty(manualOrderTime) {
+		req.ManualOrderTime = &manualOrderTime
+	}
+	if !stringIsEmpty(customerAccount) {
+		req.CustomerAccount = &customerAccount
+	}
+	if professionalCustomer {
+		req.ProfessionalCustomer = &professionalCustomer
+	}
+	return req
+}
+
+func createCalculateImpliedVolatilityRequestProto(reqID int64, contract *Contract, optionPrice, underPrice float64, impliedVolatilityOptionsList []TagValue) *protobuf.CalculateImpliedVolatilityRequest {
+	req := &protobuf.CalculateImpliedVolatilityRequest{}
+	if isValidInt64Value(reqID) {
+		id := int32(reqID)
+		req.ReqId = &id
+	}
+	req.Contract = createContractProto(contract, &Order{})
+
+	if isValidFloat64Value(optionPrice) {
+		req.OptionPrice = &optionPrice
+	}
+	if isValidFloat64Value(underPrice) {
+		req.UnderPrice = &underPrice
+	}
+
+	opts := createStringStringMap(impliedVolatilityOptionsList)
+	if len(opts) > 0 {
+		req.ImpliedVolatilityOptions = opts
+	}
+	return req
+}
+
+func createCancelCalculateImpliedVolatilityProto(reqID int64) *protobuf.CancelCalculateImpliedVolatility {
+	cancel := &protobuf.CancelCalculateImpliedVolatility{}
+	if isValidInt64Value(reqID) {
+		id := int32(reqID)
+		cancel.ReqId = &id
+	}
+	return cancel
+}
+
+func createCalculateOptionPriceRequestProto(reqID int64, contract *Contract, volatility, underPrice float64, optionPriceOptionsList []TagValue) *protobuf.CalculateOptionPriceRequest {
+	req := &protobuf.CalculateOptionPriceRequest{}
+	if isValidInt64Value(reqID) {
+		id := int32(reqID)
+		req.ReqId = &id
+	}
+	req.Contract = createContractProto(contract, &Order{})
+
+	if isValidFloat64Value(volatility) {
+		req.Volatility = &volatility
+	}
+	if isValidFloat64Value(underPrice) {
+		req.UnderPrice = &underPrice
+	}
+
+	opts := createStringStringMap(optionPriceOptionsList)
+	if len(opts) > 0 {
+		req.OptionPriceOptions = opts
+	}
+	return req
+}
+
+func createCancelCalculateOptionPriceProto(reqID int64) *protobuf.CancelCalculateOptionPrice {
+	cancel := &protobuf.CancelCalculateOptionPrice{}
+	if isValidInt64Value(reqID) {
+		id := int32(reqID)
+		cancel.ReqId = &id
+	}
+	return cancel
+}

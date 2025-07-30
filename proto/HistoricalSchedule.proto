@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package protobuf;
+
+import "HistoricalSession.proto";
+
+option go_package = ".;protobuf";
+
+message HistoricalSchedule {
+    optional int32 reqId = 1;
+    optional string startDateTime = 2;
+    optional string endDateTime = 3;
+    optional string timeZone = 4;
+	repeated HistoricalSession historicalSessions = 5;
+}

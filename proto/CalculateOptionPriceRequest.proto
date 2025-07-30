@@ -1,0 +1,16 @@
+
+syntax = "proto3";
+
+package protobuf;
+
+import "Contract.proto";
+
+option go_package = ".;protobuf";
+
+message CalculateOptionPriceRequest {
+    optional int32 reqId = 1;
+	optional Contract contract = 2;
+    optional double volatility = 3;
+    optional double underPrice = 4;
+    map<string, string> optionPriceOptions = 5;
+}

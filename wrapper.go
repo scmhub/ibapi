@@ -399,6 +399,18 @@ type EWrapper interface {
 	PnLProtoBuf(pnlProto *protobuf.PnL)
 	// PnLSingleProtoBuf .
 	PnLSingleProtoBuf(pnlSingleProto *protobuf.PnLSingle)
+	// ReceiveFAProtoBuf .
+	ReceiveFAProtoBuf(receiveFAProto *protobuf.ReceiveFA)
+	// ReplaceFAEndProtoBuf .
+	ReplaceFAEndProtoBuf(replaceFAEndProto *protobuf.ReplaceFAEnd)
+	// CommissionAndFeesReportProtoBuf .
+	CommissionAndFeesReportProtoBuf(commissionAndFeesReportProto *protobuf.CommissionAndFeesReport)
+	// HistoricalScheduleProtoBuf .
+	HistoricalScheduleProtoBuf(historicalScheduleProto *protobuf.HistoricalSchedule)
+	// RerouteMarketDataRequestProtoBuf .
+	RerouteMarketDataRequestProtoBuf(rerouteMarketDataRequestProto *protobuf.RerouteMarketDataRequest)
+	// RerouteMarketDepthRequestProtoBuf .
+	RerouteMarketDepthRequestProtoBuf(rerouteMarketDepthRequestProto *protobuf.RerouteMarketDepthRequest)
 }
 
 var _ EWrapper = (*Wrapper)(nil)
@@ -1047,4 +1059,28 @@ func (w Wrapper) PnLProtoBuf(pnlProto *protobuf.PnL) {
 
 func (w Wrapper) PnLSingleProtoBuf(pnlSingleProto *protobuf.PnLSingle) {
 	log.Debug().Stringer("pnlSingleProto", pnlSingleProto).Msg("<PnLSingleProtoBuf>")
+}
+
+func (w Wrapper) ReceiveFAProtoBuf(receiveFAProto *protobuf.ReceiveFA) {
+	log.Debug().Stringer("receiveFAProto", receiveFAProto).Msg("<ReceiveFAProtoBuf>")
+}
+
+func (w Wrapper) ReplaceFAEndProtoBuf(replaceFAEndProto *protobuf.ReplaceFAEnd) {
+	log.Debug().Stringer("replaceFAEndProto", replaceFAEndProto).Msg("<ReplaceFAEndProtoBuf>")
+}
+
+func (w Wrapper) CommissionAndFeesReportProtoBuf(commissionAndFeesReportProto *protobuf.CommissionAndFeesReport) {
+	log.Debug().Stringer("commissionAndFeesReportProto", commissionAndFeesReportProto).Msg("<CommissionAndFeesReportProtoBuf>")
+}
+
+func (w Wrapper) HistoricalScheduleProtoBuf(historicalScheduleProto *protobuf.HistoricalSchedule) {
+	log.Debug().Stringer("historicalScheduleProto", historicalScheduleProto).Msg("<HistoricalScheduleProtoBuf>")
+}
+
+func (w Wrapper) RerouteMarketDataRequestProtoBuf(rerouteMarketDataRequestProto *protobuf.RerouteMarketDataRequest) {
+	log.Debug().Stringer("rerouteMarketDataRequestProto", rerouteMarketDataRequestProto).Msg("<RerouteMarketDataRequestProtoBuf>")
+}
+
+func (w Wrapper) RerouteMarketDepthRequestProtoBuf(rerouteMarketDepthRequestProto *protobuf.RerouteMarketDepthRequest) {
+	log.Debug().Stringer("rerouteMarketDepthRequestProto", rerouteMarketDepthRequestProto).Msg("<RerouteMarketDepthRequestProtoBuf>")
 }

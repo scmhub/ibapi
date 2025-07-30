@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package protobuf;
+
+option go_package = ".;protobuf";
+
+message RerouteMarketDataRequest {
+    optional int32 reqId = 1;
+    optional int32 conId = 2;
+	optional string exchange = 3;
+}
