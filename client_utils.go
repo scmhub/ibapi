@@ -781,8 +781,12 @@ func createContractProto(contract *Contract, order *Order) *protobuf.Contract {
 	if !stringIsEmpty(contract.ComboLegsDescrip) {
 		contractProto.ComboLegsDescrip = &contract.ComboLegsDescrip
 	}
-	if len(contract.ComboLegs) > 0 && order != nil {
-		contractProto.ComboLegs = createComboLegsProto(contract.ComboLegs, order.OrderComboLegs)
+	if len(contract.ComboLegs) > 0 {
+		var legs []OrderComboLeg
+		if order != nil {
+			legs = order.OrderComboLegs
+		}
+		contractProto.ComboLegs = createComboLegsProto(contract.ComboLegs, legs)
 	}
 
 	return contractProto
