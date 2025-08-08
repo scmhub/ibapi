@@ -4,26 +4,43 @@ import (
 	"flag"
 	"math/rand"
 	"os"
+	"strconv"
 	"testing"
 	"time"
+
+	"github.com/scmhub/ibapi/sandbox"
 )
 
-const (
-	host    = "localhost" // "localhost"
-	port    = 7497        //7496
-	account = "DU5352527" // "DU000001"
+var (
+	host    = "localhost" // override via IBAPI_HOST
+	port    = 7497        // override via IBAPI_PORT
+	account = "DU5352527" // sample account for some requests
 )
 
-var clientID = rand.Int63n(999999)
-var orderID int64
+var (
+	clientID = rand.Int63n(999999)
+	orderID  int64
+)
 
-var prettyFlag bool
-var logLevel int
+var (
+	prettyFlag bool
+	logLevel   int
+)
 
 func init() {
 	testing.Init()
 	flag.IntVar(&logLevel, "logLevel", 1, "log Level: -1:trace, 0:debug, 1:info, 2:warning, 3:error, 4:fatal, 5:panic")
 	flag.BoolVar(&prettyFlag, "pretty", false, "enable pretty printing")
+
+	// Allow overriding host/port for tests (e.g., to use mock TWS)
+	if h := os.Getenv("IBAPI_HOST"); h != "" {
+		host = h
+	}
+	if ps := os.Getenv("IBAPI_PORT"); ps != "" {
+		if pv, err := strconv.Atoi(ps); err == nil {
+			port = pv
+		}
+	}
 }
 
 var globalIB *EClient // Global Eclient for batch testing
@@ -63,6 +80,16 @@ func TestMain(m *testing.M) {
 	}
 
 	// Run the tests
+	// Optionally start a mock TWS if requested
+	if os.Getenv("START_MOCK_TWS") == "1" {
+		// Start mock server in the background to accept connections
+		go func(h string, p int) {
+			_ = sandbox.StartMockTWSServer(h, p)
+		}(host, port)
+		// Give the mock server a moment to start
+		time.Sleep(100 * time.Millisecond)
+	}
+
 	code := m.Run()
 
 	// Teardown phase
@@ -177,7 +204,6 @@ func TestTickDataOperation(t *testing.T) {
 	ib.CancelMktData(1018)
 	ib.CancelMktData(1019)
 	ib.CancelMktData(1020)
-
 }
 
 func TestTickOptionComputationOperation(t *testing.T) {
@@ -494,8 +520,8 @@ func TestBracketSample(t *testing.T) {
 
 func TestHedgeSample(t *testing.T) {
 	ib := setupIBClient(t)
-	//F Hedge order
-	//Parent order on a contract which currency differs from your base currency
+	// F Hedge order
+	// Parent order on a contract which currency differs from your base currency
 	parent := LimitOrder("BUY", StringToDecimal("100"), 10)
 	parent.OrderID = nextID()
 	parent.Transmit = false
@@ -647,7 +673,6 @@ func TestRreqSmartComponents(t *testing.T) {
 	ib.ReqMktData(13001, USStockAtSmart(), "", false, false, nil)
 	time.Sleep(5 * time.Second)
 	ib.CancelMktData(13001)
-
 }
 
 func TesReqNewsProviders(t *testing.T) {

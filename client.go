@@ -296,6 +296,8 @@ type EClient struct {
 	wg                   sync.WaitGroup
 	watchOnce            sync.Once
 	err                  error
+	// closing ensures Disconnect runs as a single-flight
+	closing int32
 }
 
 // NewEClient returns a new Eclient.
@@ -310,7 +312,6 @@ func NewEClient(wrapper EWrapper) *EClient {
 }
 
 func (c *EClient) reset() {
-
 	c.host = ""
 	c.port = -1
 	c.clientID = -1
@@ -336,6 +337,7 @@ func (c *EClient) reset() {
 	c.err = nil
 
 	c.watchOnce = sync.Once{}
+	atomic.StoreInt32(&c.closing, 0)
 
 	c.setConnState(DISCONNECTED)
 	c.connectOptions = ""
@@ -409,7 +411,6 @@ func (c *EClient) useProtoBuf(msgID int64) bool {
 
 // startAPI initiates the message exchange between the client application and the TWS/IB Gateway.
 func (c *EClient) startAPI() error {
-
 	if !c.IsConnected() {
 		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return NOT_CONNECTED
@@ -429,7 +430,6 @@ func (c *EClient) startAPI() error {
 		payload = append(idBytes, []byte(msg)...)
 	} else {
 		payload = []byte(makeField(START_API) + msg)
-
 	}
 
 	msgLen := uint32(len(payload))
@@ -452,7 +452,6 @@ func (c *EClient) startAPI() error {
 // There is no feedback for a successful connection, but a subsequent attempt to connect will return the message "Already connected.".
 // You should wait for the connection to be established and NextValidID to be returned before calling any other function. If you don't wait, you will get a broken pipe error.
 func (c *EClient) Connect(host string, port int, clientID int64) error {
-
 	if c.IsConnected() {
 		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), ALREADY_CONNECTED.Code, ALREADY_CONNECTED.Msg, "")
 		return NOT_CONNECTED
@@ -530,7 +529,7 @@ func (c *EClient) Connect(host string, port int, clientID int64) error {
 	// init decoder
 	c.decoder = &EDecoder{wrapper: c.wrapper, serverVersion: c.serverVersion}
 
-	//start Ereader
+	// start Ereader
 	go EReader(c.ctx, c.cancel, c.scanner, c.decoder, &c.wg)
 
 	// start requester
@@ -545,13 +544,13 @@ func (c *EClient) Connect(host string, port int, clientID int64) error {
 	}
 
 	// 4) Launch the shutdown watcher exactly once
+	// Capture ctx to avoid races with reset() reassigning c.ctx
+	capturedCtx := c.ctx
 	c.watchOnce.Do(func() {
-		go func() {
-			<-c.ctx.Done() // waits for c.cancel()
-			if err := c.Disconnect(); err != nil {
-				log.Error().Err(err).Msg("Disconnect error in watcher")
-			}
-		}()
+		go func(ctx context.Context) {
+			<-ctx.Done() // waits for c.cancel()
+			// Avoid calling Disconnect here to prevent races; the owner handles it.
+		}(capturedCtx)
 	})
 
 	log.Debug().Msg("IB Client Connected!")
@@ -580,11 +579,13 @@ func (c *EClient) ConnectWithGracefulShutdown(host string, port int, clientID in
 // Disconnect terminates the connections with TWS.
 // Calling this function does not cancel orders that have already been sent.
 func (c *EClient) Disconnect() error {
-	if !c.IsConnected() {
+	// Ensure only one goroutine performs the disconnect/reset sequence
+	if !atomic.CompareAndSwapInt32(&c.closing, 0, 1) {
 		return nil
 	}
+	defer atomic.StoreInt32(&c.closing, 0)
 
-	// Set Disconnected state realy so that new calls to Disconnect() will not block
+	// Set Disconnected state early so new calls will not block
 	c.setConnState(DISCONNECTED)
 
 	// 1) Cancel to unblock request Loop
@@ -628,7 +629,6 @@ func (c *EClient) SetOptionalCapabilities(optCapts string) {
 
 // SetConnectionOptions setup the Connection Options.
 func (c *EClient) SetConnectionOptions(connectOptions string) {
-
 	if c.IsConnected() {
 		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), ALREADY_CONNECTED.Code, ALREADY_CONNECTED.Msg, "")
 		return
@@ -639,7 +639,6 @@ func (c *EClient) SetConnectionOptions(connectOptions string) {
 
 // ReqCurrentTime asks the current system time on the server side.
 func (c *EClient) ReqCurrentTime() {
-
 	if !c.IsConnected() {
 		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
@@ -667,7 +666,6 @@ func (c *EClient) ServerVersion() Version {
 // 4 = INFORMATION
 // 5 = DETAIL
 func (c *EClient) SetServerLogLevel(logLevel int64) {
-
 	if !c.IsConnected() {
 		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
@@ -702,7 +700,6 @@ func (c *EClient) TWSConnectionTime() string {
 // regulatorySnapshot: With the US Value Snapshot Bundle for stocks, regulatory snapshots are available for 0.01 USD each.
 // mktDataOptions is for internal use only.Use default value XYZ.
 func (c *EClient) ReqMktData(reqID TickerID, contract *Contract, genericTickList string, snapshot bool, regulatorySnapshot bool, mktDataOptions []TagValue) {
-
 	if c.useProtoBuf(REQ_MKT_DATA) {
 		c.reqMarketDataProtoBuf(createMarketDataRequestProto(reqID, contract, genericTickList, snapshot, regulatorySnapshot, mktDataOptions))
 		return
@@ -790,7 +787,6 @@ func (c *EClient) ReqMktData(reqID TickerID, contract *Contract, genericTickList
 }
 
 func (c *EClient) reqMarketDataProtoBuf(marketDataRequestProto *protobuf.MarketDataRequest) {
-
 	reqID := NO_VALID_ID
 	if marketDataRequestProto.ReqId != nil {
 		reqID = int64(*marketDataRequestProto.ReqId)
@@ -818,7 +814,6 @@ func (c *EClient) reqMarketDataProtoBuf(marketDataRequestProto *protobuf.MarketD
 
 // CancelMktData stops the market data flow for the specified TickerId.
 func (c *EClient) CancelMktData(reqID TickerID) {
-
 	if c.useProtoBuf(CANCEL_MKT_DATA) {
 		c.cancelMarketDataProtoBuf(createCancelMarketDataProto(reqID))
 		return
@@ -839,7 +834,6 @@ func (c *EClient) CancelMktData(reqID TickerID) {
 }
 
 func (c *EClient) cancelMarketDataProtoBuf(cancelMarketDataProto *protobuf.CancelMarketData) {
-
 	reqID := NO_VALID_ID
 	if cancelMarketDataProto.ReqId != nil {
 		reqID = int64(*cancelMarketDataProto.ReqId)
@@ -878,7 +872,6 @@ func (c *EClient) cancelMarketDataProtoBuf(cancelMarketDataProto *protobuf.Cance
 //	3 -> delayed market data
 //	4 -> delayed frozen market data
 func (c *EClient) ReqMarketDataType(marketDataType int64) {
-
 	if c.useProtoBuf(REQ_MARKET_DATA_TYPE) {
 		c.reqMarketDataTypeProtoBuf(createMarketDataTypeRequestProto(marketDataType))
 		return
@@ -909,7 +902,6 @@ func (c *EClient) ReqMarketDataType(marketDataType int64) {
 }
 
 func (c *EClient) reqMarketDataTypeProtoBuf(marketDataTypeRequestProto *protobuf.MarketDataTypeRequest) {
-
 	if !c.IsConnected() {
 		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
@@ -932,7 +924,6 @@ func (c *EClient) reqMarketDataTypeProtoBuf(marketDataTypeRequestProto *protobuf
 
 // ReqSmartComponents request the smartComponents.
 func (c *EClient) ReqSmartComponents(reqID int64, bboExchange string) {
-
 	if !c.IsConnected() {
 		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
@@ -952,7 +943,6 @@ func (c *EClient) ReqSmartComponents(reqID int64, bboExchange string) {
 
 // ReqMarketRule requests the market rule.
 func (c *EClient) ReqMarketRule(marketRuleID int64) {
-
 	if !c.IsConnected() {
 		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
@@ -976,7 +966,6 @@ func (c *EClient) ReqMarketRule(marketRuleID int64) {
 // ignoreSize will ignore bid/ask ticks that only update the size if true.
 // Result will be delivered via wrapper.TickByTickAllLast() wrapper.TickByTickBidAsk() wrapper.TickByTickMidPoint().
 func (c *EClient) ReqTickByTickData(reqID int64, contract *Contract, tickType string, numberOfTicks int64, ignoreSize bool) {
-
 	if c.useProtoBuf(REQ_TICK_BY_TICK_DATA) {
 		c.reqTickByTickDataProtoBuf(createTickByTickRequestProto(reqID, contract, tickType, numberOfTicks, ignoreSize))
 		return
@@ -1024,7 +1013,6 @@ func (c *EClient) ReqTickByTickData(reqID int64, contract *Contract, tickType st
 }
 
 func (c *EClient) reqTickByTickDataProtoBuf(tickByTickRequestProto *protobuf.TickByTickRequest) {
-
 	reqID := NO_VALID_ID
 	if tickByTickRequestProto.ReqId != nil {
 		reqID = int64(*tickByTickRequestProto.ReqId)
@@ -1052,7 +1040,6 @@ func (c *EClient) reqTickByTickDataProtoBuf(tickByTickRequestProto *protobuf.Tic
 
 // CancelTickByTickData cancel the tick-by-tick data
 func (c *EClient) CancelTickByTickData(reqID int64) {
-
 	if c.useProtoBuf(CANCEL_TICK_BY_TICK_DATA) {
 		c.cancelTickByTickDataProtoBuf(createCancelTickByTickProto(reqID))
 		return
@@ -1076,7 +1063,6 @@ func (c *EClient) CancelTickByTickData(reqID int64) {
 }
 
 func (c *EClient) cancelTickByTickDataProtoBuf(cancelTickByTickProto *protobuf.CancelTickByTick) {
-
 	reqID := NO_VALID_ID
 	if cancelTickByTickProto.ReqId != nil {
 		reqID = int64(*cancelTickByTickProto.ReqId)
@@ -1109,7 +1095,6 @@ func (c *EClient) cancelTickByTickDataProtoBuf(cancelTickByTickProto *protobuf.C
 // CalculateImpliedVolatility calculates the implied volatility of the option.
 // Result will be delivered via wrapper.TickOptionComputation().
 func (c *EClient) CalculateImpliedVolatility(reqID int64, contract *Contract, optionPrice float64, underPrice float64, miscOptions []TagValue) {
-
 	if c.useProtoBuf(REQ_CALC_IMPLIED_VOLAT) {
 		c.calculateImpliedVolatilityProtoBuf(createCalculateImpliedVolatilityRequestProto(reqID, contract, optionPrice, underPrice, miscOptions))
 		return
@@ -1166,7 +1151,6 @@ func (c *EClient) CalculateImpliedVolatility(reqID int64, contract *Contract, op
 }
 
 func (c *EClient) calculateImpliedVolatilityProtoBuf(calculateImpliedVolatilityRequestProto *protobuf.CalculateImpliedVolatilityRequest) {
-
 	reqID := NO_VALID_ID
 	if calculateImpliedVolatilityRequestProto.ReqId != nil {
 		reqID = int64(*calculateImpliedVolatilityRequestProto.ReqId)
@@ -1194,7 +1178,6 @@ func (c *EClient) calculateImpliedVolatilityProtoBuf(calculateImpliedVolatilityR
 
 // CancelCalculateImpliedVolatility cancels a request to calculate volatility for a supplied option price and underlying price.
 func (c *EClient) CancelCalculateImpliedVolatility(reqID int64) {
-
 	if c.useProtoBuf(CANCEL_CALC_IMPLIED_VOLAT) {
 		c.cancelCalculateImpliedVolatilityProtoBuf(createCancelCalculateImpliedVolatilityProto(reqID))
 		return
@@ -1223,7 +1206,6 @@ func (c *EClient) CancelCalculateImpliedVolatility(reqID int64) {
 }
 
 func (c *EClient) cancelCalculateImpliedVolatilityProtoBuf(cancelCalculateImpliedVolatilityProto *protobuf.CancelCalculateImpliedVolatility) {
-
 	reqID := NO_VALID_ID
 	if cancelCalculateImpliedVolatilityProto.ReqId != nil {
 		reqID = int64(*cancelCalculateImpliedVolatilityProto.ReqId)
@@ -1253,7 +1235,6 @@ func (c *EClient) cancelCalculateImpliedVolatilityProtoBuf(cancelCalculateImplie
 // Call this function to calculate price for a supplied option volatility and underlying price.
 // Result will be delivered via wrapper.TickOptionComputation().
 func (c *EClient) CalculateOptionPrice(reqID int64, contract *Contract, volatility float64, underPrice float64, miscOptions []TagValue) {
-
 	if c.useProtoBuf(REQ_CALC_OPTION_PRICE) {
 		c.calculateOptionPriceProtoBuf(createCalculateOptionPriceRequestProto(reqID, contract, volatility, underPrice, miscOptions))
 		return
@@ -1310,7 +1291,6 @@ func (c *EClient) CalculateOptionPrice(reqID int64, contract *Contract, volatili
 }
 
 func (c *EClient) calculateOptionPriceProtoBuf(calculateOptionPriceRequestProto *protobuf.CalculateOptionPriceRequest) {
-
 	reqID := NO_VALID_ID
 	if calculateOptionPriceRequestProto.ReqId != nil {
 		reqID = int64(*calculateOptionPriceRequestProto.ReqId)
@@ -1338,7 +1318,6 @@ func (c *EClient) calculateOptionPriceProtoBuf(calculateOptionPriceRequestProto 
 
 // CancelCalculateOptionPrice cancels the calculation of option price.
 func (c *EClient) CancelCalculateOptionPrice(reqID int64) {
-
 	if c.useProtoBuf(CANCEL_CALC_OPTION_PRICE) {
 		c.cancelCalculateOptionPriceProtoBuf(createCancelCalculateOptionPriceProto(reqID))
 		return
@@ -1367,7 +1346,6 @@ func (c *EClient) CancelCalculateOptionPrice(reqID int64) {
 }
 
 func (c *EClient) cancelCalculateOptionPriceProtoBuf(cancelCalculateOptionPriceProto *protobuf.CancelCalculateOptionPrice) {
-
 	reqID := NO_VALID_ID
 	if cancelCalculateOptionPriceProto.ReqId != nil {
 		reqID = int64(*cancelCalculateOptionPriceProto.ReqId)
@@ -1410,7 +1388,6 @@ func (c *EClient) cancelCalculateOptionPriceProtoBuf(cancelCalculateOptionPriceP
 // customerAccount is the customer account.
 // professionalCustomer:bool - professional customer.
 func (c *EClient) ExerciseOptions(reqID TickerID, contract *Contract, exerciseAction int, exerciseQuantity int, account string, override int, manualOrderTime string, customerAccount string, professionalCustomer bool) {
-
 	if c.useProtoBuf(EXERCISE_OPTIONS) {
 		c.exerciseOptionsProtoBuf(createExerciseOptionsRequestProto(reqID, contract, int64(exerciseAction), int64(exerciseQuantity), account, override != 0, manualOrderTime, customerAccount, professionalCustomer))
 		return
@@ -1490,7 +1467,6 @@ func (c *EClient) ExerciseOptions(reqID TickerID, contract *Contract, exerciseAc
 }
 
 func (c *EClient) exerciseOptionsProtoBuf(exerciseOptionsRequestProto *protobuf.ExerciseOptionsRequest) {
-
 	orderID := NO_VALID_ID
 	if exerciseOptionsRequestProto.OrderId != nil {
 		orderID = int64(*exerciseOptionsRequestProto.OrderId)
@@ -1527,7 +1503,6 @@ func (c *EClient) exerciseOptionsProtoBuf(exerciseOptionsRequestProto *protobuf.
 // contract contains a description of the contract which is being traded.
 // order contains the details of the traded order.
 func (c *EClient) PlaceOrder(orderID OrderID, contract *Contract, order *Order) {
-
 	if c.useProtoBuf(PLACE_ORDER) {
 		placeOrderRequestProto, err := createPlaceOrderRequestProto(orderID, contract, order)
 		if err != nil {
@@ -1635,7 +1610,6 @@ func (c *EClient) PlaceOrder(orderID OrderID, contract *Contract, order *Order) 
 				c.wrapper.Error(orderID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+"  It does not support per-leg prices for order combo legs.", "")
 				return
 			}
-
 		}
 	}
 	if c.serverVersion < MIN_SERVER_VER_TRAILING_PERCENT && order.TrailingPercent != UNSET_FLOAT {
@@ -1910,13 +1884,13 @@ func (c *EClient) PlaceOrder(orderID OrderID, contract *Contract, order *Order) 
 	// send deprecated sharesAllocation field
 	me.encodeString("")
 
-	me.encodeFloat64(order.DiscretionaryAmt) //srv v10 and above
-	me.encodeString(order.GoodAfterTime)     //srv v11 and above
-	me.encodeString(order.GoodTillDate)      //srv v12 and above
+	me.encodeFloat64(order.DiscretionaryAmt) // srv v10 and above
+	me.encodeString(order.GoodAfterTime)     // srv v11 and above
+	me.encodeString(order.GoodTillDate)      // srv v12 and above
 
-	me.encodeString(order.FAGroup)      //srv v13 and above
-	me.encodeString(order.FAMethod)     //srv v13 and above
-	me.encodeString(order.FAPercentage) //srv v13 and above
+	me.encodeString(order.FAGroup)      // srv v13 and above
+	me.encodeString(order.FAMethod)     // srv v13 and above
+	me.encodeString(order.FAPercentage) // srv v13 and above
 
 	if c.serverVersion < MIN_SERVER_VER_FA_PROFILE_DESUPPORT {
 		me.encodeString("") // send deprecated faProfile field
@@ -2215,7 +2189,6 @@ func (c *EClient) PlaceOrder(orderID OrderID, contract *Contract, order *Order) 
 }
 
 func (c *EClient) placeOrderProtoBuf(placeOrderRequestProto *protobuf.PlaceOrderRequest) {
-
 	orderID := NO_VALID_ID
 	if placeOrderRequestProto.OrderId != nil {
 		orderID = int64(*placeOrderRequestProto.OrderId)
@@ -2243,7 +2216,6 @@ func (c *EClient) placeOrderProtoBuf(placeOrderRequestProto *protobuf.PlaceOrder
 // CancelOrder cancel an order by orderId.
 // It can only be used to cancel an order that was placed originally by a client with the same client ID
 func (c *EClient) CancelOrder(orderID OrderID, orderCancel OrderCancel) {
-
 	if c.useProtoBuf(CANCEL_ORDER) {
 		c.cancelOrderProtoBuf(createCancelOrderRequestProto(orderID, &orderCancel))
 		return
@@ -2294,7 +2266,6 @@ func (c *EClient) CancelOrder(orderID OrderID, orderCancel OrderCancel) {
 }
 
 func (c *EClient) cancelOrderProtoBuf(cancelOrderRequestProto *protobuf.CancelOrderRequest) {
-
 	orderID := NO_VALID_ID
 	if cancelOrderRequestProto.OrderId != nil {
 		orderID = int64(*cancelOrderRequestProto.OrderId)
@@ -2327,7 +2298,6 @@ func (c *EClient) cancelOrderProtoBuf(cancelOrderRequestProto *protobuf.CancelOr
 // These orders will be associated with the client and a new orderId will be generated.
 // This association will persist over multiple API and TWS sessions.
 func (c *EClient) ReqOpenOrders() {
-
 	if c.useProtoBuf(REQ_OPEN_ORDERS) {
 		c.reqOpenOrdersProtoBuf(createOpenOrdersRequestProto())
 		return
@@ -2349,7 +2319,6 @@ func (c *EClient) ReqOpenOrders() {
 }
 
 func (c *EClient) reqOpenOrdersProtoBuf(openOrdersRequestProto *protobuf.OpenOrdersRequest) {
-
 	if !c.IsConnected() {
 		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
@@ -2376,7 +2345,6 @@ func (c *EClient) reqOpenOrdersProtoBuf(openOrdersRequestProto *protobuf.OpenOrd
 // if autoBind is set to TRUE, newly created TWS orders will be implicitly associated with the client.
 // If set to FALSE, no association will be made.
 func (c *EClient) ReqAutoOpenOrders(autoBind bool) {
-
 	if c.useProtoBuf(REQ_AUTO_OPEN_ORDERS) {
 		c.reqAutoOpenOrdersProtoBuf(createAutoOpenOrdersRequestProto(autoBind))
 		return
@@ -2399,7 +2367,6 @@ func (c *EClient) ReqAutoOpenOrders(autoBind bool) {
 }
 
 func (c *EClient) reqAutoOpenOrdersProtoBuf(autoOpenOrdersRequestProto *protobuf.AutoOpenOrdersRequest) {
-
 	if !c.IsConnected() {
 		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
@@ -2424,7 +2391,6 @@ func (c *EClient) reqAutoOpenOrdersProtoBuf(autoOpenOrdersRequestProto *protobuf
 // Each open order will be fed back through the openOrder() and orderStatus() functions on the EWrapper.
 // No association is made between the returned orders and the requesting client.
 func (c *EClient) ReqAllOpenOrders() {
-
 	if c.useProtoBuf(REQ_ALL_OPEN_ORDERS) {
 		c.reqAllOpenOrdersProtoBuf(createAllOpenOrdersRequestProto())
 		return
@@ -2446,7 +2412,6 @@ func (c *EClient) ReqAllOpenOrders() {
 }
 
 func (c *EClient) reqAllOpenOrdersProtoBuf(allOpenOrdersRequestProto *protobuf.AllOpenOrdersRequest) {
-
 	if !c.IsConnected() {
 		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
@@ -2469,7 +2434,6 @@ func (c *EClient) reqAllOpenOrdersProtoBuf(allOpenOrdersRequestProto *protobuf.A
 
 // ReqGlobalCancel cancels all open orders globally. It cancels both API and TWS open orders.
 func (c *EClient) ReqGlobalCancel(orderCancel OrderCancel) {
-
 	if c.useProtoBuf(REQ_GLOBAL_CANCEL) {
 		c.reqGlobalCancelProtoBuf(createGlobalCancelRequestProto(&orderCancel))
 		return
@@ -2503,7 +2467,6 @@ func (c *EClient) ReqGlobalCancel(orderCancel OrderCancel) {
 }
 
 func (c *EClient) reqGlobalCancelProtoBuf(globalCancelRequestProto *protobuf.GlobalCancelRequest) {
-
 	if !c.IsConnected() {
 		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
@@ -2529,7 +2492,6 @@ func (c *EClient) reqGlobalCancelProtoBuf(globalCancelRequestProto *protobuf.Glo
 // That ID will reflect any autobinding that has occurred (which generates new IDs and increments the next valid ID therein).
 // numIds is depreceted
 func (c *EClient) ReqIDs(numIds int64) {
-
 	if !c.IsConnected() {
 		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
@@ -2553,7 +2515,6 @@ func (c *EClient) ReqIDs(numIds int64) {
 // ReqAccountUpdates will start getting account values, portfolio, and last update time information.
 // it is returned via EWrapper.updateAccountValue(), EWrapperi.updatePortfolio() and Wrapper.updateAccountTime().
 func (c *EClient) ReqAccountUpdates(subscribe bool, accountName string) {
-
 	if c.useProtoBuf(REQ_ACCT_DATA) {
 		c.reqAccountUpdatesProtoBuf(createAccountDataRequestProto(subscribe, accountName))
 		return
@@ -2579,7 +2540,6 @@ func (c *EClient) ReqAccountUpdates(subscribe bool, accountName string) {
 }
 
 func (c *EClient) reqAccountUpdatesProtoBuf(accountDataRequestProto *protobuf.AccountDataRequest) {
-
 	if !c.IsConnected() {
 		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
@@ -2642,7 +2602,6 @@ func (c *EClient) reqAccountUpdatesProtoBuf(accountDataRequestProto *protobuf.Ac
 //	$LEDGER:CURRENCY - Single flag to relay all cash balance tags*, only in	the specified currency.
 //	$LEDGER:ALL - Single flag to relay all cash balance tags* in all currencies.
 func (c *EClient) ReqAccountSummary(reqID int64, groupName string, tags string) {
-
 	if c.useProtoBuf(REQ_ACCOUNT_SUMMARY) {
 		c.reqAccountSummaryProtoBuf(createAccountSummaryRequestProto(reqID, groupName, tags))
 		return
@@ -2667,7 +2626,6 @@ func (c *EClient) ReqAccountSummary(reqID int64, groupName string, tags string) 
 }
 
 func (c *EClient) reqAccountSummaryProtoBuf(accountSummaryRequestProto *protobuf.AccountSummaryRequest) {
-
 	reqID := NO_VALID_ID
 	if accountSummaryRequestProto.ReqId != nil {
 		reqID = int64(*accountSummaryRequestProto.ReqId)
@@ -2696,7 +2654,6 @@ func (c *EClient) reqAccountSummaryProtoBuf(accountSummaryRequestProto *protobuf
 // CancelAccountSummary cancels the request for Account Window Summary tab data.
 // reqId is the ID of the data request being canceled.
 func (c *EClient) CancelAccountSummary(reqID int64) {
-
 	if c.useProtoBuf(CANCEL_ACCOUNT_SUMMARY) {
 		c.cancelAccountSummaryProtoBuf(createCancelAccountSummaryRequestProto(reqID))
 		return
@@ -2719,7 +2676,6 @@ func (c *EClient) CancelAccountSummary(reqID int64) {
 }
 
 func (c *EClient) cancelAccountSummaryProtoBuf(cancelAccountSummaryRequestProto *protobuf.CancelAccountSummary) {
-
 	reqID := NO_VALID_ID
 	if cancelAccountSummaryRequestProto.ReqId != nil {
 		reqID = int64(*cancelAccountSummaryRequestProto.ReqId)
@@ -2747,7 +2703,6 @@ func (c *EClient) cancelAccountSummaryProtoBuf(cancelAccountSummaryRequestProto 
 
 // ReqPositions requests real-time position data for all accounts.
 func (c *EClient) ReqPositions() {
-
 	if c.useProtoBuf(REQ_POSITIONS) {
 		c.reqPositionsProtoBuf(createPositionsRequestProto())
 		return
@@ -2774,7 +2729,6 @@ func (c *EClient) ReqPositions() {
 }
 
 func (c *EClient) reqPositionsProtoBuf(positionsRequestProto *protobuf.PositionsRequest) {
-
 	if !c.IsConnected() {
 		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
@@ -2793,12 +2747,10 @@ func (c *EClient) reqPositionsProtoBuf(positionsRequestProto *protobuf.Positions
 	me.encodeProto(msg)
 
 	c.reqChan <- me.Bytes()
-
 }
 
 // CancelPositions cancels real-time position updates.
 func (c *EClient) CancelPositions() {
-
 	if c.useProtoBuf(CANCEL_POSITIONS) {
 		c.cancelPositionsProtoBuf(createCancelPositionsRequestProto())
 		return
@@ -2825,7 +2777,6 @@ func (c *EClient) CancelPositions() {
 }
 
 func (c *EClient) cancelPositionsProtoBuf(cancelPositionsRequestProto *protobuf.CancelPositions) {
-
 	if !c.IsConnected() {
 		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
@@ -2848,7 +2799,6 @@ func (c *EClient) cancelPositionsProtoBuf(cancelPositionsRequestProto *protobuf.
 // ReqPositionsMulti requests the positions for account and/or model.
 // Results are delivered via EWrapper.positionMulti() and EWrapper.positionMultiEnd().
 func (c *EClient) ReqPositionsMulti(reqID int64, account string, modelCode string) {
-
 	if c.useProtoBuf(REQ_POSITIONS_MULTI) {
 		c.reqPositionsMultiProtoBuf(createPositionsMultiRequestProto(reqID, account, modelCode))
 		return
@@ -2878,7 +2828,6 @@ func (c *EClient) ReqPositionsMulti(reqID int64, account string, modelCode strin
 }
 
 func (c *EClient) reqPositionsMultiProtoBuf(positionsMultiRequestProto *protobuf.PositionsMultiRequest) {
-
 	reqID := NO_VALID_ID
 	if positionsMultiRequestProto.ReqId != nil {
 		reqID = int64(*positionsMultiRequestProto.ReqId)
@@ -2906,7 +2855,6 @@ func (c *EClient) reqPositionsMultiProtoBuf(positionsMultiRequestProto *protobuf
 
 // CancelPositionsMulti cancels the positions update of assigned account.
 func (c *EClient) CancelPositionsMulti(reqID int64) {
-
 	if c.useProtoBuf(CANCEL_POSITIONS_MULTI) {
 		c.cancelPositionsMultiProtoBuf(createCancelPositionsMultiRequestProto(reqID))
 		return
@@ -2934,7 +2882,6 @@ func (c *EClient) CancelPositionsMulti(reqID int64) {
 }
 
 func (c *EClient) cancelPositionsMultiProtoBuf(cancelPositionsMultiRequestProto *protobuf.CancelPositionsMulti) {
-
 	reqID := NO_VALID_ID
 	if cancelPositionsMultiRequestProto.ReqId != nil {
 		reqID = int64(*cancelPositionsMultiRequestProto.ReqId)
@@ -2962,7 +2909,6 @@ func (c *EClient) cancelPositionsMultiProtoBuf(cancelPositionsMultiRequestProto 
 
 // ReqAccountUpdatesMulti requests account updates for account and/or model.
 func (c *EClient) ReqAccountUpdatesMulti(reqID int64, account string, modelCode string, ledgerAndNLV bool) {
-
 	if c.useProtoBuf(REQ_ACCOUNT_UPDATES_MULTI) {
 		c.reqAccountUpdatesMultiProtoBuf(createAccountUpdatesMultiRequestProto(reqID, account, modelCode, ledgerAndNLV))
 		return
@@ -2993,7 +2939,6 @@ func (c *EClient) ReqAccountUpdatesMulti(reqID int64, account string, modelCode 
 }
 
 func (c *EClient) reqAccountUpdatesMultiProtoBuf(accountUpdatesMultiRequestProto *protobuf.AccountUpdatesMultiRequest) {
-
 	reqID := NO_VALID_ID
 	if accountUpdatesMultiRequestProto.ReqId != nil {
 		reqID = int64(*accountUpdatesMultiRequestProto.ReqId)
@@ -3021,7 +2966,6 @@ func (c *EClient) reqAccountUpdatesMultiProtoBuf(accountUpdatesMultiRequestProto
 
 // CancelAccountUpdatesMulti cancels account update for reqID.
 func (c *EClient) CancelAccountUpdatesMulti(reqID int64) {
-
 	if c.useProtoBuf(CANCEL_ACCOUNT_UPDATES_MULTI) {
 		c.cancelAccountUpdatesMultiProtoBuf(createCancelAccountUpdatesMultiRequestProto(reqID))
 		return
@@ -3049,7 +2993,6 @@ func (c *EClient) CancelAccountUpdatesMulti(reqID int64) {
 }
 
 func (c *EClient) cancelAccountUpdatesMultiProtoBuf(cancelAccountUpdatesMultiRequestProto *protobuf.CancelAccountUpdatesMulti) {
-
 	reqID := NO_VALID_ID
 	if cancelAccountUpdatesMultiRequestProto.ReqId != nil {
 		reqID = int64(*cancelAccountUpdatesMultiRequestProto.ReqId)
@@ -3081,7 +3024,6 @@ func (c *EClient) cancelAccountUpdatesMultiProtoBuf(cancelAccountUpdatesMultiReq
 
 // ReqPnL requests and subscribe the PnL of assigned account.
 func (c *EClient) ReqPnL(reqID int64, account string, modelCode string) {
-
 	if c.useProtoBuf(REQ_PNL) {
 		c.reqPnLProtoBuf(createPnLRequestProto(reqID, account, modelCode))
 		return
@@ -3108,7 +3050,6 @@ func (c *EClient) ReqPnL(reqID int64, account string, modelCode string) {
 }
 
 func (c *EClient) reqPnLProtoBuf(pnlRequestProto *protobuf.PnLRequest) {
-
 	reqID := NO_VALID_ID
 	if pnlRequestProto.ReqId != nil {
 		reqID = int64(*pnlRequestProto.ReqId)
@@ -3136,7 +3077,6 @@ func (c *EClient) reqPnLProtoBuf(pnlRequestProto *protobuf.PnLRequest) {
 
 // CancelPnL cancels the PnL update of assigned account.
 func (c *EClient) CancelPnL(reqID int64) {
-
 	if c.useProtoBuf(CANCEL_PNL) {
 		c.cancelPnLProtoBuf(createCancelPnLProto(reqID))
 		return
@@ -3161,7 +3101,6 @@ func (c *EClient) CancelPnL(reqID int64) {
 }
 
 func (c *EClient) cancelPnLProtoBuf(cancelPnLProto *protobuf.CancelPnL) {
-
 	reqID := NO_VALID_ID
 	if cancelPnLProto.ReqId != nil {
 		reqID = int64(*cancelPnLProto.ReqId)
@@ -3189,7 +3128,6 @@ func (c *EClient) cancelPnLProtoBuf(cancelPnLProto *protobuf.CancelPnL) {
 
 // ReqPnLSingle request and subscribe the single contract PnL of assigned account.
 func (c *EClient) ReqPnLSingle(reqID int64, account string, modelCode string, contractID int64) {
-
 	if c.useProtoBuf(REQ_PNL_SINGLE) {
 		c.reqPnLSingleProtoBuf(createPnLSingleRequestProto(reqID, account, modelCode, contractID))
 		return
@@ -3217,7 +3155,6 @@ func (c *EClient) ReqPnLSingle(reqID int64, account string, modelCode string, co
 }
 
 func (c *EClient) reqPnLSingleProtoBuf(pnlSingleRequestProto *protobuf.PnLSingleRequest) {
-
 	reqID := NO_VALID_ID
 	if pnlSingleRequestProto.ReqId != nil {
 		reqID = int64(*pnlSingleRequestProto.ReqId)
@@ -3245,7 +3182,6 @@ func (c *EClient) reqPnLSingleProtoBuf(pnlSingleRequestProto *protobuf.PnLSingle
 
 // CancelPnLSingle cancel the single contract PnL update of assigned account.
 func (c *EClient) CancelPnLSingle(reqID int64) {
-
 	if c.useProtoBuf(CANCEL_PNL_SINGLE) {
 		c.cancelPnLSingleProtoBuf(createCancelPnLSingleProto(reqID))
 		return
@@ -3270,7 +3206,6 @@ func (c *EClient) CancelPnLSingle(reqID int64) {
 }
 
 func (c *EClient) cancelPnLSingleProtoBuf(cancelPnLSingleProto *protobuf.CancelPnLSingle) {
-
 	reqID := NO_VALID_ID
 	if cancelPnLSingleProto.ReqId != nil {
 		reqID = int64(*cancelPnLSingleProto.ReqId)
@@ -3306,7 +3241,6 @@ func (c *EClient) cancelPnLSingleProtoBuf(cancelPnLSingleProto *protobuf.CancelP
 // execFilter contains attributes that describe the filter criteria used to determine which execution reports are returned.
 // NOTE: Time format must be 'yyyymmdd-hh:mm:ss' Eg: '20030702-14:55'
 func (c *EClient) ReqExecutions(reqID int64, execFilter *ExecutionFilter) {
-
 	if c.useProtoBuf(REQ_EXECUTIONS) {
 		c.reqExecutionProtobuf(createExecutionRequestProto(reqID, execFilter))
 		return
@@ -3354,7 +3288,6 @@ func (c *EClient) ReqExecutions(reqID int64, execFilter *ExecutionFilter) {
 }
 
 func (c *EClient) reqExecutionProtobuf(executionRequestProto *protobuf.ExecutionRequest) {
-
 	reqID := NO_VALID_ID
 	if executionRequestProto.ReqId != nil {
 		reqID = int64(*executionRequestProto.ReqId)
@@ -3386,7 +3319,6 @@ func (c *EClient) reqExecutionProtobuf(executionRequestProto *protobuf.Execution
 // ReqContractDetails downloads all details for a particular underlying.
 // The contract details will be received via the contractDetails() function on the EWrapper.
 func (c *EClient) ReqContractDetails(reqID int64, contract *Contract) {
-
 	if c.useProtoBuf(REQ_CONTRACT_DATA) {
 		c.reqContractDataProtoBuf(createContractDataRequestProto(reqID, contract))
 		return
@@ -3452,7 +3384,6 @@ func (c *EClient) ReqContractDetails(reqID int64, contract *Contract) {
 
 	if c.serverVersion >= MIN_SERVER_VER_TRADING_CLASS {
 		me.encodeString(contract.TradingClass)
-
 	}
 	me.encodeBool(contract.IncludeExpired) //  srv v31 and above
 
@@ -3469,7 +3400,6 @@ func (c *EClient) ReqContractDetails(reqID int64, contract *Contract) {
 }
 
 func (c *EClient) reqContractDataProtoBuf(contractDataRequestProto *protobuf.ContractDataRequest) {
-
 	reqID := NO_VALID_ID
 	if contractDataRequestProto.ReqId != nil {
 		reqID = int64(*contractDataRequestProto.ReqId)
@@ -3501,7 +3431,6 @@ func (c *EClient) reqContractDataProtoBuf(contractDataRequestProto *protobuf.Con
 
 // ReqMktDepthExchanges requests market depth exchanges.
 func (c *EClient) ReqMktDepthExchanges() {
-
 	if !c.IsConnected() {
 		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
@@ -3531,7 +3460,6 @@ func (c *EClient) ReqMktDepthExchanges() {
 // isSmartDepth	specifies SMART depth request.
 // mktDepthOptions is for internal use only. Use default value XYZ.
 func (c *EClient) ReqMktDepth(reqID int64, contract *Contract, numRows int, isSmartDepth bool, mktDepthOptions []TagValue) {
-
 	if c.useProtoBuf(REQ_MKT_DEPTH) {
 		c.reqMarketDepthProtoBuf(createMarketDepthRequestProto(reqID, contract, int64(numRows), isSmartDepth, mktDepthOptions))
 		return
@@ -3607,7 +3535,6 @@ func (c *EClient) ReqMktDepth(reqID int64, contract *Contract, numRows int, isSm
 }
 
 func (c *EClient) reqMarketDepthProtoBuf(marketDepthRequestProto *protobuf.MarketDepthRequest) {
-
 	reqID := NO_VALID_ID
 	if marketDepthRequestProto.ReqId != nil {
 		reqID = int64(*marketDepthRequestProto.ReqId)
@@ -3635,7 +3562,6 @@ func (c *EClient) reqMarketDepthProtoBuf(marketDepthRequestProto *protobuf.Marke
 
 // CancelMktDepth cancels market depth updates.
 func (c *EClient) CancelMktDepth(reqID int64, isSmartDepth bool) {
-
 	if c.useProtoBuf(CANCEL_MKT_DEPTH) {
 		c.cancelMarketDepthProtoBuf(createCancelMarketDepthProto(reqID, isSmartDepth))
 		return
@@ -3667,7 +3593,6 @@ func (c *EClient) CancelMktDepth(reqID int64, isSmartDepth bool) {
 }
 
 func (c *EClient) cancelMarketDepthProtoBuf(cancelMarketDepthProto *protobuf.CancelMarketDepth) {
-
 	reqID := NO_VALID_ID
 	if cancelMarketDepthProto.ReqId != nil {
 		reqID = int64(*cancelMarketDepthProto.ReqId)
@@ -3703,7 +3628,6 @@ func (c *EClient) cancelMarketDepthProtoBuf(cancelMarketDepthProto *protobuf.Can
 // If allMsgs sets to TRUE, returns all the existing bulletins for the currencyent day and any new ones.
 // If allMsgs sets to FALSE, will only return new bulletins.
 func (c *EClient) ReqNewsBulletins(allMsgs bool) {
-
 	if c.useProtoBuf(REQ_NEWS_BULLETINS) {
 		c.reqNewsBulletinsProtoBuf(createNewsBulletinsRequestProto(allMsgs))
 		return
@@ -3726,7 +3650,6 @@ func (c *EClient) ReqNewsBulletins(allMsgs bool) {
 }
 
 func (c *EClient) reqNewsBulletinsProtoBuf(newsBulletinsRequestProto *protobuf.NewsBulletinsRequest) {
-
 	if !c.IsConnected() {
 		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
@@ -3748,7 +3671,6 @@ func (c *EClient) reqNewsBulletinsProtoBuf(newsBulletinsRequestProto *protobuf.N
 
 // CancelNewsBulletins cancels the news bulletins updates
 func (c *EClient) CancelNewsBulletins() {
-
 	if c.useProtoBuf(CANCEL_NEWS_BULLETINS) {
 		c.cancelNewsBulletinsProtoBuf(createCancelNewsBulletinsProto())
 		return
@@ -3770,7 +3692,6 @@ func (c *EClient) CancelNewsBulletins() {
 }
 
 func (c *EClient) cancelNewsBulletinsProtoBuf(cancelNewsBulletinsProto *protobuf.CancelNewsBulletins) {
-
 	if !c.IsConnected() {
 		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
@@ -3798,7 +3719,6 @@ func (c *EClient) cancelNewsBulletinsProtoBuf(cancelNewsBulletinsProto *protobuf
 // The result will be delivered via wrapper.ManagedAccounts().
 // This request can only be made when connected to a FA managed account.
 func (c *EClient) ReqManagedAccts() {
-
 	if c.useProtoBuf(REQ_MANAGED_ACCTS) {
 		c.reqManagedAcctsProtoBuf(createManagedAccountsRequestProto())
 		return
@@ -3820,7 +3740,6 @@ func (c *EClient) ReqManagedAccts() {
 }
 
 func (c *EClient) reqManagedAcctsProtoBuf(managedAccountsRequestProto *protobuf.ManagedAccountsRequest) {
-
 	if !c.IsConnected() {
 		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
@@ -3838,14 +3757,12 @@ func (c *EClient) reqManagedAcctsProtoBuf(managedAccountsRequestProto *protobuf.
 	me.encodeProto(msg)
 
 	c.reqChan <- me.Bytes()
-
 }
 
 // RequestFA requests fa.
 // The data returns in an XML string via wrapper.ReceiveFA().
 // faData is 1->"GROUPS", 3->"ALIASES".
 func (c *EClient) RequestFA(faDataType FaDataType) {
-
 	if c.useProtoBuf(REQ_FA) {
 		c.reqFAProtoBuf(createFARequestProto(int64(faDataType)))
 		return
@@ -3873,7 +3790,6 @@ func (c *EClient) RequestFA(faDataType FaDataType) {
 }
 
 func (c *EClient) reqFAProtoBuf(faRequestProto *protobuf.FARequest) {
-
 	if !c.IsConnected() {
 		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
@@ -3891,7 +3807,6 @@ func (c *EClient) reqFAProtoBuf(faRequestProto *protobuf.FARequest) {
 	me.encodeProto(msg)
 
 	c.reqChan <- me.Bytes()
-
 }
 
 // ReplaceFA replaces the FA configuration information from the API.
@@ -3901,7 +3816,6 @@ func (c *EClient) reqFAProtoBuf(faRequestProto *protobuf.FARequest) {
 // 3 = ACCOUNT ALIASES
 // cxml is the XML string containing the new FA configuration information.
 func (c *EClient) ReplaceFA(reqID int64, faDataType FaDataType, cxml string) {
-
 	if c.useProtoBuf(REPLACE_FA) {
 		c.replaceFAProtoBuf(createFAReplaceProto(reqID, int64(faDataType), cxml))
 		return
@@ -3934,7 +3848,6 @@ func (c *EClient) ReplaceFA(reqID int64, faDataType FaDataType, cxml string) {
 }
 
 func (c *EClient) replaceFAProtoBuf(faReplaceProto *protobuf.FAReplace) {
-
 	reqID := NO_VALID_ID
 	if faReplaceProto.ReqId != nil {
 		reqID = int64(*faReplaceProto.ReqId)
@@ -4013,7 +3926,6 @@ func (c *EClient) replaceFAProtoBuf(faReplaceProto *protobuf.FAReplace) {
 // chartOptions is for internal use only. Use default value XYZ.
 
 func (c *EClient) ReqHistoricalData(reqID int64, contract *Contract, endDateTime string, duration string, barSize string, whatToShow string, useRTH bool, formatDate int, keepUpToDate bool, chartOptions []TagValue) {
-
 	if c.useProtoBuf(REQ_HISTORICAL_DATA) {
 		c.reqHistoricalDataProtoBuf(createHistoricalDataRequestProto(reqID, contract, endDateTime, duration, barSize, whatToShow, useRTH, formatDate, keepUpToDate, chartOptions))
 		return
@@ -4091,7 +4003,6 @@ func (c *EClient) ReqHistoricalData(reqID int64, contract *Contract, endDateTime
 }
 
 func (c *EClient) reqHistoricalDataProtoBuf(historicalDataRequestProto *protobuf.HistoricalDataRequest) {
-
 	reqID := NO_VALID_ID
 	if historicalDataRequestProto.ReqId != nil {
 		reqID = int64(*historicalDataRequestProto.ReqId)
@@ -4121,7 +4032,6 @@ func (c *EClient) reqHistoricalDataProtoBuf(historicalDataRequestProto *protobuf
 // Used if an internet disconnect has occurred or the results of a query are otherwise delayed and the application is no longer interested in receiving the data.
 // reqId, the ticker ID, must be a unique value.
 func (c *EClient) CancelHistoricalData(reqID int64) {
-
 	if c.useProtoBuf(CANCEL_HISTORICAL_DATA) {
 		c.cancelHistoricalDataProtoBuf(createCancelHistoricalDataProto(reqID))
 		return
@@ -4144,7 +4054,6 @@ func (c *EClient) CancelHistoricalData(reqID int64) {
 }
 
 func (c *EClient) cancelHistoricalDataProtoBuf(cancelHistoricalDataProto *protobuf.CancelHistoricalData) {
-
 	reqID := NO_VALID_ID
 	if cancelHistoricalDataProto.ReqId != nil {
 		reqID = int64(*cancelHistoricalDataProto.ReqId)
@@ -4173,7 +4082,6 @@ func (c *EClient) cancelHistoricalDataProtoBuf(cancelHistoricalDataProto *protob
 // ReqHeadTimeStamp request the head timestamp of assigned contract.
 // call this func to get the headmost data you can get
 func (c *EClient) ReqHeadTimeStamp(reqID int64, contract *Contract, whatToShow string, useRTH bool, formatDate int) {
-
 	if c.useProtoBuf(REQ_HEAD_TIMESTAMP) {
 		c.reqHeadTimestampProtoBuf(createHeadTimestampRequestProto(reqID, contract, whatToShow, useRTH, formatDate))
 		return
@@ -4202,7 +4110,6 @@ func (c *EClient) ReqHeadTimeStamp(reqID int64, contract *Contract, whatToShow s
 }
 
 func (c *EClient) reqHeadTimestampProtoBuf(headTimestampRequestProto *protobuf.HeadTimestampRequest) {
-
 	reqID := NO_VALID_ID
 	if headTimestampRequestProto.ReqId != nil {
 		reqID = int64(*headTimestampRequestProto.ReqId)
@@ -4230,7 +4137,6 @@ func (c *EClient) reqHeadTimestampProtoBuf(headTimestampRequestProto *protobuf.H
 
 // CancelHeadTimeStamp cancels the head timestamp data.
 func (c *EClient) CancelHeadTimeStamp(reqID int64) {
-
 	if c.useProtoBuf(CANCEL_HEAD_TIMESTAMP) {
 		c.cancelHeadTimestampProtoBuf(createCancelHeadTimestampProto(reqID))
 		return
@@ -4255,7 +4161,6 @@ func (c *EClient) CancelHeadTimeStamp(reqID int64) {
 }
 
 func (c *EClient) cancelHeadTimestampProtoBuf(cancelHeadTimestampProto *protobuf.CancelHeadTimestamp) {
-
 	reqID := NO_VALID_ID
 	if cancelHeadTimestampProto.ReqId != nil {
 		reqID = int64(*cancelHeadTimestampProto.ReqId)
@@ -4283,7 +4188,6 @@ func (c *EClient) cancelHeadTimestampProtoBuf(cancelHeadTimestampProto *protobuf
 
 // ReqHistogramData requests histogram data.
 func (c *EClient) ReqHistogramData(reqID int64, contract *Contract, useRTH bool, timePeriod string) {
-
 	if c.useProtoBuf(REQ_HISTOGRAM_DATA) {
 		c.reqHistogramDataProtoBuf(createHistogramDataRequestProto(reqID, contract, useRTH, timePeriod))
 		return
@@ -4311,7 +4215,6 @@ func (c *EClient) ReqHistogramData(reqID int64, contract *Contract, useRTH bool,
 }
 
 func (c *EClient) reqHistogramDataProtoBuf(histogramDataRequestProto *protobuf.HistogramDataRequest) {
-
 	reqID := NO_VALID_ID
 	if histogramDataRequestProto.ReqId != nil {
 		reqID = int64(*histogramDataRequestProto.ReqId)
@@ -4339,7 +4242,6 @@ func (c *EClient) reqHistogramDataProtoBuf(histogramDataRequestProto *protobuf.H
 
 // CancelHistogramData cancels histogram data.
 func (c *EClient) CancelHistogramData(reqID int64) {
-
 	if c.useProtoBuf(CANCEL_HISTOGRAM_DATA) {
 		c.cancelHistogramDataProtoBuf(createCancelHistogramDataProto(reqID))
 		return
@@ -4364,7 +4266,6 @@ func (c *EClient) CancelHistogramData(reqID int64) {
 }
 
 func (c *EClient) cancelHistogramDataProtoBuf(cancelHistogramDataProto *protobuf.CancelHistogramData) {
-
 	reqID := NO_VALID_ID
 	if cancelHistogramDataProto.ReqId != nil {
 		reqID = int64(*cancelHistogramDataProto.ReqId)
@@ -4392,7 +4293,6 @@ func (c *EClient) cancelHistogramDataProtoBuf(cancelHistogramDataProto *protobuf
 
 // ReqHistoricalTicks requests historical ticks.
 func (c *EClient) ReqHistoricalTicks(reqID int64, contract *Contract, startDateTime string, endDateTime string, numberOfTicks int, whatToShow string, useRTH bool, ignoreSize bool, miscOptions []TagValue) {
-
 	if c.useProtoBuf(REQ_HISTORICAL_TICKS) {
 		c.reqHistoricalTicksProtoBuf(createHistoricalTicksRequestProto(reqID, contract, startDateTime, endDateTime, numberOfTicks, whatToShow, useRTH, ignoreSize, miscOptions))
 		return
@@ -4425,7 +4325,6 @@ func (c *EClient) ReqHistoricalTicks(reqID int64, contract *Contract, startDateT
 }
 
 func (c *EClient) reqHistoricalTicksProtoBuf(historicalTicksRequestProto *protobuf.HistoricalTicksRequest) {
-
 	reqID := NO_VALID_ID
 	if historicalTicksRequestProto.ReqId != nil {
 		reqID = int64(*historicalTicksRequestProto.ReqId)
@@ -4457,7 +4356,6 @@ func (c *EClient) reqHistoricalTicksProtoBuf(historicalTicksRequestProto *protob
 
 // ReqScannerParameters requests an XML string that describes all possible scanner queries.
 func (c *EClient) ReqScannerParameters() {
-
 	if c.useProtoBuf(REQ_SCANNER_PARAMETERS) {
 		c.reqScannerParametersProtoBuf(createScannerParametersRequestProto())
 		return
@@ -4479,7 +4377,6 @@ func (c *EClient) ReqScannerParameters() {
 }
 
 func (c *EClient) reqScannerParametersProtoBuf(scannerParametersRequestProto *protobuf.ScannerParametersRequest) {
-
 	if !c.IsConnected() {
 		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
@@ -4505,7 +4402,6 @@ func (c *EClient) reqScannerParametersProtoBuf(scannerParametersRequestProto *pr
 // scannerSubscription contains possible parameters used to filter results.
 // scannerSubscriptionOptions is for internal use only.Use default value XYZ.
 func (c *EClient) ReqScannerSubscription(reqID int64, subscription *ScannerSubscription, scannerSubscriptionOptions []TagValue, scannerSubscriptionFilterOptions []TagValue) {
-
 	if c.useProtoBuf(REQ_SCANNER_SUBSCRIPTION) {
 		c.reqScannerSubscriptionProtoBuf(createScannerSubscriptionRequestProto(reqID, subscription, scannerSubscriptionOptions, scannerSubscriptionFilterOptions))
 		return
@@ -4566,7 +4462,6 @@ func (c *EClient) ReqScannerSubscription(reqID int64, subscription *ScannerSubsc
 }
 
 func (c *EClient) reqScannerSubscriptionProtoBuf(scannerSubscriptionRequestProto *protobuf.ScannerSubscriptionRequest) {
-
 	reqID := NO_VALID_ID
 	if scannerSubscriptionRequestProto.ReqId != nil {
 		reqID = int64(*scannerSubscriptionRequestProto.ReqId)
@@ -4595,7 +4490,6 @@ func (c *EClient) reqScannerSubscriptionProtoBuf(scannerSubscriptionRequestProto
 // CancelScannerSubscription cancel scanner.
 // reqId is the unique ticker ID used for subscription.
 func (c *EClient) CancelScannerSubscription(reqID int64) {
-
 	if c.useProtoBuf(CANCEL_SCANNER_SUBSCRIPTION) {
 		c.cancelScannerSubscriptionProtoBuf(createCancelScannerSubscriptionProto(reqID))
 		return
@@ -4618,7 +4512,6 @@ func (c *EClient) CancelScannerSubscription(reqID int64) {
 }
 
 func (c *EClient) cancelScannerSubscriptionProtoBuf(cancelScannerSubscriptionProto *protobuf.CancelScannerSubscription) {
-
 	reqID := NO_VALID_ID
 	if cancelScannerSubscriptionProto.ReqId != nil {
 		reqID = int64(*cancelScannerSubscriptionProto.ReqId)
@@ -4674,7 +4567,6 @@ func (c *EClient) cancelScannerSubscriptionProtoBuf(cancelScannerSubscriptionPro
 //
 // realTimeBarOptions is for internal use only. Use default value XYZ.
 func (c *EClient) ReqRealTimeBars(reqID int64, contract *Contract, barSize int, whatToShow string, useRTH bool, realTimeBarsOptions []TagValue) {
-
 	if c.useProtoBuf(REQ_REAL_TIME_BARS) {
 		c.reqRealTimeBarsProtoBuf(createRealTimeBarsRequestProto(reqID, contract, barSize, whatToShow, useRTH, realTimeBarsOptions))
 		return
@@ -4729,7 +4621,6 @@ func (c *EClient) ReqRealTimeBars(reqID int64, contract *Contract, barSize int, 
 }
 
 func (c *EClient) reqRealTimeBarsProtoBuf(realTimeBarsRequestProto *protobuf.RealTimeBarsRequest) {
-
 	reqID := NO_VALID_ID
 	if realTimeBarsRequestProto.ReqId != nil {
 		reqID = int64(*realTimeBarsRequestProto.ReqId)
@@ -4757,7 +4648,6 @@ func (c *EClient) reqRealTimeBarsProtoBuf(realTimeBarsRequestProto *protobuf.Rea
 
 // CancelRealTimeBars cancels realtime bars.
 func (c *EClient) CancelRealTimeBars(reqID int64) {
-
 	if c.useProtoBuf(CANCEL_REAL_TIME_BARS) {
 		c.cancelRealTimeBarsProtoBuf(createCancelRealTimeBarsProto(reqID))
 		return
@@ -4780,7 +4670,6 @@ func (c *EClient) CancelRealTimeBars(reqID int64) {
 }
 
 func (c *EClient) cancelRealTimeBarsProtoBuf(cancelRealTimeBarsProto *protobuf.CancelRealTimeBars) {
-
 	reqID := NO_VALID_ID
 	if cancelRealTimeBarsProto.ReqId != nil {
 		reqID = int64(*cancelRealTimeBarsProto.ReqId)
@@ -4826,7 +4715,6 @@ func (c *EClient) cancelRealTimeBarsProtoBuf(cancelRealTimeBarsProto *protobuf.C
 //	RESC (analyst estimates)
 //	CalendarReport (company calendar)
 func (c *EClient) ReqFundamentalData(reqID int64, contract *Contract, reportType string, fundamentalDataOptions []TagValue) {
-
 	if c.useProtoBuf(REQ_FUNDAMENTAL_DATA) {
 		c.reqFundamentalsDataProtoBuf(createFundamentalsDataRequestProto(reqID, contract, reportType, fundamentalDataOptions))
 		return
@@ -4877,7 +4765,6 @@ func (c *EClient) ReqFundamentalData(reqID int64, contract *Contract, reportType
 }
 
 func (c *EClient) reqFundamentalsDataProtoBuf(fundamentalsDataRequestProto *protobuf.FundamentalsDataRequest) {
-
 	reqID := NO_VALID_ID
 	if fundamentalsDataRequestProto.ReqId != nil {
 		reqID = int64(*fundamentalsDataRequestProto.ReqId)
@@ -4905,7 +4792,6 @@ func (c *EClient) reqFundamentalsDataProtoBuf(fundamentalsDataRequestProto *prot
 
 // CancelFundamentalData cancels fundamental data.
 func (c *EClient) CancelFundamentalData(reqID int64) {
-
 	if c.useProtoBuf(CANCEL_FUNDAMENTAL_DATA) {
 		c.cancelFundamentalsDataProtoBuf(createCancelFundamentalsDataProto(reqID))
 		return
@@ -4930,11 +4816,9 @@ func (c *EClient) CancelFundamentalData(reqID int64) {
 	me.encodeInt64(reqID)
 
 	c.reqChan <- me.Bytes()
-
 }
 
 func (c *EClient) cancelFundamentalsDataProtoBuf(cancelFundamentalsDataProto *protobuf.CancelFundamentalsData) {
-
 	reqID := NO_VALID_ID
 	if cancelFundamentalsDataProto.ReqId != nil {
 		reqID = int64(*cancelFundamentalsDataProto.ReqId)
@@ -4966,7 +4850,6 @@ func (c *EClient) cancelFundamentalsDataProtoBuf(cancelFundamentalsDataProto *pr
 
 // ReqNewsProviders request news providers.
 func (c *EClient) ReqNewsProviders() {
-
 	if c.useProtoBuf(REQ_NEWS_PROVIDERS) {
 		c.reqNewsProvidersProtoBuf(createNewsProvidersRequestProto())
 		return
@@ -4990,7 +4873,6 @@ func (c *EClient) ReqNewsProviders() {
 }
 
 func (c *EClient) reqNewsProvidersProtoBuf(newsProvidersRequestProto *protobuf.NewsProvidersRequest) {
-
 	if !c.IsConnected() {
 		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
@@ -5013,7 +4895,6 @@ func (c *EClient) reqNewsProvidersProtoBuf(newsProvidersRequestProto *protobuf.N
 
 // ReqNewsArticle request news article.
 func (c *EClient) ReqNewsArticle(reqID int64, providerCode string, articleID string, newsArticleOptions []TagValue) {
-
 	if c.useProtoBuf(REQ_NEWS_ARTICLE) {
 		c.reqNewsArticleProtoBuf(createNewsArticleRequestProto(reqID, providerCode, articleID, newsArticleOptions))
 		return
@@ -5044,7 +4925,6 @@ func (c *EClient) ReqNewsArticle(reqID int64, providerCode string, articleID str
 }
 
 func (c *EClient) reqNewsArticleProtoBuf(newsArticleRequestProto *protobuf.NewsArticleRequest) {
-
 	reqID := NO_VALID_ID
 	if newsArticleRequestProto.ReqId != nil {
 		reqID = int64(*newsArticleRequestProto.ReqId)
@@ -5072,7 +4952,6 @@ func (c *EClient) reqNewsArticleProtoBuf(newsArticleRequestProto *protobuf.NewsA
 
 // ReqHistoricalNews request historical news.
 func (c *EClient) ReqHistoricalNews(reqID int64, contractID int64, providerCode string, startDateTime string, endDateTime string, totalResults int64, historicalNewsOptions []TagValue) {
-
 	if c.useProtoBuf(REQ_HISTORICAL_NEWS) {
 		c.reqHistoricalNewsProtoBuf(createHistoricalNewsRequestProto(reqID, contractID, providerCode, startDateTime, endDateTime, totalResults, historicalNewsOptions))
 		return
@@ -5106,7 +4985,6 @@ func (c *EClient) ReqHistoricalNews(reqID int64, contractID int64, providerCode 
 }
 
 func (c *EClient) reqHistoricalNewsProtoBuf(historicalNewsRequestProto *protobuf.HistoricalNewsRequest) {
-
 	reqID := NO_VALID_ID
 	if historicalNewsRequestProto.ReqId != nil {
 		reqID = int64(*historicalNewsRequestProto.ReqId)
@@ -5138,7 +5016,6 @@ func (c *EClient) reqHistoricalNewsProtoBuf(historicalNewsRequestProto *protobuf
 
 // QueryDisplayGroups request the display groups in TWS.
 func (c *EClient) QueryDisplayGroups(reqID int64) {
-
 	if !c.IsConnected() {
 		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
@@ -5164,7 +5041,6 @@ func (c *EClient) QueryDisplayGroups(reqID int64) {
 // reqId is the unique number associated with the notification.
 // groupId is the ID of the group, currently it is a number from 1 to 7.
 func (c *EClient) SubscribeToGroupEvents(reqID int64, groupID int) {
-
 	if !c.IsConnected() {
 		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
@@ -5197,7 +5073,6 @@ func (c *EClient) SubscribeToGroupEvents(reqID int64, groupID int) {
 //		Examples: 8314@SMART for IBM SMART; 8314@ARCA for IBM @ARCA.
 //	combo = if any combo is selected.
 func (c *EClient) UpdateDisplayGroup(reqID int64, contractInfo string) {
-
 	if !c.IsConnected() {
 		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
@@ -5222,7 +5097,6 @@ func (c *EClient) UpdateDisplayGroup(reqID int64, contractInfo string) {
 
 // UnsubscribeFromGroupEvents unsubcribes the display group events.
 func (c *EClient) UnsubscribeFromGroupEvents(reqID int64) {
-
 	if !c.IsConnected() {
 		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
@@ -5247,7 +5121,6 @@ func (c *EClient) UnsubscribeFromGroupEvents(reqID int64) {
 // VerifyRequest is just for IB's internal use.
 // Allows to provide means of verification between the TWS and third party programs.
 func (c *EClient) VerifyRequest(apiName string, apiVersion string) {
-
 	if !c.IsConnected() {
 		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
@@ -5279,7 +5152,6 @@ func (c *EClient) VerifyRequest(apiName string, apiVersion string) {
 // VerifyMessage is just for IB's internal use.
 // Allows to provide means of verification between the TWS and third party programs.
 func (c *EClient) VerifyMessage(apiData string) {
-
 	if !c.IsConnected() {
 		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
@@ -5304,7 +5176,6 @@ func (c *EClient) VerifyMessage(apiData string) {
 // VerifyAndAuthRequest is just for IB's internal use.
 // Allows to provide means of verification between the TWS and third party programs.
 func (c *EClient) VerifyAndAuthRequest(apiName string, apiVersion string, opaqueIsvKey string) {
-
 	if !c.IsConnected() {
 		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
@@ -5337,7 +5208,6 @@ func (c *EClient) VerifyAndAuthRequest(apiName string, apiVersion string, opaque
 // VerifyAndAuthMessage is just for IB's internal use.
 // Allows to provide means of verification between the TWS and third party programs.
 func (c *EClient) VerifyAndAuthMessage(apiData string, xyzResponse string) {
-
 	if !c.IsConnected() {
 		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
@@ -5367,7 +5237,6 @@ func (c *EClient) VerifyAndAuthMessage(apiData string, xyzResponse string) {
 // underlyingConId is the contract ID of the underlying security.
 // Response comes via wrapper.SecurityDefinitionOptionParameter().
 func (c *EClient) ReqSecDefOptParams(reqID int64, underlyingSymbol string, futFopExchange string, underlyingSecurityType string, underlyingContractID int64) {
-
 	if !c.IsConnected() {
 		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
@@ -5394,7 +5263,6 @@ func (c *EClient) ReqSecDefOptParams(reqID int64, underlyingSymbol string, futFo
 // This is only supported for registered professional advisors and hedge and mutual funds
 // who have configured Soft Dollar Tiers in Account Management.
 func (c *EClient) ReqSoftDollarTiers(reqID int64) {
-
 	if !c.IsConnected() {
 		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
@@ -5410,7 +5278,6 @@ func (c *EClient) ReqSoftDollarTiers(reqID int64) {
 
 // ReqFamilyCodes requests family codes.
 func (c *EClient) ReqFamilyCodes() {
-
 	if !c.IsConnected() {
 		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
@@ -5430,7 +5297,6 @@ func (c *EClient) ReqFamilyCodes() {
 
 // ReqMatchingSymbols requests matching symbols.
 func (c *EClient) ReqMatchingSymbols(reqID int64, pattern string) {
-
 	if !c.IsConnected() {
 		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
@@ -5454,7 +5320,6 @@ func (c *EClient) ReqMatchingSymbols(reqID int64, pattern string) {
 // If apiOnly parameter is true, then only completed orders placed from API are requested.
 // Result will be delivered via wrapper.CompletedOrder().
 func (c *EClient) ReqCompletedOrders(apiOnly bool) {
-
 	if c.useProtoBuf(REQ_COMPLETED_ORDERS) {
 		c.reqCompletedOrdersProtoBuf(createCompletedOrdersRequestProto(apiOnly))
 		return
@@ -5474,7 +5339,6 @@ func (c *EClient) ReqCompletedOrders(apiOnly bool) {
 }
 
 func (c *EClient) reqCompletedOrdersProtoBuf(completedOrdersRequestProto *protobuf.CompletedOrdersRequest) {
-
 	if !c.IsConnected() {
 		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
@@ -5497,7 +5361,6 @@ func (c *EClient) reqCompletedOrdersProtoBuf(completedOrdersRequestProto *protob
 
 // ReqWshMetaData requests WSHE Meta data.
 func (c *EClient) ReqWshMetaData(reqID int64) {
-
 	if c.useProtoBuf(REQ_WSH_META_DATA) {
 		c.reqWshMetaDataProtoBuf(createWshMetaDataRequestProto(reqID))
 		return
@@ -5522,7 +5385,6 @@ func (c *EClient) ReqWshMetaData(reqID int64) {
 }
 
 func (c *EClient) reqWshMetaDataProtoBuf(wshMetaDataRequestProto *protobuf.WshMetaDataRequest) {
-
 	reqID := NO_VALID_ID
 	if wshMetaDataRequestProto.ReqId != nil {
 		reqID = int64(*wshMetaDataRequestProto.ReqId)
@@ -5550,7 +5412,6 @@ func (c *EClient) reqWshMetaDataProtoBuf(wshMetaDataRequestProto *protobuf.WshMe
 
 // CancelWshMetaData cancels WSHE Meta data.
 func (c *EClient) CancelWshMetaData(reqID int64) {
-
 	if c.useProtoBuf(CANCEL_WSH_META_DATA) {
 		c.cancelWshMetaDataProtoBuf(createCancelWshMetaDataProto(reqID))
 		return
@@ -5575,7 +5436,6 @@ func (c *EClient) CancelWshMetaData(reqID int64) {
 }
 
 func (c *EClient) cancelWshMetaDataProtoBuf(cancelWshMetaDataProto *protobuf.CancelWshMetaData) {
-
 	reqID := NO_VALID_ID
 	if cancelWshMetaDataProto.ReqId != nil {
 		reqID = int64(*cancelWshMetaDataProto.ReqId)
@@ -5603,7 +5463,6 @@ func (c *EClient) cancelWshMetaDataProtoBuf(cancelWshMetaDataProto *protobuf.Can
 
 // ReqWshEventData requests WSHE Event data.
 func (c *EClient) ReqWshEventData(reqID int64, wshEventData WshEventData) {
-
 	if c.useProtoBuf(REQ_WSH_EVENT_DATA) {
 		c.reqWshEventDataProtoBuf(createWshEventDataRequestProto(reqID, &wshEventData))
 		return
@@ -5652,7 +5511,6 @@ func (c *EClient) ReqWshEventData(reqID int64, wshEventData WshEventData) {
 }
 
 func (c *EClient) reqWshEventDataProtoBuf(wshEventDataRequestProto *protobuf.WshEventDataRequest) {
-
 	reqID := NO_VALID_ID
 	if wshEventDataRequestProto.ReqId != nil {
 		reqID = int64(*wshEventDataRequestProto.ReqId)
@@ -5680,7 +5538,6 @@ func (c *EClient) reqWshEventDataProtoBuf(wshEventDataRequestProto *protobuf.Wsh
 
 // CancelWshEventData cancels WSHE Event data.
 func (c *EClient) CancelWshEventData(reqID int64) {
-
 	if c.useProtoBuf(CANCEL_WSH_EVENT_DATA) {
 		c.cancelWshEventDataProtoBuf(createCancelWshEventDataProto(reqID))
 		return
@@ -5705,7 +5562,6 @@ func (c *EClient) CancelWshEventData(reqID int64) {
 }
 
 func (c *EClient) cancelWshEventDataProtoBuf(cancelWshEventDataProto *protobuf.CancelWshEventData) {
-
 	reqID := NO_VALID_ID
 	if cancelWshEventDataProto.ReqId != nil {
 		reqID = int64(*cancelWshEventDataProto.ReqId)
@@ -5733,7 +5589,6 @@ func (c *EClient) cancelWshEventDataProtoBuf(cancelWshEventDataProto *protobuf.C
 
 // ReqUserInfo requests user info.
 func (c *EClient) ReqUserInfo(reqID int64) {
-
 	if !c.IsConnected() {
 		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
@@ -5754,7 +5609,6 @@ func (c *EClient) ReqUserInfo(reqID int64) {
 
 // ReqCurrentTimeInMillis requests the current system time in milliseconds on the server side.
 func (c *EClient) ReqCurrentTimeInMillis() {
-
 	if !c.IsConnected() {
 		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
