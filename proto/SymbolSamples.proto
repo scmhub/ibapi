@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+package protobuf;
+
+import "ContractDescription.proto";
+
+option go_package = ".;protobuf";
+
+message SymbolSamples {
+    optional int32 reqId = 1;
+    repeated ContractDescription contractDescriptions = 2;
+}

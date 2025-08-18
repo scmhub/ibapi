@@ -1868,3 +1868,80 @@ func createCancelCalculateOptionPriceProto(reqID int64) *protobuf.CancelCalculat
 	}
 	return cancel
 }
+
+func createSecDefOptParamsRequestProto(reqID int64, underlyingSymbol, futFopExchange, underlyingSecType string, underlyingConID int64) *protobuf.SecDefOptParamsRequest {
+	req := &protobuf.SecDefOptParamsRequest{}
+	if isValidInt64Value(reqID) {
+		id := int32(reqID)
+		req.ReqId = &id
+	}
+	if !stringIsEmpty(underlyingSymbol) {
+		req.UnderlyingSymbol = &underlyingSymbol
+	}
+	if !stringIsEmpty(futFopExchange) {
+		req.FutFopExchange = &futFopExchange
+	}
+	if !stringIsEmpty(underlyingSecType) {
+		req.UnderlyingSecType = &underlyingSecType
+	}
+	if isValidInt64Value(underlyingConID) {
+		cid := int32(underlyingConID)
+		req.UnderlyingConId = &cid
+	}
+	return req
+}
+
+func createSoftDollarTiersRequestProto(reqID int64) *protobuf.SoftDollarTiersRequest {
+	req := &protobuf.SoftDollarTiersRequest{}
+	if isValidInt64Value(reqID) {
+		id := int32(reqID)
+		req.ReqId = &id
+	}
+	return req
+}
+
+func createFamilyCodesRequestProto() *protobuf.FamilyCodesRequest {
+	return &protobuf.FamilyCodesRequest{}
+}
+
+func createMatchingSymbolsRequestProto(reqID int64, pattern string) *protobuf.MatchingSymbolsRequest {
+	req := &protobuf.MatchingSymbolsRequest{}
+	if isValidInt64Value(reqID) {
+		id := int32(reqID)
+		req.ReqId = &id
+	}
+	if !stringIsEmpty(pattern) {
+		req.Pattern = &pattern
+	}
+	return req
+}
+
+func createSmartComponentsRequestProto(reqID int64, bboExchange string) *protobuf.SmartComponentsRequest {
+	req := &protobuf.SmartComponentsRequest{}
+	if isValidInt64Value(reqID) {
+		id := int32(reqID)
+		req.ReqId = &id
+	}
+	if !stringIsEmpty(bboExchange) {
+		req.BboExchange = &bboExchange
+	}
+	return req
+}
+
+func createMarketRuleRequestProto(marketRuleID int64) *protobuf.MarketRuleRequest {
+	req := &protobuf.MarketRuleRequest{}
+	if isValidInt64Value(marketRuleID) {
+		id := int32(marketRuleID)
+		req.MarketRuleId = &id
+	}
+	return req
+}
+
+func createUserInfoRequestProto(reqID int64) *protobuf.UserInfoRequest {
+	req := &protobuf.UserInfoRequest{}
+	if isValidInt64Value(reqID) {
+		id := int32(reqID)
+		req.ReqId = &id
+	}
+	return req
+}

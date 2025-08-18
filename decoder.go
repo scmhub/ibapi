@@ -170,6 +170,22 @@ func (d *EDecoder) interpret(msgBytes []byte) {
 			d.processRerouteMktDataReqMsgProtoBuf(msgBuf)
 		case REROUTE_MKT_DEPTH_REQ:
 			d.processRerouteMktDepthReqMsgProtoBuf(msgBuf)
+		case SECURITY_DEFINITION_OPTION_PARAMETER:
+			d.processSecurityDefinitionOptionParameterMsgProtoBuf(msgBuf)
+		case SECURITY_DEFINITION_OPTION_PARAMETER_END:
+			d.processSecurityDefinitionOptionParameterEndMsgProtoBuf(msgBuf)
+		case SOFT_DOLLAR_TIERS:
+			d.processSoftDollarTiersMsgProtoBuf(msgBuf)
+		case FAMILY_CODES:
+			d.processFamilyCodesMsgProtoBuf(msgBuf)
+		case SYMBOL_SAMPLES:
+			d.processSymbolSamplesMsgProtoBuf(msgBuf)
+		case SMART_COMPONENTS:
+			d.processSmartComponentsMsgProtoBuf(msgBuf)
+		case MARKET_RULE:
+			d.processMarketRuleMsgProtoBuf(msgBuf)
+		case USER_INFO:
+			d.processUserInfoMsgProtoBuf(msgBuf)
 		default:
 			d.wrapper.Error(msgID, currentTimeMillis(), UNKNOWN_ID.Code, UNKNOWN_ID.Msg, "")
 		}
@@ -2802,10 +2818,65 @@ func (d *EDecoder) processSecurityDefinitionOptionalParameterMsg(msgBuf *MsgBuff
 
 }
 
+func (d *EDecoder) processSecurityDefinitionOptionParameterMsgProtoBuf(msgBuf *MsgBuffer) {
+	var protoMsg protobuf.SecDefOptParameter
+	if err := proto.Unmarshal(msgBuf.bs, &protoMsg); err != nil {
+		log.Error().Err(err).Msg("failed to unmarshal SecurityDefinitionOptionParameter")
+		return
+	}
+	d.wrapper.SecDefOptParameterProtoBuf(&protoMsg)
+
+	reqID := NO_VALID_ID
+	if protoMsg.ReqId != nil {
+		reqID = int64(protoMsg.GetReqId())
+	}
+	exchange := ""
+	if protoMsg.Exchange != nil {
+		exchange = protoMsg.GetExchange()
+	}
+	underlyingConID := int64(0)
+	if protoMsg.UnderlyingConId != nil {
+		underlyingConID = int64(protoMsg.GetUnderlyingConId())
+	}
+	tradingClass := ""
+	if protoMsg.TradingClass != nil {
+		tradingClass = protoMsg.GetTradingClass()
+	}
+	multiplier := ""
+	if protoMsg.Multiplier != nil {
+		multiplier = protoMsg.GetMultiplier()
+	}
+	expirations := make([]string, 0, len(protoMsg.GetExpirations()))
+	expirations = append(expirations, protoMsg.GetExpirations()...)
+
+	strikes := make([]float64, 0, len(protoMsg.GetStrikes()))
+	strikes = append(strikes, protoMsg.GetStrikes()...)
+
+	d.wrapper.SecurityDefinitionOptionParameter(
+		reqID, exchange, underlyingConID, tradingClass, multiplier,
+		expirations, strikes,
+	)
+}
+
 func (d *EDecoder) processSecurityDefinitionOptionalParameterEndMsg(msgBuf *MsgBuffer) {
 
 	reqID := msgBuf.decodeInt64()
 
+	d.wrapper.SecurityDefinitionOptionParameterEnd(reqID)
+}
+
+func (d *EDecoder) processSecurityDefinitionOptionParameterEndMsgProtoBuf(msgBuf *MsgBuffer) {
+	var protoMsg protobuf.SecDefOptParameterEnd
+	if err := proto.Unmarshal(msgBuf.bs, &protoMsg); err != nil {
+		log.Error().Err(err).Msg("failed to unmarshal SecurityDefinitionOptionParameterEnd")
+		return
+	}
+	d.wrapper.SecDefOptParameterEndProtoBuf(&protoMsg)
+
+	reqID := NO_VALID_ID
+	if protoMsg.ReqId != nil {
+		reqID = int64(protoMsg.GetReqId())
+	}
 	d.wrapper.SecurityDefinitionOptionParameterEnd(reqID)
 }
 
@@ -2827,6 +2898,27 @@ func (d *EDecoder) processSoftDollarTiersMsg(msgBuf *MsgBuffer) {
 	d.wrapper.SoftDollarTiers(reqID, tiers)
 }
 
+func (d *EDecoder) processSoftDollarTiersMsgProtoBuf(msgBuf *MsgBuffer) {
+	var protoMsg protobuf.SoftDollarTiers
+	if err := proto.Unmarshal(msgBuf.bs, &protoMsg); err != nil {
+		log.Error().Err(err).Msg("failed to unmarshal SoftDollarTierList")
+		return
+	}
+
+	d.wrapper.SoftDollarTiersProtoBuf(&protoMsg)
+
+	reqID := NO_VALID_ID
+	if protoMsg.ReqId != nil {
+		reqID = int64(protoMsg.GetReqId())
+	}
+	tiers := make([]SoftDollarTier, 0, len(protoMsg.GetSoftDollarTiers()))
+	for _, t := range protoMsg.GetSoftDollarTiers() {
+		tiers = append(tiers, decodeSoftDollarTier(t))
+	}
+
+	d.wrapper.SoftDollarTiers(reqID, tiers)
+}
+
 func (d *EDecoder) processFamilyCodesMsg(msgBuf *MsgBuffer) {
 
 	familyCodesCount := msgBuf.decodeInt64()
@@ -2840,6 +2932,21 @@ func (d *EDecoder) processFamilyCodesMsg(msgBuf *MsgBuffer) {
 	}
 
 	d.wrapper.FamilyCodes(familyCodes)
+}
+
+func (d *EDecoder) processFamilyCodesMsgProtoBuf(msgBuf *MsgBuffer) {
+	var protoMsg protobuf.FamilyCodes
+	if err := proto.Unmarshal(msgBuf.bs, &protoMsg); err != nil {
+		log.Error().Err(err).Msg("failed to unmarshal FamilyCodeList")
+		return
+	}
+	d.wrapper.FamilyCodesProtoBuf(&protoMsg)
+
+	codes := make([]FamilyCode, 0, len(protoMsg.GetFamilyCodes()))
+	for _, fc := range protoMsg.GetFamilyCodes() {
+		codes = append(codes, *decodeFamilyCode(fc))
+	}
+	d.wrapper.FamilyCodes(codes)
 }
 
 func (d *EDecoder) processSymbolSamplesMsg(msgBuf *MsgBuffer) {
@@ -2871,6 +2978,33 @@ func (d *EDecoder) processSymbolSamplesMsg(msgBuf *MsgBuffer) {
 		contractDescriptions = append(contractDescriptions, conDesc)
 	}
 	d.wrapper.SymbolSamples(reqID, contractDescriptions)
+}
+
+func (d *EDecoder) processSymbolSamplesMsgProtoBuf(msgBuf *MsgBuffer) {
+	var protoMsg protobuf.SymbolSamples
+	if err := proto.Unmarshal(msgBuf.bs, &protoMsg); err != nil {
+		log.Error().Err(err).Msg("failed to unmarshal SymbolSamples")
+		return
+	}
+	d.wrapper.SymbolSamplesProtoBuf(&protoMsg)
+
+	reqID := NO_VALID_ID
+	if protoMsg.ReqId != nil {
+		reqID = int64(protoMsg.GetReqId())
+	}
+	descs := make([]ContractDescription, 0, len(protoMsg.GetContractDescriptions()))
+	for _, cd := range protoMsg.GetContractDescriptions() {
+		contract := Contract{}
+		if cd.Contract != nil {
+			contract = *decodeContract(cd.GetContract())
+		}
+		derivativeSecTypes := cd.GetDerivativeSecTypes()
+		descs = append(descs, ContractDescription{
+			Contract:           contract,
+			DerivativeSecTypes: append([]string{}, derivativeSecTypes...),
+		})
+	}
+	d.wrapper.SymbolSamples(reqID, descs)
 }
 
 func (d *EDecoder) processMktDepthExchangesMsg(msgBuf *MsgBuffer) {
@@ -3010,6 +3144,23 @@ func (d *EDecoder) processSmartComponentsMsg(msgBuf *MsgBuffer) {
 	}
 
 	d.wrapper.SmartComponents(reqID, smartComponents)
+}
+
+func (d *EDecoder) processSmartComponentsMsgProtoBuf(msgBuf *MsgBuffer) {
+	var protoMsg protobuf.SmartComponents
+	if err := proto.Unmarshal(msgBuf.bs, &protoMsg); err != nil {
+		log.Error().Err(err).Msg("failed to unmarshal SmartComponents")
+		return
+	}
+	d.wrapper.SmartComponentsProtoBuf(&protoMsg)
+
+	reqID := NO_VALID_ID
+	if protoMsg.ReqId != nil {
+		reqID = int64(protoMsg.GetReqId())
+	}
+	comps := decodeSmartComponents(&protoMsg)
+
+	d.wrapper.SmartComponents(reqID, comps)
 }
 
 func (d *EDecoder) processNewsProvidersMsg(msgBuf *MsgBuffer) {
@@ -3348,6 +3499,25 @@ func (d *EDecoder) processMarketRuleMsg(msgBuf *MsgBuffer) {
 	}
 
 	d.wrapper.MarketRule(marketRuleID, priceIncrements)
+}
+
+func (d *EDecoder) processMarketRuleMsgProtoBuf(msgBuf *MsgBuffer) {
+	var protoMsg protobuf.MarketRule
+	if err := proto.Unmarshal(msgBuf.bs, &protoMsg); err != nil {
+		log.Error().Err(err).Msg("failed to unmarshal MarketRule")
+		return
+	}
+	d.wrapper.MarketRuleProtoBuf(&protoMsg)
+
+	ruleID := int64(0)
+	if protoMsg.MarketRuleId != nil {
+		ruleID = int64(protoMsg.GetMarketRuleId())
+	}
+	imps := make([]PriceIncrement, 0, len(protoMsg.GetPriceIncrements()))
+	for _, p := range protoMsg.GetPriceIncrements() {
+		imps = append(imps, *decodePriceIncrement(p))
+	}
+	d.wrapper.MarketRule(ruleID, imps)
 }
 
 func (d *EDecoder) processPnLMsg(msgBuf *MsgBuffer) {
@@ -4036,6 +4206,26 @@ func (d *EDecoder) processUserInfo(msgBuf *MsgBuffer) {
 
 	reqID := msgBuf.decodeInt64()
 	whiteBrandingId := msgBuf.decodeString()
+
+	d.wrapper.UserInfo(reqID, whiteBrandingId)
+}
+
+func (d *EDecoder) processUserInfoMsgProtoBuf(msgBuf *MsgBuffer) {
+	var protoMsg protobuf.UserInfo
+	if err := proto.Unmarshal(msgBuf.bs, &protoMsg); err != nil {
+		log.Error().Err(err).Msg("failed to unmarshal UserInfo")
+		return
+	}
+	d.wrapper.UserInfoProtoBuf(&protoMsg)
+
+	reqID := NO_VALID_ID
+	if protoMsg.ReqId != nil {
+		reqID = int64(protoMsg.GetReqId())
+	}
+	whiteBrandingId := ""
+	if protoMsg.WhiteBrandingId != nil {
+		whiteBrandingId = protoMsg.GetWhiteBrandingId()
+	}
 
 	d.wrapper.UserInfo(reqID, whiteBrandingId)
 }

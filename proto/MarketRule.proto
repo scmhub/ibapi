@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+package protobuf;
+
+import "PriceIncrement.proto";
+
+option go_package = ".;protobuf";
+
+message MarketRule {
+    optional int32 marketRuleId = 1;
+	repeated PriceIncrement priceIncrements = 2;
+}

@@ -4,7 +4,7 @@ package protobuf;
 
 option go_package = ".;protobuf";
 
-message FundamentalsData {
+message MatchingSymbolsRequest {
     optional int32 reqId = 1;
-	optional string data = 2;
+	optional string pattern = 2;
 }

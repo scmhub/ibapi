@@ -4,6 +4,6 @@ package protobuf;
 
 option go_package = ".;protobuf";
 
-message CancelPnL {
-    optional int32 reqId = 1;
+message SetServerLogLevelRequest {
+    optional int32 logLevel = 1;
 }

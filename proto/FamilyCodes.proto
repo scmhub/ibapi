@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package protobuf;
+
+import "FamilyCode.proto";
+
+option go_package = ".;protobuf";
+
+message FamilyCodes {
+	repeated FamilyCode familyCodes = 1;
+}

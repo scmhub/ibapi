@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package protobuf;
+
+option go_package = ".;protobuf";
+
+message SmartComponent {
+    optional int32 bitNumber = 1;
+    optional string exchange = 2;
+    optional string exchangeLetter = 3;
+}

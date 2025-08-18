@@ -540,7 +540,7 @@ func decodeOrder(orderID int64, contractProto *protobuf.Contract, orderProto *pr
 	if orderProto.ExtOperator != nil {
 		order.ExtOperator = orderProto.GetExtOperator()
 	}
-	order.SoftDollarTier = decodeSoftDollarTier(orderProto)
+	order.SoftDollarTier = decodeSoftDollarTierFromOrder(orderProto)
 	// native cash quantity
 	if orderProto.CashQty != nil {
 		order.CashQty = orderProto.GetCashQty()
@@ -759,27 +759,33 @@ func decodePercentChangeCondition(condProto *protobuf.OrderCondition) *PercentCh
 	return cond
 }
 
-func decodeSoftDollarTier(orderProto *protobuf.Order) SoftDollarTier {
+func decodeSoftDollarTier(softDollarTierProto *protobuf.SoftDollarTier) SoftDollarTier {
+	var softDollarTier SoftDollarTier
+	var name string
+	if softDollarTierProto.Name != nil {
+		name = softDollarTierProto.GetName()
+	}
+	var value string
+	if softDollarTierProto.Value != nil {
+		value = softDollarTierProto.GetValue()
+	}
+	var displayName string
+	if softDollarTierProto.DisplayName != nil {
+		displayName = softDollarTierProto.GetDisplayName()
+	}
+	softDollarTier = SoftDollarTier{
+		Name:        name,
+		Value:       value,
+		DisplayName: displayName,
+	}
+
+	return softDollarTier
+}
+
+func decodeSoftDollarTierFromOrder(orderProto *protobuf.Order) SoftDollarTier {
 	var softDollarTier SoftDollarTier
 	if orderProto.SoftDollarTier != nil {
-		tierProto := orderProto.GetSoftDollarTier()
-		var name string
-		if tierProto.Name != nil {
-			name = tierProto.GetName()
-		}
-		var value string
-		if tierProto.Value != nil {
-			value = tierProto.GetValue()
-		}
-		var displayName string
-		if tierProto.DisplayName != nil {
-			displayName = tierProto.GetDisplayName()
-		}
-		softDollarTier = SoftDollarTier{
-			Name:        name,
-			Value:       value,
-			DisplayName: displayName,
-		}
+		softDollarTier = decodeSoftDollarTier(orderProto.GetSoftDollarTier())
 	}
 	return softDollarTier
 }
@@ -1255,4 +1261,56 @@ func decodeHistoricalDataBar(proto *protobuf.HistoricalDataBar) *Bar {
 		bar.Wap = StringToDecimal(proto.GetWAP())
 	}
 	return bar
+}
+
+// decodeFamilyCode translates protobuf FamilyCode to Go FamilyCode
+func decodeFamilyCode(proto *protobuf.FamilyCode) *FamilyCode {
+	familyCode := &FamilyCode{}
+	if proto.AccountId != nil {
+		familyCode.AccountID = proto.GetAccountId()
+	}
+	if proto.FamilyCode != nil {
+		familyCode.FamilyCodeStr = proto.GetFamilyCode()
+	}
+	return familyCode
+}
+
+// decodeSmartComponents translates protobuf SmartComponents to Go []SmartComponent
+func decodeSmartComponents(proto *protobuf.SmartComponents) []SmartComponent {
+	scs := make([]SmartComponent, 0, len(proto.GetSmartComponents()))
+	for _, smartComponentProto := range proto.GetSmartComponents() {
+		var bitNumber int
+		if smartComponentProto.BitNumber != nil {
+			bitNumber = int(smartComponentProto.GetBitNumber())
+		}
+
+		var exchange string
+		if smartComponentProto.Exchange != nil {
+			exchange = smartComponentProto.GetExchange()
+		}
+
+		var exchangeLetter string
+		if smartComponentProto.ExchangeLetter != nil && len(smartComponentProto.GetExchangeLetter()) > 0 {
+			exchangeLetter = string(smartComponentProto.GetExchangeLetter()[0])
+		}
+
+		scs = append(scs, SmartComponent{
+			BitNumber:      int64(bitNumber),
+			Exchange:       exchange,
+			ExchangeLetter: exchangeLetter,
+		})
+	}
+	return scs
+}
+
+// decodePriceIncrement translates protobuf PriceIncrement to Go PriceIncrement
+func decodePriceIncrement(proto *protobuf.PriceIncrement) *PriceIncrement {
+	priceIncrement := &PriceIncrement{}
+	if proto.LowEdge != nil {
+		priceIncrement.LowEdge = proto.GetLowEdge()
+	}
+	if proto.Increment != nil {
+		priceIncrement.Increment = proto.GetIncrement()
+	}
+	return priceIncrement
 }

@@ -2,9 +2,11 @@ syntax = "proto3";
 
 package protobuf;
 
+import "SoftDollarTier.proto";
+
 option go_package = ".;protobuf";
 
-message FundamentalsData {
+message SoftDollarTiers {
     optional int32 reqId = 1;
-	optional string data = 2;
+	repeated SoftDollarTier softDollarTiers = 2;
 }

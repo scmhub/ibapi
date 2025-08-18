@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+package protobuf;
+
+option go_package = ".;protobuf";
+
+message PriceIncrement {
+    optional double lowEdge = 1;
+    optional double increment = 2;
+}

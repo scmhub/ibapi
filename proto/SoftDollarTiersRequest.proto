@@ -4,7 +4,6 @@ package protobuf;
 
 option go_package = ".;protobuf";
 
-message FundamentalsData {
+message SoftDollarTiersRequest {
     optional int32 reqId = 1;
-	optional string data = 2;
 }

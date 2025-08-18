@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package protobuf;
+
+option go_package = ".;protobuf";
+
+message SecDefOptParameter {
+    optional int32 reqId = 1;
+	optional string exchange = 2;
+    optional int32 underlyingConId = 3;
+	optional string tradingClass = 4;
+	optional string multiplier = 5;
+	repeated string expirations = 6;
+	repeated double strikes = 7;
+}

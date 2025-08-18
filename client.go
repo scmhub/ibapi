@@ -933,6 +933,11 @@ func (c *EClient) reqMarketDataTypeProtoBuf(marketDataTypeRequestProto *protobuf
 // ReqSmartComponents request the smartComponents.
 func (c *EClient) ReqSmartComponents(reqID int64, bboExchange string) {
 
+	if c.useProtoBuf(REQ_SMART_COMPONENTS) {
+		c.reqSmartComponentsProtoBuf(createSmartComponentsRequestProto(reqID, bboExchange))
+		return
+	}
+
 	if !c.IsConnected() {
 		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
@@ -950,8 +955,40 @@ func (c *EClient) ReqSmartComponents(reqID int64, bboExchange string) {
 	c.reqChan <- me.Bytes()
 }
 
+func (c *EClient) reqSmartComponentsProtoBuf(smartComponentsRequestProto *protobuf.SmartComponentsRequest) {
+
+	reqID := NO_VALID_ID
+	if smartComponentsRequestProto.ReqId != nil {
+		reqID = int64(*smartComponentsRequestProto.ReqId)
+	}
+
+	if !c.IsConnected() {
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
+	me := NewMsgEncoder(3, c)
+
+	me.encodeMsgID(REQ_SMART_COMPONENTS + PROTOBUF_MSG_ID)
+
+	msg, err := proto.Marshal(smartComponentsRequestProto)
+	if err != nil {
+		c.wrapper.Error(reqID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
+		return
+	}
+
+	me.encodeProto(msg)
+
+	c.reqChan <- me.Bytes()
+}
+
 // ReqMarketRule requests the market rule.
 func (c *EClient) ReqMarketRule(marketRuleID int64) {
+
+	if c.useProtoBuf(REQ_MARKET_RULE) {
+		c.reqMarketRuleProtoBuf(createMarketRuleRequestProto(marketRuleID))
+		return
+	}
 
 	if !c.IsConnected() {
 		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
@@ -966,6 +1003,28 @@ func (c *EClient) ReqMarketRule(marketRuleID int64) {
 	me := NewMsgEncoder(2, c)
 
 	me.encodeMsgID(REQ_MARKET_RULE).encodeInt64(marketRuleID)
+
+	c.reqChan <- me.Bytes()
+}
+
+func (c *EClient) reqMarketRuleProtoBuf(marketRuleRequestProto *protobuf.MarketRuleRequest) {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
+	me := NewMsgEncoder(2, c)
+
+	me.encodeMsgID(REQ_MARKET_RULE + PROTOBUF_MSG_ID)
+
+	msg, err := proto.Marshal(marketRuleRequestProto)
+	if err != nil {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
+		return
+	}
+
+	me.encodeProto(msg)
 
 	c.reqChan <- me.Bytes()
 }
@@ -5368,6 +5427,11 @@ func (c *EClient) VerifyAndAuthMessage(apiData string, xyzResponse string) {
 // Response comes via wrapper.SecurityDefinitionOptionParameter().
 func (c *EClient) ReqSecDefOptParams(reqID int64, underlyingSymbol string, futFopExchange string, underlyingSecurityType string, underlyingContractID int64) {
 
+	if c.useProtoBuf(REQ_SEC_DEF_OPT_PARAMS) {
+		c.reqSecDefOptParamsProtoBuf(createSecDefOptParamsRequestProto(reqID, underlyingSymbol, futFopExchange, underlyingSecurityType, underlyingContractID))
+		return
+	}
+
 	if !c.IsConnected() {
 		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
@@ -5390,10 +5454,42 @@ func (c *EClient) ReqSecDefOptParams(reqID int64, underlyingSymbol string, futFo
 	c.reqChan <- me.Bytes()
 }
 
+func (c *EClient) reqSecDefOptParamsProtoBuf(secDefOptParamsRequestProto *protobuf.SecDefOptParamsRequest) {
+
+	reqID := NO_VALID_ID
+	if secDefOptParamsRequestProto.ReqId != nil {
+		reqID = int64(*secDefOptParamsRequestProto.ReqId)
+	}
+
+	if !c.IsConnected() {
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
+	me := NewMsgEncoder(6, c)
+
+	me.encodeMsgID(REQ_SEC_DEF_OPT_PARAMS + PROTOBUF_MSG_ID)
+
+	msg, err := proto.Marshal(secDefOptParamsRequestProto)
+	if err != nil {
+		c.wrapper.Error(reqID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
+		return
+	}
+
+	me.encodeProto(msg)
+
+	c.reqChan <- me.Bytes()
+}
+
 // ReqSoftDollarTiers request pre-defined Soft Dollar Tiers.
 // This is only supported for registered professional advisors and hedge and mutual funds
 // who have configured Soft Dollar Tiers in Account Management.
 func (c *EClient) ReqSoftDollarTiers(reqID int64) {
+
+	if c.useProtoBuf(REQ_SOFT_DOLLAR_TIERS) {
+		c.reqSoftDollarTiersProtoBuf(createSoftDollarTiersRequestProto(reqID))
+		return
+	}
 
 	if !c.IsConnected() {
 		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
@@ -5408,8 +5504,40 @@ func (c *EClient) ReqSoftDollarTiers(reqID int64) {
 	c.reqChan <- me.Bytes()
 }
 
+func (c *EClient) reqSoftDollarTiersProtoBuf(softDollarTiersRequestProto *protobuf.SoftDollarTiersRequest) {
+
+	reqID := NO_VALID_ID
+	if softDollarTiersRequestProto.ReqId != nil {
+		reqID = int64(*softDollarTiersRequestProto.ReqId)
+	}
+
+	if !c.IsConnected() {
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
+	me := NewMsgEncoder(2, c)
+
+	me.encodeMsgID(REQ_SOFT_DOLLAR_TIERS + PROTOBUF_MSG_ID)
+
+	msg, err := proto.Marshal(softDollarTiersRequestProto)
+	if err != nil {
+		c.wrapper.Error(reqID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
+		return
+	}
+
+	me.encodeProto(msg)
+
+	c.reqChan <- me.Bytes()
+}
+
 // ReqFamilyCodes requests family codes.
 func (c *EClient) ReqFamilyCodes() {
+
+	if c.useProtoBuf(REQ_FAMILY_CODES) {
+		c.reqFamilyCodesProtoBuf(createFamilyCodesRequestProto())
+		return
+	}
 
 	if !c.IsConnected() {
 		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
@@ -5428,8 +5556,35 @@ func (c *EClient) ReqFamilyCodes() {
 	c.reqChan <- me.Bytes()
 }
 
+func (c *EClient) reqFamilyCodesProtoBuf(familyCodesRequestProto *protobuf.FamilyCodesRequest) {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
+	me := NewMsgEncoder(1, c)
+
+	me.encodeMsgID(REQ_FAMILY_CODES + PROTOBUF_MSG_ID)
+
+	msg, err := proto.Marshal(familyCodesRequestProto)
+	if err != nil {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
+		return
+	}
+
+	me.encodeProto(msg)
+
+	c.reqChan <- me.Bytes()
+}
+
 // ReqMatchingSymbols requests matching symbols.
 func (c *EClient) ReqMatchingSymbols(reqID int64, pattern string) {
+
+	if c.useProtoBuf(REQ_MATCHING_SYMBOLS) {
+		c.reqMatchingSymbolsProtoBuf(createMatchingSymbolsRequestProto(reqID, pattern))
+		return
+	}
 
 	if !c.IsConnected() {
 		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
@@ -5446,6 +5601,33 @@ func (c *EClient) ReqMatchingSymbols(reqID int64, pattern string) {
 	me.encodeMsgID(REQ_MATCHING_SYMBOLS)
 	me.encodeInt64(reqID)
 	me.encodeString(pattern)
+
+	c.reqChan <- me.Bytes()
+}
+
+func (c *EClient) reqMatchingSymbolsProtoBuf(matchingSymbolsRequestProto *protobuf.MatchingSymbolsRequest) {
+
+	reqID := NO_VALID_ID
+	if matchingSymbolsRequestProto.ReqId != nil {
+		reqID = int64(*matchingSymbolsRequestProto.ReqId)
+	}
+
+	if !c.IsConnected() {
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
+	me := NewMsgEncoder(3, c)
+
+	me.encodeMsgID(REQ_MATCHING_SYMBOLS + PROTOBUF_MSG_ID)
+
+	msg, err := proto.Marshal(matchingSymbolsRequestProto)
+	if err != nil {
+		c.wrapper.Error(reqID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
+		return
+	}
+
+	me.encodeProto(msg)
 
 	c.reqChan <- me.Bytes()
 }
@@ -5734,6 +5916,11 @@ func (c *EClient) cancelWshEventDataProtoBuf(cancelWshEventDataProto *protobuf.C
 // ReqUserInfo requests user info.
 func (c *EClient) ReqUserInfo(reqID int64) {
 
+	if c.useProtoBuf(REQ_USER_INFO) {
+		c.reqUserInfoProtoBuf(createUserInfoRequestProto(reqID))
+		return
+	}
+
 	if !c.IsConnected() {
 		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
@@ -5748,6 +5935,33 @@ func (c *EClient) ReqUserInfo(reqID int64) {
 
 	me.encodeMsgID(REQ_USER_INFO)
 	me.encodeInt64(reqID)
+
+	c.reqChan <- me.Bytes()
+}
+
+func (c *EClient) reqUserInfoProtoBuf(userInfoRequestProto *protobuf.UserInfoRequest) {
+
+	reqID := NO_VALID_ID
+	if userInfoRequestProto.ReqId != nil {
+		reqID = int64(*userInfoRequestProto.ReqId)
+	}
+
+	if !c.IsConnected() {
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
+	me := NewMsgEncoder(2, c)
+
+	me.encodeMsgID(REQ_USER_INFO + PROTOBUF_MSG_ID)
+
+	msg, err := proto.Marshal(userInfoRequestProto)
+	if err != nil {
+		c.wrapper.Error(reqID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
+		return
+	}
+
+	me.encodeProto(msg)
 
 	c.reqChan <- me.Bytes()
 }

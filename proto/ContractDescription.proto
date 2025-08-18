@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+package protobuf;
+
+import "Contract.proto";
+
+option go_package = ".;protobuf";
+
+message ContractDescription {
+    optional Contract contract = 1;
+	repeated string derivativeSecTypes = 2;
+}
