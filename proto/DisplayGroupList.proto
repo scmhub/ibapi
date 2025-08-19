@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+package protobuf;
+
+option go_package = ".;protobuf";
+
+message DisplayGroupList {
+    optional int32 reqId = 1;
+    optional string groups = 2;
+}

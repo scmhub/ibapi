@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package protobuf;
+
+option go_package = ".;protobuf";
+
+message DepthMarketDataDescription {
+    optional string exchange = 1;
+    optional string secType = 2;
+    optional string listingExch = 3;
+    optional string serviceDataType = 4;
+    optional int32 aggGroup = 5;
+}

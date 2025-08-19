@@ -410,6 +410,11 @@ func (c *EClient) useProtoBuf(msgID int64) bool {
 // startAPI initiates the message exchange between the client application and the TWS/IB Gateway.
 func (c *EClient) startAPI() error {
 
+	if c.useProtoBuf(START_API) {
+		c.startApiProtoBuf(createStartApiRequestProto(c.clientID, c.optionalCapabilities))
+		return nil
+	}
+
 	if !c.IsConnected() {
 		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return NOT_CONNECTED
@@ -446,6 +451,28 @@ func (c *EClient) startAPI() error {
 	}
 
 	return nil
+}
+
+func (c *EClient) startApiProtoBuf(startApiRequestProto *protobuf.StartApiRequest) {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
+	me := NewMsgEncoder(4, c)
+
+	me.encodeMsgID(START_API + PROTOBUF_MSG_ID)
+
+	msg, err := proto.Marshal(startApiRequestProto)
+	if err != nil {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
+		return
+	}
+
+	me.encodeProto(msg)
+
+	c.reqChan <- me.Bytes()
 }
 
 // Connect must be called before any other.
@@ -640,6 +667,11 @@ func (c *EClient) SetConnectionOptions(connectOptions string) {
 // ReqCurrentTime asks the current system time on the server side.
 func (c *EClient) ReqCurrentTime() {
 
+	if c.useProtoBuf(REQ_CURRENT_TIME) {
+		c.reqCurrentTimeProtoBuf(createCurrentTimeRequestProto())
+		return
+	}
+
 	if !c.IsConnected() {
 		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
@@ -650,6 +682,28 @@ func (c *EClient) ReqCurrentTime() {
 	me := NewMsgEncoder(2, c)
 
 	me.encodeMsgID(REQ_CURRENT_TIME).encodeInt(VERSION)
+
+	c.reqChan <- me.Bytes()
+}
+
+func (c *EClient) reqCurrentTimeProtoBuf(currentTimeRequestProto *protobuf.CurrentTimeRequest) {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
+	me := NewMsgEncoder(2, c)
+
+	me.encodeMsgID(REQ_CURRENT_TIME + PROTOBUF_MSG_ID)
+
+	msg, err := proto.Marshal(currentTimeRequestProto)
+	if err != nil {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
+		return
+	}
+
+	me.encodeProto(msg)
 
 	c.reqChan <- me.Bytes()
 }
@@ -668,6 +722,11 @@ func (c *EClient) ServerVersion() Version {
 // 5 = DETAIL
 func (c *EClient) SetServerLogLevel(logLevel int64) {
 
+	if c.useProtoBuf(SET_SERVER_LOGLEVEL) {
+		c.setServerLogLevelProtoBuf(createSetServerLogLevelRequestProto(logLevel))
+		return
+	}
+
 	if !c.IsConnected() {
 		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
@@ -678,6 +737,28 @@ func (c *EClient) SetServerLogLevel(logLevel int64) {
 	me := NewMsgEncoder(3, c)
 
 	me.encodeMsgID(SET_SERVER_LOGLEVEL).encodeInt(VERSION).encodeInt64(logLevel)
+
+	c.reqChan <- me.Bytes()
+}
+
+func (c *EClient) setServerLogLevelProtoBuf(SetServerLogLevelRequest *protobuf.SetServerLogLevelRequest) {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
+	me := NewMsgEncoder(2, c)
+
+	me.encodeMsgID(SET_SERVER_LOGLEVEL + PROTOBUF_MSG_ID)
+
+	msg, err := proto.Marshal(SetServerLogLevelRequest)
+	if err != nil {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
+		return
+	}
+
+	me.encodeProto(msg)
 
 	c.reqChan <- me.Bytes()
 }
@@ -2589,6 +2670,11 @@ func (c *EClient) reqGlobalCancelProtoBuf(globalCancelRequestProto *protobuf.Glo
 // numIds is depreceted
 func (c *EClient) ReqIDs(numIds int64) {
 
+	if c.useProtoBuf(REQ_IDS) {
+		c.reqIdsProtoBuf(createIdsRequestProto(numIds))
+		return
+	}
+
 	if !c.IsConnected() {
 		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
@@ -2601,6 +2687,28 @@ func (c *EClient) ReqIDs(numIds int64) {
 	me.encodeMsgID(REQ_IDS)
 	me.encodeInt(VERSION)
 	me.encodeInt64(numIds)
+
+	c.reqChan <- me.Bytes()
+}
+
+func (c *EClient) reqIdsProtoBuf(idsRequestProto *protobuf.IdsRequest) {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
+	me := NewMsgEncoder(3, c)
+
+	me.encodeMsgID(REQ_IDS + PROTOBUF_MSG_ID)
+
+	msg, err := proto.Marshal(idsRequestProto)
+	if err != nil {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
+		return
+	}
+
+	me.encodeProto(msg)
 
 	c.reqChan <- me.Bytes()
 }
@@ -3561,6 +3669,11 @@ func (c *EClient) reqContractDataProtoBuf(contractDataRequestProto *protobuf.Con
 // ReqMktDepthExchanges requests market depth exchanges.
 func (c *EClient) ReqMktDepthExchanges() {
 
+	if c.useProtoBuf(REQ_MKT_DEPTH_EXCHANGES) {
+		c.reqMarketDepthExchangesProtoBuf(createMarketDepthExchangesRequestProto())
+		return
+	}
+
 	if !c.IsConnected() {
 		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
@@ -3574,6 +3687,28 @@ func (c *EClient) ReqMktDepthExchanges() {
 	me := NewMsgEncoder(1, c)
 
 	me.encodeMsgID(REQ_MKT_DEPTH_EXCHANGES)
+
+	c.reqChan <- me.Bytes()
+}
+
+func (c *EClient) reqMarketDepthExchangesProtoBuf(marketDepthExchangesRequestProto *protobuf.MarketDepthExchangesRequest) {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
+	me := NewMsgEncoder(1, c)
+
+	me.encodeMsgID(REQ_MKT_DEPTH_EXCHANGES + PROTOBUF_MSG_ID)
+
+	msg, err := proto.Marshal(marketDepthExchangesRequestProto)
+	if err != nil {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
+		return
+	}
+
+	me.encodeProto(msg)
 
 	c.reqChan <- me.Bytes()
 }
@@ -5198,6 +5333,11 @@ func (c *EClient) reqHistoricalNewsProtoBuf(historicalNewsRequestProto *protobuf
 // QueryDisplayGroups request the display groups in TWS.
 func (c *EClient) QueryDisplayGroups(reqID int64) {
 
+	if c.useProtoBuf(QUERY_DISPLAY_GROUPS) {
+		c.queryDisplayGroupsProtoBuf(createQueryDisplayGroupsRequestProto(reqID))
+		return
+	}
+
 	if !c.IsConnected() {
 		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
@@ -5219,10 +5359,42 @@ func (c *EClient) QueryDisplayGroups(reqID int64) {
 	c.reqChan <- me.Bytes()
 }
 
+func (c *EClient) queryDisplayGroupsProtoBuf(queryDisplayGroupsRequest *protobuf.QueryDisplayGroupsRequest) {
+
+	reqID := NO_VALID_ID
+	if queryDisplayGroupsRequest.ReqId != nil {
+		reqID = int64(*queryDisplayGroupsRequest.ReqId)
+	}
+
+	if !c.IsConnected() {
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
+	me := NewMsgEncoder(3, c)
+
+	me.encodeMsgID(QUERY_DISPLAY_GROUPS + PROTOBUF_MSG_ID)
+
+	msg, err := proto.Marshal(queryDisplayGroupsRequest)
+	if err != nil {
+		c.wrapper.Error(reqID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
+		return
+	}
+
+	me.encodeProto(msg)
+
+	c.reqChan <- me.Bytes()
+}
+
 // SubscribeToGroupEvents subcribes the group events.
 // reqId is the unique number associated with the notification.
 // groupId is the ID of the group, currently it is a number from 1 to 7.
 func (c *EClient) SubscribeToGroupEvents(reqID int64, groupID int) {
+
+	if c.useProtoBuf(SUBSCRIBE_TO_GROUP_EVENTS) {
+		c.subscribeToGroupEventsProtoBuf(createSubscribeToGroupEventsRequestProto(reqID, int64(groupID)))
+		return
+	}
 
 	if !c.IsConnected() {
 		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
@@ -5246,6 +5418,33 @@ func (c *EClient) SubscribeToGroupEvents(reqID int64, groupID int) {
 	c.reqChan <- me.Bytes()
 }
 
+func (c *EClient) subscribeToGroupEventsProtoBuf(subscribeToGroupEventsRequestProto *protobuf.SubscribeToGroupEventsRequest) {
+
+	reqID := NO_VALID_ID
+	if subscribeToGroupEventsRequestProto.ReqId != nil {
+		reqID = int64(*subscribeToGroupEventsRequestProto.ReqId)
+	}
+
+	if !c.IsConnected() {
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
+	me := NewMsgEncoder(4, c)
+
+	me.encodeMsgID(SUBSCRIBE_TO_GROUP_EVENTS + PROTOBUF_MSG_ID)
+
+	msg, err := proto.Marshal(subscribeToGroupEventsRequestProto)
+	if err != nil {
+		c.wrapper.Error(reqID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
+		return
+	}
+
+	me.encodeProto(msg)
+
+	c.reqChan <- me.Bytes()
+}
+
 // UpdateDisplayGroup updates the display group in TWS.
 // reqId is the requestId specified in subscribeToGroupEvents().
 // contractInfo is the encoded value that uniquely represents the contract in IB.
@@ -5256,6 +5455,11 @@ func (c *EClient) SubscribeToGroupEvents(reqID int64, groupID int) {
 //		Examples: 8314@SMART for IBM SMART; 8314@ARCA for IBM @ARCA.
 //	combo = if any combo is selected.
 func (c *EClient) UpdateDisplayGroup(reqID int64, contractInfo string) {
+
+	if c.useProtoBuf(UPDATE_DISPLAY_GROUP) {
+		c.updateDisplayGroupProtoBuf(createUpdateDisplayGroupRequestProto(reqID, contractInfo))
+		return
+	}
 
 	if !c.IsConnected() {
 		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
@@ -5279,8 +5483,40 @@ func (c *EClient) UpdateDisplayGroup(reqID int64, contractInfo string) {
 	c.reqChan <- me.Bytes()
 }
 
+func (c *EClient) updateDisplayGroupProtoBuf(updateDisplayGroupRequestProto *protobuf.UpdateDisplayGroupRequest) {
+
+	reqID := NO_VALID_ID
+	if updateDisplayGroupRequestProto.ReqId != nil {
+		reqID = int64(*updateDisplayGroupRequestProto.ReqId)
+	}
+
+	if !c.IsConnected() {
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
+	me := NewMsgEncoder(4, c)
+
+	me.encodeMsgID(UPDATE_DISPLAY_GROUP + PROTOBUF_MSG_ID)
+
+	msg, err := proto.Marshal(updateDisplayGroupRequestProto)
+	if err != nil {
+		c.wrapper.Error(reqID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
+		return
+	}
+
+	me.encodeProto(msg)
+
+	c.reqChan <- me.Bytes()
+}
+
 // UnsubscribeFromGroupEvents unsubcribes the display group events.
 func (c *EClient) UnsubscribeFromGroupEvents(reqID int64) {
+
+	if c.useProtoBuf(UNSUBSCRIBE_FROM_GROUP_EVENTS) {
+		c.unsubscribeFromGroupEventsProtoBuf(createUnsubscribeFromGroupEventsRequestProto(reqID))
+		return
+	}
 
 	if !c.IsConnected() {
 		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
@@ -5303,9 +5539,41 @@ func (c *EClient) UnsubscribeFromGroupEvents(reqID int64) {
 	c.reqChan <- me.Bytes()
 }
 
+func (c *EClient) unsubscribeFromGroupEventsProtoBuf(unsubscribeFromGroupEventsRequestProto *protobuf.UnsubscribeFromGroupEventsRequest) {
+
+	reqID := NO_VALID_ID
+	if unsubscribeFromGroupEventsRequestProto.ReqId != nil {
+		reqID = int64(*unsubscribeFromGroupEventsRequestProto.ReqId)
+	}
+
+	if !c.IsConnected() {
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
+	me := NewMsgEncoder(3, c)
+
+	me.encodeMsgID(UNSUBSCRIBE_FROM_GROUP_EVENTS + PROTOBUF_MSG_ID)
+
+	msg, err := proto.Marshal(unsubscribeFromGroupEventsRequestProto)
+	if err != nil {
+		c.wrapper.Error(reqID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
+		return
+	}
+
+	me.encodeProto(msg)
+
+	c.reqChan <- me.Bytes()
+}
+
 // VerifyRequest is just for IB's internal use.
 // Allows to provide means of verification between the TWS and third party programs.
 func (c *EClient) VerifyRequest(apiName string, apiVersion string) {
+
+	if c.useProtoBuf(VERIFY_REQUEST) {
+		c.verifyRequestProtoBuf(createVerifyRequestProto(apiName, apiVersion))
+		return
+	}
 
 	if !c.IsConnected() {
 		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
@@ -5335,9 +5603,36 @@ func (c *EClient) VerifyRequest(apiName string, apiVersion string) {
 	c.reqChan <- me.Bytes()
 }
 
+func (c *EClient) verifyRequestProtoBuf(VerifyRequest *protobuf.VerifyRequest) {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
+	me := NewMsgEncoder(4, c)
+
+	me.encodeMsgID(VERIFY_REQUEST + PROTOBUF_MSG_ID)
+
+	msg, err := proto.Marshal(VerifyRequest)
+	if err != nil {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
+		return
+	}
+
+	me.encodeProto(msg)
+
+	c.reqChan <- me.Bytes()
+}
+
 // VerifyMessage is just for IB's internal use.
 // Allows to provide means of verification between the TWS and third party programs.
 func (c *EClient) VerifyMessage(apiData string) {
+
+	if c.useProtoBuf(VERIFY_MESSAGE) {
+		c.verifyMessageProtoBuf(createVerifyMessageRequestProto(apiData))
+		return
+	}
 
 	if !c.IsConnected() {
 		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
@@ -5356,6 +5651,28 @@ func (c *EClient) VerifyMessage(apiData string) {
 	me.encodeMsgID(VERIFY_MESSAGE)
 	me.encodeInt(VERSION)
 	me.encodeString(apiData)
+
+	c.reqChan <- me.Bytes()
+}
+
+func (c *EClient) verifyMessageProtoBuf(verifyMessageRequestProto *protobuf.VerifyMessageRequest) {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
+	me := NewMsgEncoder(4, c)
+
+	me.encodeMsgID(VERIFY_MESSAGE + PROTOBUF_MSG_ID)
+
+	msg, err := proto.Marshal(verifyMessageRequestProto)
+	if err != nil {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
+		return
+	}
+
+	me.encodeProto(msg)
 
 	c.reqChan <- me.Bytes()
 }
@@ -5969,6 +6286,11 @@ func (c *EClient) reqUserInfoProtoBuf(userInfoRequestProto *protobuf.UserInfoReq
 // ReqCurrentTimeInMillis requests the current system time in milliseconds on the server side.
 func (c *EClient) ReqCurrentTimeInMillis() {
 
+	if c.useProtoBuf(REQ_CURRENT_TIME_IN_MILLIS) {
+		c.reqCurrentTimeInMillisProtoBuf(createCurrentTimeInMillisRequestProto())
+		return
+	}
+
 	if !c.IsConnected() {
 		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return
@@ -5982,6 +6304,28 @@ func (c *EClient) ReqCurrentTimeInMillis() {
 	me := NewMsgEncoder(1, c)
 
 	me.encodeMsgID(REQ_CURRENT_TIME_IN_MILLIS)
+
+	c.reqChan <- me.Bytes()
+}
+
+func (c *EClient) reqCurrentTimeInMillisProtoBuf(currentTimeInMillisRequestProto *protobuf.CurrentTimeInMillisRequest) {
+
+	if !c.IsConnected() {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
+	me := NewMsgEncoder(1, c)
+
+	me.encodeMsgID(REQ_CURRENT_TIME_IN_MILLIS + PROTOBUF_MSG_ID)
+
+	msg, err := proto.Marshal(currentTimeInMillisRequestProto)
+	if err != nil {
+		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
+		return
+	}
+
+	me.encodeProto(msg)
 
 	c.reqChan <- me.Bytes()
 }

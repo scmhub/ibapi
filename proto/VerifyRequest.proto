@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+package protobuf;
+
+option go_package = ".;protobuf";
+
+message VerifyRequest {
+	optional string apiName = 1;
+	optional string apiVersion = 2;
+}

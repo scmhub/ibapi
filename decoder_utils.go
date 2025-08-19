@@ -1314,3 +1314,24 @@ func decodePriceIncrement(proto *protobuf.PriceIncrement) *PriceIncrement {
 	}
 	return priceIncrement
 }
+
+// decodeDepthMarketDataDescription translates protobuf DepthMarketDataDescription to Go DepthMktDataDescription
+func decodeDepthMarketDataDescription(proto *protobuf.DepthMarketDataDescription) *DepthMktDataDescription {
+	depthMktDataDescription := &DepthMktDataDescription{}
+	if proto.Exchange != nil {
+		depthMktDataDescription.Exchange = proto.GetExchange()
+	}
+	if proto.SecType != nil {
+		depthMktDataDescription.SecType = proto.GetSecType()
+	}
+	if proto.ListingExch != nil {
+		depthMktDataDescription.ListingExch = proto.GetListingExch()
+	}
+	if proto.ServiceDataType != nil {
+		depthMktDataDescription.ServiceDataType = proto.GetServiceDataType()
+	}
+	if proto.AggGroup != nil {
+		depthMktDataDescription.AggGroup = int64(proto.GetAggGroup())
+	}
+	return depthMktDataDescription
+}

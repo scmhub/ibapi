@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+package protobuf;
+
+option go_package = ".;protobuf";
+
+message VerifyCompleted {
+	optional bool isSuccessful = 1;
+	optional string errorText = 2;
+}

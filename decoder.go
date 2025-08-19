@@ -186,6 +186,22 @@ func (d *EDecoder) interpret(msgBytes []byte) {
 			d.processMarketRuleMsgProtoBuf(msgBuf)
 		case USER_INFO:
 			d.processUserInfoMsgProtoBuf(msgBuf)
+		case NEXT_VALID_ID:
+			d.processNextValidIdMsgProtoBuf(msgBuf)
+		case CURRENT_TIME:
+			d.processCurrentTimeMsgProtoBuf(msgBuf)
+		case CURRENT_TIME_IN_MILLIS:
+			d.processCurrentTimeInMillisMsgProtoBuf(msgBuf)
+		case VERIFY_MESSAGE_API:
+			d.processVerifyMessageApiMsgProtoBuf(msgBuf)
+		case VERIFY_COMPLETED:
+			d.processVerifyCompletedMsgProtoBuf(msgBuf)
+		case DISPLAY_GROUP_LIST:
+			d.processDisplayGroupListMsgProtoBuf(msgBuf)
+		case DISPLAY_GROUP_UPDATED:
+			d.processDisplayGroupUpdatedMsgProtoBuf(msgBuf)
+		case MKT_DEPTH_EXCHANGES:
+			d.processMktDepthExchangesMsgProtoBuf(msgBuf)
 		default:
 			d.wrapper.Error(msgID, currentTimeMillis(), UNKNOWN_ID.Code, UNKNOWN_ID.Msg, "")
 		}
@@ -1219,6 +1235,24 @@ func (d *EDecoder) processNextValidIdMsg(msgBuf *MsgBuffer) {
 	d.wrapper.NextValidID(reqID)
 }
 
+func (d *EDecoder) processNextValidIdMsgProtoBuf(msgBuf *MsgBuffer) {
+
+	var protoMsg protobuf.NextValidId
+	if err := proto.Unmarshal(msgBuf.bs, &protoMsg); err != nil {
+		log.Error().Err(err).Msg("failed to unmarshal NextValidId")
+		return
+	}
+
+	d.wrapper.NextValidIdProtoBuf(&protoMsg)
+
+	id := NO_VALID_ID
+	if protoMsg.OrderId != nil {
+		id = int64(protoMsg.GetOrderId())
+	}
+
+	d.wrapper.NextValidID(id)
+}
+
 func (d *EDecoder) processContractDataMsg(msgBuf *MsgBuffer) {
 
 	var version int64 = 8
@@ -2031,6 +2065,24 @@ func (d *EDecoder) processCurrentTimeMsg(msgBuf *MsgBuffer) {
 	d.wrapper.CurrentTime(t)
 }
 
+func (d *EDecoder) processCurrentTimeMsgProtoBuf(msgBuf *MsgBuffer) {
+
+	var protoMsg protobuf.CurrentTime
+	if err := proto.Unmarshal(msgBuf.bs, &protoMsg); err != nil {
+		log.Error().Err(err).Msg("failed to unmarshal CurrentTime")
+		return
+	}
+
+	d.wrapper.CurrentTimeProtoBuf(&protoMsg)
+
+	ts := int64(0)
+	if protoMsg.CurrentTime != nil {
+		ts = protoMsg.GetCurrentTime()
+	}
+
+	d.wrapper.CurrentTime(ts)
+}
+
 func (d *EDecoder) processRealTimeBarsMsg(msgBuf *MsgBuffer) {
 
 	msgBuf.decode() // version
@@ -2546,6 +2598,24 @@ func (d *EDecoder) processVerifyMessageApiMsg(msgBuf *MsgBuffer) {
 	d.wrapper.VerifyMessageAPI(apiData)
 }
 
+func (d *EDecoder) processVerifyMessageApiMsgProtoBuf(msgBuf *MsgBuffer) {
+
+	var protoMsg protobuf.VerifyMessageApi
+	if err := proto.Unmarshal(msgBuf.bs, &protoMsg); err != nil {
+		log.Error().Err(err).Msg("failed to unmarshal VerifyMessageApi")
+		return
+	}
+
+	d.wrapper.VerifyMessageApiProtoBuf(&protoMsg)
+
+	data := ""
+	if protoMsg.ApiData != nil {
+		data = protoMsg.GetApiData()
+	}
+
+	d.wrapper.VerifyMessageAPI(data)
+}
+
 func (d *EDecoder) processVerifyCompletedMsg(msgBuf *MsgBuffer) {
 
 	msgBuf.decode() // version
@@ -2554,6 +2624,27 @@ func (d *EDecoder) processVerifyCompletedMsg(msgBuf *MsgBuffer) {
 	errorText := msgBuf.decodeString()
 
 	d.wrapper.VerifyCompleted(isSuccessful, errorText)
+}
+
+func (d *EDecoder) processVerifyCompletedMsgProtoBuf(msgBuf *MsgBuffer) {
+
+	var protoMsg protobuf.VerifyCompleted
+	if err := proto.Unmarshal(msgBuf.bs, &protoMsg); err != nil {
+		log.Error().Err(err).Msg("failed to unmarshal VerifyCompleted")
+		return
+	}
+
+	d.wrapper.VerifyCompletedProtoBuf(&protoMsg)
+
+	ok := false
+	if protoMsg.IsSuccessful != nil {
+		ok = protoMsg.GetIsSuccessful()
+	}
+	errText := ""
+	if protoMsg.ErrorText != nil {
+		errText = protoMsg.GetErrorText()
+	}
+	d.wrapper.VerifyCompleted(ok, errText)
 }
 
 func (d *EDecoder) processDisplayGroupListMsg(msgBuf *MsgBuffer) {
@@ -2566,12 +2657,56 @@ func (d *EDecoder) processDisplayGroupListMsg(msgBuf *MsgBuffer) {
 	d.wrapper.DisplayGroupList(reqID, groups)
 }
 
+func (d *EDecoder) processDisplayGroupListMsgProtoBuf(msgBuf *MsgBuffer) {
+
+	var protoMsg protobuf.DisplayGroupList
+	if err := proto.Unmarshal(msgBuf.bs, &protoMsg); err != nil {
+		log.Error().Err(err).Msg("failed to unmarshal DisplayGroupList")
+		return
+	}
+
+	d.wrapper.DisplayGroupListProtoBuf(&protoMsg)
+
+	reqID := NO_VALID_ID
+	if protoMsg.ReqId != nil {
+		reqID = int64(protoMsg.GetReqId())
+	}
+	groups := ""
+	if protoMsg.Groups != nil {
+		groups = protoMsg.GetGroups()
+	}
+
+	d.wrapper.DisplayGroupList(reqID, groups)
+}
+
 func (d *EDecoder) processDisplayGroupUpdatedMsg(msgBuf *MsgBuffer) {
 
 	msgBuf.decode() // version
 
 	reqID := msgBuf.decodeInt64()
 	contractInfo := msgBuf.decodeString()
+
+	d.wrapper.DisplayGroupUpdated(reqID, contractInfo)
+}
+
+func (d *EDecoder) processDisplayGroupUpdatedMsgProtoBuf(msgBuf *MsgBuffer) {
+
+	var protoMsg protobuf.DisplayGroupUpdated
+	if err := proto.Unmarshal(msgBuf.bs, &protoMsg); err != nil {
+		log.Error().Err(err).Msg("failed to unmarshal DisplayGroupUpdated")
+		return
+	}
+
+	d.wrapper.DisplayGroupUpdatedProtoBuf(&protoMsg)
+
+	reqID := NO_VALID_ID
+	if protoMsg.ReqId != nil {
+		reqID = int64(protoMsg.GetReqId())
+	}
+	contractInfo := ""
+	if protoMsg.ContractInfo != nil {
+		contractInfo = protoMsg.GetContractInfo()
+	}
 
 	d.wrapper.DisplayGroupUpdated(reqID, contractInfo)
 }
@@ -3029,6 +3164,23 @@ func (d *EDecoder) processMktDepthExchangesMsg(msgBuf *MsgBuffer) {
 	}
 
 	d.wrapper.MktDepthExchanges(depthMktDataDescriptions)
+}
+
+func (d *EDecoder) processMktDepthExchangesMsgProtoBuf(msgBuf *MsgBuffer) {
+
+	var protoMsg protobuf.MarketDepthExchanges
+	if err := proto.Unmarshal(msgBuf.bs, &protoMsg); err != nil {
+		log.Error().Err(err).Msg("failed to unmarshal MarketDepthExchanges")
+		return
+	}
+
+	d.wrapper.MarketDepthExchangesProtoBuf(&protoMsg)
+
+	descs := make([]DepthMktDataDescription, 0, len(protoMsg.GetDepthMarketDataDescriptions()))
+	for _, dd := range protoMsg.GetDepthMarketDataDescriptions() {
+		descs = append(descs, *decodeDepthMarketDataDescription(dd))
+	}
+	d.wrapper.MktDepthExchanges(descs)
 }
 
 func (d *EDecoder) processTickNewsMsg(msgBuf *MsgBuffer) {
@@ -4235,6 +4387,24 @@ func (d *EDecoder) processCurrentTimeInMillisMsg(msgBuf *MsgBuffer) {
 	timeInMillis := msgBuf.decodeInt64()
 
 	d.wrapper.CurrentTimeInMillis(timeInMillis)
+}
+
+func (d *EDecoder) processCurrentTimeInMillisMsgProtoBuf(msgBuf *MsgBuffer) {
+
+	var protoMsg protobuf.CurrentTimeInMillis
+	if err := proto.Unmarshal(msgBuf.bs, &protoMsg); err != nil {
+		log.Error().Err(err).Msg("failed to unmarshal CurrentTimeMillis")
+		return
+	}
+
+	d.wrapper.CurrentTimeInMillisProtoBuf(&protoMsg)
+
+	ms := int64(0)
+	if protoMsg.CurrentTimeInMillis != nil {
+		ms = protoMsg.GetCurrentTimeInMillis()
+	}
+
+	d.wrapper.CurrentTimeInMillis(ms)
 }
 
 //

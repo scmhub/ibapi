@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package protobuf;
+
+import "DepthMarketDataDescription.proto";
+
+option go_package = ".;protobuf";
+
+message MarketDepthExchanges {
+	repeated DepthMarketDataDescription depthMarketDataDescriptions = 1;
+}

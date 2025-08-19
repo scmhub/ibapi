@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+package protobuf;
+
+option go_package = ".;protobuf";
+
+message StartApiRequest {
+    optional int32 clientId = 1;
+    optional string optionalCapabilities = 2;
+}

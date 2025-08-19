@@ -1945,3 +1945,107 @@ func createUserInfoRequestProto(reqID int64) *protobuf.UserInfoRequest {
 	}
 	return req
 }
+
+func createIdsRequestProto(numIds int64) *protobuf.IdsRequest {
+	req := &protobuf.IdsRequest{}
+	if isValidInt64Value(numIds) {
+		n := int32(numIds)
+		req.NumIds = &n
+	}
+	return req
+}
+
+func createCurrentTimeRequestProto() *protobuf.CurrentTimeRequest {
+	return &protobuf.CurrentTimeRequest{}
+}
+
+func createCurrentTimeInMillisRequestProto() *protobuf.CurrentTimeInMillisRequest {
+	return &protobuf.CurrentTimeInMillisRequest{}
+}
+
+func createStartApiRequestProto(clientID int64, optionalCapabilities string) *protobuf.StartApiRequest {
+	req := &protobuf.StartApiRequest{}
+	if isValidInt64Value(clientID) {
+		id := int32(clientID)
+		req.ClientId = &id
+	}
+	if !stringIsEmpty(optionalCapabilities) {
+		req.OptionalCapabilities = &optionalCapabilities
+	}
+	return req
+}
+
+func createSetServerLogLevelRequestProto(logLevel int64) *protobuf.SetServerLogLevelRequest {
+	req := &protobuf.SetServerLogLevelRequest{}
+	if isValidInt64Value(logLevel) {
+		level := int32(logLevel)
+		req.LogLevel = &level
+	}
+	return req
+}
+
+func createVerifyRequestProto(apiName, apiVersion string) *protobuf.VerifyRequest {
+	req := &protobuf.VerifyRequest{}
+	if !stringIsEmpty(apiName) {
+		req.ApiName = &apiName
+	}
+	if !stringIsEmpty(apiVersion) {
+		req.ApiVersion = &apiVersion
+	}
+	return req
+}
+
+func createVerifyMessageRequestProto(apiData string) *protobuf.VerifyMessageRequest {
+	req := &protobuf.VerifyMessageRequest{}
+	if !stringIsEmpty(apiData) {
+		req.ApiData = &apiData
+	}
+	return req
+}
+
+func createQueryDisplayGroupsRequestProto(reqID int64) *protobuf.QueryDisplayGroupsRequest {
+	req := &protobuf.QueryDisplayGroupsRequest{}
+	if isValidInt64Value(reqID) {
+		id := int32(reqID)
+		req.ReqId = &id
+	}
+	return req
+}
+
+func createSubscribeToGroupEventsRequestProto(reqID int64, groupID int64) *protobuf.SubscribeToGroupEventsRequest {
+	req := &protobuf.SubscribeToGroupEventsRequest{}
+	if isValidInt64Value(reqID) {
+		id := int32(reqID)
+		req.ReqId = &id
+	}
+	if isValidInt64Value(groupID) {
+		gid := int32(groupID)
+		req.GroupId = &gid
+	}
+	return req
+}
+
+func createUpdateDisplayGroupRequestProto(reqID int64, contractInfo string) *protobuf.UpdateDisplayGroupRequest {
+	req := &protobuf.UpdateDisplayGroupRequest{}
+	if isValidInt64Value(reqID) {
+		id := int32(reqID)
+		req.ReqId = &id
+	}
+	if !stringIsEmpty(contractInfo) {
+		req.ContractInfo = &contractInfo
+	}
+	return req
+}
+
+func createUnsubscribeFromGroupEventsRequestProto(reqID int64) *protobuf.UnsubscribeFromGroupEventsRequest {
+	req := &protobuf.UnsubscribeFromGroupEventsRequest{}
+	if isValidInt64Value(reqID) {
+		id := int32(reqID)
+		req.ReqId = &id
+	}
+	return req
+}
+
+func createMarketDepthExchangesRequestProto() *protobuf.MarketDepthExchangesRequest {
+	return &protobuf.MarketDepthExchangesRequest{}
+}
