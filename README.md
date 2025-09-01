@@ -13,17 +13,22 @@
 ## Getting Started
 
 ### Prerequisites
-- **Go** version 1.23 or higher (recommended)
+
+- **Go** version 1.25
 - An **Interactive Brokers** account with TWS or IB Gateway installed and running
 
 ### Installation
+
 Install the package via `go get`:
+
 ```bash
 go get -u github.com/scmhub/ibapi
 ```
 
 ## Usage
+
 Here’s a basic example to connect and place an order using this package:
+
 ```go
 package main
 
@@ -46,7 +51,7 @@ func main() {
 
 	// New IB CLient
 	ib := ibapi.NewEClient(nil)
-	
+
     // Connect client
 	if err := ib.Connect(IB_HOST, IB_PORT, rand.Int63n(999999)); err != nil {
 		log.Error().Err(err)
@@ -71,21 +76,25 @@ func main() {
 For more information on how to use this package, please refer to the [GoDoc](https://pkg.go.dev/github.com/scmhub/ibapi) documentation.
 
 ## Acknowledgments
+
 - Some portions of the code were adapted from [hadrianl](https://github.com/hadrianl/ibapi). Thanks to them for their valuable work!
 - Decimals are implemented with the [fixed](https://github.com/robaho/fixed) package
 
 ## Notice of Non-Affiliation and Disclaimer
+
 > [!CAUTION]
 > This project is in the **beta phase** and is still undergoing testing and development. Users are advised to thoroughly test the software in non-production environments before relying on it for live trading. Features may be incomplete, and bugs may exist. Use at your own risk.
 
 > [!IMPORTANT]
->This project is **not affiliated** with Interactive Brokers Group, Inc. All references to Interactive Brokers, including trademarks, logos, and brand names, belong to their respective owners. The use of these names is purely for informational purposes and does not imply endorsement by Interactive Brokers.
+> This project is **not affiliated** with Interactive Brokers Group, Inc. All references to Interactive Brokers, including trademarks, logos, and brand names, belong to their respective owners. The use of these names is purely for informational purposes and does not imply endorsement by Interactive Brokers.
 
 > [!IMPORTANT]
->The authors of this package make **no guarantees** regarding the software's reliability, accuracy, or suitability for any particular purpose, including trading or financial decisions. **No liability** will be accepted for any financial losses, damages, or misinterpretations arising from the use of this software.
+> The authors of this package make **no guarantees** regarding the software's reliability, accuracy, or suitability for any particular purpose, including trading or financial decisions. **No liability** will be accepted for any financial losses, damages, or misinterpretations arising from the use of this software.
 
 ## License
+
 Distributed under the MIT License. See [LICENSE](./LICENSE) for more information.
 
 ## Author
+
 **Philippe Chavanne** - [contact](https://scm.cx/contact)

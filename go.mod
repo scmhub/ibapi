@@ -1,11 +1,11 @@
 module github.com/scmhub/ibapi
 
-go 1.23.0
+go 1.25
 
 require (
 	github.com/robaho/fixed v0.0.0-20250130054609-fd0e46fcd988
 	github.com/rs/zerolog v1.34.0
-	google.golang.org/protobuf v1.36.7
+	google.golang.org/protobuf v1.36.8
 )
 
 require (
