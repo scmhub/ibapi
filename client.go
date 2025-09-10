@@ -6329,3 +6329,75 @@ func (c *EClient) reqCurrentTimeInMillisProtoBuf(currentTimeInMillisRequestProto
 
 	c.reqChan <- me.Bytes()
 }
+
+// CancelContractData cancels contract data request.
+func (c *EClient) CancelContractData(reqID int64) {
+	c.cancelContractDataProtoBuf(createCancelContractDataProto(reqID))
+}
+
+func (c *EClient) cancelContractDataProtoBuf(cancelContractDataProto *protobuf.CancelContractData) {
+	reqID := NO_VALID_ID
+	if cancelContractDataProto.ReqId != nil {
+		reqID = int64(*cancelContractDataProto.ReqId)
+	}
+
+	if !c.IsConnected() {
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
+	if c.serverVersion < MIN_SERVER_VER_CANCEL_CONTRACT_DATA {
+		c.wrapper.Error(reqID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+"  It does not support contract data cancels.", "")
+		return
+	}
+
+	me := NewMsgEncoder(1, c)
+
+	me.encodeMsgID(CANCEL_CONTRACT_DATA + PROTOBUF_MSG_ID)
+
+	msg, err := proto.Marshal(cancelContractDataProto)
+	if err != nil {
+		c.wrapper.Error(reqID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
+		return
+	}
+
+	me.encodeProto(msg)
+
+	c.reqChan <- me.Bytes()
+}
+
+// CancelHistoricalTicks cancels historical ticks request.
+func (c *EClient) CancelHistoricalTicks(reqID int64) {
+	c.cancelHistoricalTicksProtoBuf(createCancelHistoricalTicksProto(reqID))
+}
+
+func (c *EClient) cancelHistoricalTicksProtoBuf(cancelHistoricalTicksProto *protobuf.CancelHistoricalTicks) {
+	reqID := NO_VALID_ID
+	if cancelHistoricalTicksProto.ReqId != nil {
+		reqID = int64(*cancelHistoricalTicksProto.ReqId)
+	}
+
+	if !c.IsConnected() {
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
+	if c.serverVersion < MIN_SERVER_VER_CANCEL_CONTRACT_DATA {
+		c.wrapper.Error(reqID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+"  It does not support historical ticks cancels.", "")
+		return
+	}
+
+	me := NewMsgEncoder(1, c)
+
+	me.encodeMsgID(CANCEL_HISTORICAL_TICKS + PROTOBUF_MSG_ID)
+
+	msg, err := proto.Marshal(cancelHistoricalTicksProto)
+	if err != nil {
+		c.wrapper.Error(reqID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
+		return
+	}
+
+	me.encodeProto(msg)
+
+	c.reqChan <- me.Bytes()
+}

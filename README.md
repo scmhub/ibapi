@@ -8,7 +8,7 @@
 **We will do our best to keep it in sync** with the official API releases to ensure compatibility and feature parity, but users should be aware that this is a community-driven project and may lag behind the official versions at times.
 
 > [!CAUTION]
-> This package is in the **beta phase**. While functional, it may still have bugs or incomplete features. Please test extensively in non-production environments.
+> Please test extensively in non-production environments before relying on it for live trading.
 
 ## Getting Started
 
@@ -83,7 +83,7 @@ For more information on how to use this package, please refer to the [GoDoc](htt
 ## Notice of Non-Affiliation and Disclaimer
 
 > [!CAUTION]
-> This project is in the **beta phase** and is still undergoing testing and development. Users are advised to thoroughly test the software in non-production environments before relying on it for live trading. Features may be incomplete, and bugs may exist. Use at your own risk.
+> Users are advised to thoroughly test the software in non-production environments before relying on it for live trading. Features may be incomplete, and bugs may exist. Use at your own risk.
 
 > [!IMPORTANT]
 > This project is **not affiliated** with Interactive Brokers Group, Inc. All references to Interactive Brokers, including trademarks, logos, and brand names, belong to their respective owners. The use of these names is purely for informational purposes and does not imply endorsement by Interactive Brokers.

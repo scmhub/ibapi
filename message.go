@@ -179,6 +179,8 @@ const (
 	CANCEL_WSH_EVENT_DATA         OUT = 103
 	REQ_USER_INFO                 OUT = 104
 	REQ_CURRENT_TIME_IN_MILLIS    OUT = 105
+	CANCEL_CONTRACT_DATA          OUT = 106
+	CANCEL_HISTORICAL_TICKS       OUT = 107
 )
 
 // TWS New Bulletins constants

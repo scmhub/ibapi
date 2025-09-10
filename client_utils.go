@@ -2049,3 +2049,21 @@ func createUnsubscribeFromGroupEventsRequestProto(reqID int64) *protobuf.Unsubsc
 func createMarketDepthExchangesRequestProto() *protobuf.MarketDepthExchangesRequest {
 	return &protobuf.MarketDepthExchangesRequest{}
 }
+
+func createCancelContractDataProto(reqID int64) *protobuf.CancelContractData {
+	req := &protobuf.CancelContractData{}
+	if isValidInt64Value(reqID) {
+		id := int32(reqID)
+		req.ReqId = &id
+	}
+	return req
+}
+
+func createCancelHistoricalTicksProto(reqID int64) *protobuf.CancelHistoricalTicks {
+	req := &protobuf.CancelHistoricalTicks{}
+	if isValidInt64Value(reqID) {
+		id := int32(reqID)
+		req.ReqId = &id
+	}
+	return req
+}
