@@ -639,7 +639,15 @@ func decodeOrder(orderID int64, contractProto *protobuf.Contract, orderProto *pr
 	if orderProto.Submitter != nil {
 		order.Submitter = orderProto.GetSubmitter()
 	}
-
+	if orderProto.PostOnly != nil {
+		order.PostOnly = orderProto.GetPostOnly()
+	}
+	if orderProto.AllowPreOpen != nil {
+		order.AllowPreOpen = orderProto.GetAllowPreOpen()
+	}
+	if orderProto.IgnoreOpenAuction != nil {
+		order.IgnoreOpenAuction = orderProto.GetIgnoreOpenAuction()
+	}
 	return order
 }
 

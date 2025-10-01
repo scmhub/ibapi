@@ -233,6 +233,9 @@ type Order struct {
 	IncludeOvernight         bool
 	ManualOrderIndicator     int64 `default:"UNSET_INT"`
 	Submitter                string
+	PostOnly                 bool
+	AllowPreOpen             bool
+	IgnoreOpenAuction        bool
 }
 
 // NewOrder creates a default Order.

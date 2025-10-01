@@ -199,4 +199,8 @@ message Order {
     optional bool includeOvernight = 135;
     optional int32 manualOrderIndicator = 136;
     optional string submitter = 137;
+    optional bool deactivate = 138;
+    optional bool postOnly = 139;
+    optional bool allowPreOpen = 140;
+    optional bool ignoreOpenAuction = 141;
 }

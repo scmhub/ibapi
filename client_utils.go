@@ -481,14 +481,8 @@ func createOrderProto(order *Order) (*protobuf.Order, error) {
 	// 	refFut := int32(order.RefFuturesConID)
 	// 	orderProto.RefFuturesConId = &refFut
 	// }
-	// if order.AutoCancelParent {
-	// 	orderProto.AutoCancelParent = &order.AutoCancelParent
-	// }
 	// if !stringIsEmpty(order.Shareholder) {
 	// 	orderProto.Shareholder = &order.Shareholder
-	// }
-	// if order.ImbalanceOnly {
-	// 	orderProto.ImbalanceOnly = &order.ImbalanceOnly
 	// }
 	// if order.RouteMarketableToBbo {
 	// 	orderProto.RouteMarketableToBbo = &order.RouteMarketableToBbo
@@ -550,6 +544,21 @@ func createOrderProto(order *Order) (*protobuf.Order, error) {
 	}
 	if !stringIsEmpty(order.Submitter) {
 		orderProto.Submitter = &order.Submitter
+	}
+	if order.AutoCancelParent {
+		orderProto.AutoCancelParent = &order.AutoCancelParent
+	}
+	if order.ImbalanceOnly {
+		orderProto.ImbalanceOnly = &order.ImbalanceOnly
+	}
+	if order.PostOnly {
+		orderProto.PostOnly = &order.PostOnly
+	}
+	if order.AllowPreOpen {
+		orderProto.AllowPreOpen = &order.AllowPreOpen
+	}
+	if order.IgnoreOpenAuction {
+		orderProto.IgnoreOpenAuction = &order.IgnoreOpenAuction
 	}
 	return orderProto, nil
 }
