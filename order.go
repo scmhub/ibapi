@@ -236,6 +236,7 @@ type Order struct {
 	PostOnly                 bool
 	AllowPreOpen             bool
 	IgnoreOpenAuction        bool
+	Deactivate               bool
 }
 
 // NewOrder creates a default Order.

@@ -648,6 +648,9 @@ func decodeOrder(orderID int64, contractProto *protobuf.Contract, orderProto *pr
 	if orderProto.IgnoreOpenAuction != nil {
 		order.IgnoreOpenAuction = orderProto.GetIgnoreOpenAuction()
 	}
+	if orderProto.Deactivate != nil {
+		order.Deactivate = orderProto.GetDeactivate()
+	}
 	return order
 }
 

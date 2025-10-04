@@ -560,6 +560,9 @@ func createOrderProto(order *Order) (*protobuf.Order, error) {
 	if order.IgnoreOpenAuction {
 		orderProto.IgnoreOpenAuction = &order.IgnoreOpenAuction
 	}
+	if order.Deactivate {
+		orderProto.Deactivate = &order.Deactivate
+	}
 	return orderProto, nil
 }
 
