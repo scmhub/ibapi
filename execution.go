@@ -59,6 +59,7 @@ type ExecutionFilter struct {
 
 func NewExecutionFilter() *ExecutionFilter {
 	ef := &ExecutionFilter{}
+	ef.ClientID = UNSET_INT
 	ef.LastNDays = UNSET_INT
 	return ef
 }
