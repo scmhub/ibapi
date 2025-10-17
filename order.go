@@ -21,6 +21,14 @@ const (
 
 var COMPETE_AGAINST_BEST_OFFSET_UP_TO_MID = INFINITY_FLOAT
 
+type ThreeStateBoolean int64
+
+const (
+	STATE_NO      ThreeStateBoolean = 0
+	STATE_YES     ThreeStateBoolean = 1
+	STATE_DEFAULT ThreeStateBoolean = ThreeStateBoolean(UNSET_INT) // or some other sentinel value
+)
+
 // OrderComboLeg .
 type OrderComboLeg struct {
 	Price float64 `default:"UNSET_FLOAT"`
@@ -237,6 +245,7 @@ type Order struct {
 	AllowPreOpen             bool
 	IgnoreOpenAuction        bool
 	Deactivate               bool
+	SeekPriceImprovement     ThreeStateBoolean
 }
 
 // NewOrder creates a default Order.
@@ -298,6 +307,7 @@ func NewOrder() *Order {
 	order.MidOffsetAtWhole = UNSET_FLOAT
 	order.MidOffsetAtHalf = UNSET_FLOAT
 	order.ManualOrderIndicator = UNSET_INT
+	order.SeekPriceImprovement = STATE_DEFAULT
 
 	return order
 }

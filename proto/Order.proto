@@ -203,4 +203,5 @@ message Order {
     optional bool postOnly = 139;
     optional bool allowPreOpen = 140;
     optional bool ignoreOpenAuction = 141;
+    optional int32 seekPriceImprovement = 142;
 }

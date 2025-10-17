@@ -651,6 +651,9 @@ func decodeOrder(orderID int64, contractProto *protobuf.Contract, orderProto *pr
 	if orderProto.Deactivate != nil {
 		order.Deactivate = orderProto.GetDeactivate()
 	}
+	if orderProto.SeekPriceImprovement != nil {
+		order.SeekPriceImprovement = ThreeStateBoolean(orderProto.GetSeekPriceImprovement())
+	}
 	return order
 }
 

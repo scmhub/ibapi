@@ -563,6 +563,11 @@ func createOrderProto(order *Order) (*protobuf.Order, error) {
 	if order.Deactivate {
 		orderProto.Deactivate = &order.Deactivate
 	}
+	if order.SeekPriceImprovement != STATE_DEFAULT {
+		val := int32(order.SeekPriceImprovement)
+		orderProto.SeekPriceImprovement = &val
+	}
+
 	return orderProto, nil
 }
 
