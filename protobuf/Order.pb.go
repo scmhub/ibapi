@@ -188,6 +188,7 @@ type Order struct {
 	AllowPreOpen                *bool    `protobuf:"varint,140,opt,name=allowPreOpen,proto3,oneof" json:"allowPreOpen,omitempty"`
 	IgnoreOpenAuction           *bool    `protobuf:"varint,141,opt,name=ignoreOpenAuction,proto3,oneof" json:"ignoreOpenAuction,omitempty"`
 	SeekPriceImprovement        *int32   `protobuf:"varint,142,opt,name=seekPriceImprovement,proto3,oneof" json:"seekPriceImprovement,omitempty"`
+	WhatIfType                  *int32   `protobuf:"varint,143,opt,name=whatIfType,proto3,oneof" json:"whatIfType,omitempty"`
 	unknownFields               protoimpl.UnknownFields
 	sizeCache                   protoimpl.SizeCache
 }
@@ -1216,11 +1217,18 @@ func (x *Order) GetSeekPriceImprovement() int32 {
 	return 0
 }
 
+func (x *Order) GetWhatIfType() int32 {
+	if x != nil && x.WhatIfType != nil {
+		return *x.WhatIfType
+	}
+	return 0
+}
+
 var File_Order_proto protoreflect.FileDescriptor
 
 const file_Order_proto_rawDesc = "" +
 	"\n" +
-	"\vOrder.proto\x12\bprotobuf\x1a\x14OrderCondition.proto\x1a\x14SoftDollarTier.proto\"\xf7J\n" +
+	"\vOrder.proto\x12\bprotobuf\x1a\x14OrderCondition.proto\x1a\x14SoftDollarTier.proto\"\xadK\n" +
 	"\x05Order\x12\x1f\n" +
 	"\bclientId\x18\x01 \x01(\x05H\x00R\bclientId\x88\x01\x01\x12\x1d\n" +
 	"\aorderId\x18\x02 \x01(\x05H\x01R\aorderId\x88\x01\x01\x12\x1b\n" +
@@ -1383,7 +1391,10 @@ const file_Order_proto_rawDesc = "" +
 	"\bpostOnly\x18\x8b\x01 \x01(\bH\x86\x01R\bpostOnly\x88\x01\x01\x12)\n" +
 	"\fallowPreOpen\x18\x8c\x01 \x01(\bH\x87\x01R\fallowPreOpen\x88\x01\x01\x123\n" +
 	"\x11ignoreOpenAuction\x18\x8d\x01 \x01(\bH\x88\x01R\x11ignoreOpenAuction\x88\x01\x01\x129\n" +
-	"\x14seekPriceImprovement\x18\x8e\x01 \x01(\x05H\x89\x01R\x14seekPriceImprovement\x88\x01\x01\x1a=\n" +
+	"\x14seekPriceImprovement\x18\x8e\x01 \x01(\x05H\x89\x01R\x14seekPriceImprovement\x88\x01\x01\x12%\n" +
+	"\n" +
+	"whatIfType\x18\x8f\x01 \x01(\x05H\x8a\x01R\n" +
+	"whatIfType\x88\x01\x01\x1a=\n" +
 	"\x0fAlgoParamsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1aJ\n" +
@@ -1545,7 +1556,8 @@ const file_Order_proto_rawDesc = "" +
 	"\t_postOnlyB\x0f\n" +
 	"\r_allowPreOpenB\x14\n" +
 	"\x12_ignoreOpenAuctionB\x17\n" +
-	"\x15_seekPriceImprovementB\fZ\n" +
+	"\x15_seekPriceImprovementB\r\n" +
+	"\v_whatIfTypeB\fZ\n" +
 	".;protobufb\x06proto3"
 
 var (

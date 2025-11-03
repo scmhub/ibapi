@@ -567,7 +567,10 @@ func createOrderProto(order *Order) (*protobuf.Order, error) {
 		val := int32(order.SeekPriceImprovement)
 		orderProto.SeekPriceImprovement = &val
 	}
-
+	if isValidInt64Value(order.WhatIfType) {
+		val := int32(order.WhatIfType)
+		orderProto.WhatIfType = &val
+	}
 	return orderProto, nil
 }
 

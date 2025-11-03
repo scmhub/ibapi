@@ -654,6 +654,10 @@ func decodeOrder(orderID int64, contractProto *protobuf.Contract, orderProto *pr
 	if orderProto.SeekPriceImprovement != nil {
 		order.SeekPriceImprovement = ThreeStateBoolean(orderProto.GetSeekPriceImprovement())
 	}
+	if isValidInt64Value(order.WhatIfType) {
+		val := int32(order.WhatIfType)
+		orderProto.WhatIfType = &val
+	}
 	return order
 }
 

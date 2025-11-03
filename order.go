@@ -246,6 +246,7 @@ type Order struct {
 	IgnoreOpenAuction        bool
 	Deactivate               bool
 	SeekPriceImprovement     ThreeStateBoolean
+	WhatIfType               int64
 }
 
 // NewOrder creates a default Order.
@@ -308,6 +309,7 @@ func NewOrder() *Order {
 	order.MidOffsetAtHalf = UNSET_FLOAT
 	order.ManualOrderIndicator = UNSET_INT
 	order.SeekPriceImprovement = STATE_DEFAULT
+	order.WhatIfType = UNSET_INT
 
 	return order
 }
