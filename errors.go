@@ -20,7 +20,7 @@ func (cmp CodeMsgPair) Equal(other CodeMsgPair) bool {
 
 var (
 	ALREADY_CONNECTED   = CodeMsgPair{501, "Already connected."}
-	CONNECT_FAIL        = CodeMsgPair{502, "Couldn't connect to TWS. Confirm that 'Enable ActiveX and Socket EClients' is enabled and connection port is the same as 'Socket Port' on the TWS 'Edit->Global Configuration...->API->Settings' menu. Live Trading ports: TWS: 7496; IB Gateway: 4001. Simulated Trading ports for new installations of version 954.1 or newer:  TWS: 7497; IB Gateway: 4002"}
+	CONNECT_FAIL        = CodeMsgPair{502, "Couldn't connect to TWS. Confirm that 'Enable ActiveX and Socket EClients' is enabled and connection port is the same as 'Socket Port' on the TWS 'Edit->Global Configuration...->API->Settings' menu. Live Trading ports: TWS: 7496; IB Gateway: 4001. Simulated Trading ports: TWS: 7497; IB Gateway: 4002. Verify that the maximum API connection threshold (default 32) is not exceeded."}
 	UPDATE_TWS          = CodeMsgPair{503, "The TWS is out of date and must be upgraded."}
 	NOT_CONNECTED       = CodeMsgPair{504, "Not connected"}
 	UNKNOWN_ID          = CodeMsgPair{505, "Fatal Error: Unknown message id."}
