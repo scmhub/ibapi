@@ -165,7 +165,7 @@ type Order struct {
 	AutoCancelParent            *bool    `protobuf:"varint,117,opt,name=autoCancelParent,proto3,oneof" json:"autoCancelParent,omitempty"`
 	Shareholder                 *string  `protobuf:"bytes,118,opt,name=shareholder,proto3,oneof" json:"shareholder,omitempty"`
 	ImbalanceOnly               *bool    `protobuf:"varint,119,opt,name=imbalanceOnly,proto3,oneof" json:"imbalanceOnly,omitempty"`
-	RouteMarketableToBbo        *bool    `protobuf:"varint,120,opt,name=routeMarketableToBbo,proto3,oneof" json:"routeMarketableToBbo,omitempty"`
+	RouteMarketableToBbo        *int32   `protobuf:"varint,120,opt,name=routeMarketableToBbo,proto3,oneof" json:"routeMarketableToBbo,omitempty"`
 	ParentPermId                *int64   `protobuf:"varint,121,opt,name=parentPermId,proto3,oneof" json:"parentPermId,omitempty"`
 	UsePriceMgmtAlgo            *int32   `protobuf:"varint,122,opt,name=usePriceMgmtAlgo,proto3,oneof" json:"usePriceMgmtAlgo,omitempty"`
 	Duration                    *int32   `protobuf:"varint,123,opt,name=duration,proto3,oneof" json:"duration,omitempty"`
@@ -1056,11 +1056,11 @@ func (x *Order) GetImbalanceOnly() bool {
 	return false
 }
 
-func (x *Order) GetRouteMarketableToBbo() bool {
+func (x *Order) GetRouteMarketableToBbo() int32 {
 	if x != nil && x.RouteMarketableToBbo != nil {
 		return *x.RouteMarketableToBbo
 	}
-	return false
+	return 0
 }
 
 func (x *Order) GetParentPermId() int64 {
@@ -1367,7 +1367,7 @@ const file_Order_proto_rawDesc = "" +
 	"\x10autoCancelParent\x18u \x01(\bHpR\x10autoCancelParent\x88\x01\x01\x12%\n" +
 	"\vshareholder\x18v \x01(\tHqR\vshareholder\x88\x01\x01\x12)\n" +
 	"\rimbalanceOnly\x18w \x01(\bHrR\rimbalanceOnly\x88\x01\x01\x127\n" +
-	"\x14routeMarketableToBbo\x18x \x01(\bHsR\x14routeMarketableToBbo\x88\x01\x01\x12'\n" +
+	"\x14routeMarketableToBbo\x18x \x01(\x05HsR\x14routeMarketableToBbo\x88\x01\x01\x12'\n" +
 	"\fparentPermId\x18y \x01(\x03HtR\fparentPermId\x88\x01\x01\x12/\n" +
 	"\x10usePriceMgmtAlgo\x18z \x01(\x05HuR\x10usePriceMgmtAlgo\x88\x01\x01\x12\x1f\n" +
 	"\bduration\x18{ \x01(\x05HvR\bduration\x88\x01\x01\x12!\n" +

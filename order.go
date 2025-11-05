@@ -222,7 +222,7 @@ type Order struct {
 	AutoCancelParent     bool
 	Shareholder          string
 	ImbalanceOnly        bool
-	RouteMarketableToBbo bool
+	RouteMarketableToBbo ThreeStateBoolean
 	ParentPermID         int64
 
 	UsePriceMgmtAlgo         UsePriceMmgtAlgo
@@ -298,6 +298,7 @@ func NewOrder() *Order {
 	order.CashQty = UNSET_FLOAT
 
 	order.FilledQuantity = UNSET_DECIMAL
+	order.RouteMarketableToBbo = STATE_DEFAULT
 
 	order.UsePriceMgmtAlgo = USE_PRICE_MGMT_ALGO_DEFAULT
 	order.Duration = UNSET_INT

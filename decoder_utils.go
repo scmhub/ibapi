@@ -586,7 +586,7 @@ func decodeOrder(orderID int64, contractProto *protobuf.Contract, orderProto *pr
 		order.ImbalanceOnly = orderProto.GetImbalanceOnly()
 	}
 	if orderProto.RouteMarketableToBbo != nil {
-		order.RouteMarketableToBbo = orderProto.GetRouteMarketableToBbo()
+		order.RouteMarketableToBbo = ThreeStateBoolean(orderProto.GetRouteMarketableToBbo())
 	}
 	if orderProto.ParentPermId != nil {
 		order.ParentPermID = orderProto.GetParentPermId()

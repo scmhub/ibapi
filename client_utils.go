@@ -484,9 +484,10 @@ func createOrderProto(order *Order) (*protobuf.Order, error) {
 	// if !stringIsEmpty(order.Shareholder) {
 	// 	orderProto.Shareholder = &order.Shareholder
 	// }
-	// if order.RouteMarketableToBbo {
-	// 	orderProto.RouteMarketableToBbo = &order.RouteMarketableToBbo
-	// }
+	if order.RouteMarketableToBbo != STATE_DEFAULT {
+		val := int32(order.RouteMarketableToBbo)
+		orderProto.RouteMarketableToBbo = &val
+	}
 	// if isValidInt64Value(order.ParentPermID) {
 	// 	orderProto.ParentPermId = &order.ParentPermID
 	// }

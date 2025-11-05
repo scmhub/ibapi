@@ -180,7 +180,7 @@ message Order {
     optional bool autoCancelParent = 117;
     optional string shareholder = 118;
     optional bool imbalanceOnly = 119;
-    optional bool routeMarketableToBbo = 120;
+    optional int32 routeMarketableToBbo = 120;
     optional int64 parentPermId = 121;
 
     optional int32 usePriceMgmtAlgo = 122;

@@ -182,6 +182,25 @@ func (m *MsgBuffer) decodeBool() bool {
 	return true
 }
 
+func (m *MsgBuffer) decodeThreeStateBool() ThreeStateBoolean {
+	m.bs, m.err = m.ReadBytes(delim)
+	if m.err != nil {
+		log.Panic().Err(m.err).Msg("decode bool read error")
+	}
+
+	m.bs = m.bs[:len(m.bs)-1]
+
+	if len(m.bs) == 1 {
+		switch m.bs[0] {
+		case '0':
+			return STATE_NO
+		case '1':
+			return STATE_YES
+		}
+	}
+	return STATE_DEFAULT
+}
+
 func (m *MsgBuffer) decodeString() string {
 	m.bs, m.err = m.ReadBytes(delim)
 	if m.err != nil {

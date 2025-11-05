@@ -553,7 +553,7 @@ func (d *OrderDecoder) decodeImbalanceOnly(msgBuf *MsgBuffer, minVersionImbalanc
 }
 
 func (d *OrderDecoder) decodeRouteMarketableToBbo(msgBuf *MsgBuffer) {
-	d.order.RouteMarketableToBbo = msgBuf.decodeBool()
+	d.order.RouteMarketableToBbo = msgBuf.decodeThreeStateBool()
 }
 
 func (d *OrderDecoder) decodeParentPermId(msgBuf *MsgBuffer) {
