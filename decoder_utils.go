@@ -1021,6 +1021,9 @@ func decodeContractDetails(contractProto *protobuf.Contract, contractDetailsProt
 	if contractDetailsProto.SuggestedSizeIncrement != nil {
 		contractDetails.SuggestedSizeIncrement = StringToDecimal(contractDetailsProto.GetSuggestedSizeIncrement())
 	}
+	if contractDetailsProto.MinAlgoSize != nil {
+		contractDetails.MinAlgoSize = StringToDecimal(contractDetailsProto.GetMinAlgoSize())
+	}
 
 	setLastTradeDate(contractDetails.Contract.LastTradeDateOrContractMonth, contractDetails, isBond)
 

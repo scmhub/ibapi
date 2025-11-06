@@ -87,6 +87,7 @@ type ContractDetails struct {
 	EventContract1            *string `protobuf:"bytes,59,opt,name=eventContract1,proto3,oneof" json:"eventContract1,omitempty"`
 	EventContractDescription1 *string `protobuf:"bytes,60,opt,name=eventContractDescription1,proto3,oneof" json:"eventContractDescription1,omitempty"`
 	EventContractDescription2 *string `protobuf:"bytes,61,opt,name=eventContractDescription2,proto3,oneof" json:"eventContractDescription2,omitempty"`
+	MinAlgoSize               *string `protobuf:"bytes,62,opt,name=minAlgoSize,proto3,oneof" json:"minAlgoSize,omitempty"`
 	unknownFields             protoimpl.UnknownFields
 	sizeCache                 protoimpl.SizeCache
 }
@@ -548,11 +549,18 @@ func (x *ContractDetails) GetEventContractDescription2() string {
 	return ""
 }
 
+func (x *ContractDetails) GetMinAlgoSize() string {
+	if x != nil && x.MinAlgoSize != nil {
+		return *x.MinAlgoSize
+	}
+	return ""
+}
+
 var File_ContractDetails_proto protoreflect.FileDescriptor
 
 const file_ContractDetails_proto_rawDesc = "" +
 	"\n" +
-	"\x15ContractDetails.proto\x12\bprotobuf\x1a\x19IneligibilityReason.proto\"\xa3\x1e\n" +
+	"\x15ContractDetails.proto\x12\bprotobuf\x1a\x19IneligibilityReason.proto\"\xda\x1e\n" +
 	"\x0fContractDetails\x12#\n" +
 	"\n" +
 	"marketName\x18\x01 \x01(\tH\x00R\n" +
@@ -632,7 +640,8 @@ const file_ContractDetails_proto_rawDesc = "" +
 	"\x17ineligibilityReasonList\x18: \x03(\v2\x1d.protobuf.IneligibilityReasonR\x17ineligibilityReasonList\x12+\n" +
 	"\x0eeventContract1\x18; \x01(\tH8R\x0eeventContract1\x88\x01\x01\x12A\n" +
 	"\x19eventContractDescription1\x18< \x01(\tH9R\x19eventContractDescription1\x88\x01\x01\x12A\n" +
-	"\x19eventContractDescription2\x18= \x01(\tH:R\x19eventContractDescription2\x88\x01\x01\x1a<\n" +
+	"\x19eventContractDescription2\x18= \x01(\tH:R\x19eventContractDescription2\x88\x01\x01\x12%\n" +
+	"\vminAlgoSize\x18> \x01(\tH;R\vminAlgoSize\x88\x01\x01\x1a<\n" +
 	"\x0eSecIdListEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\r\n" +
@@ -700,7 +709,8 @@ const file_ContractDetails_proto_rawDesc = "" +
 	"_bondNotesB\x11\n" +
 	"\x0f_eventContract1B\x1c\n" +
 	"\x1a_eventContractDescription1B\x1c\n" +
-	"\x1a_eventContractDescription2B\fZ\n" +
+	"\x1a_eventContractDescription2B\x0e\n" +
+	"\f_minAlgoSizeB\fZ\n" +
 	".;protobufb\x06proto3"
 
 var (

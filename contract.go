@@ -269,6 +269,7 @@ type ContractDetails struct {
 	MinSize                Decimal
 	SizeIncrement          Decimal
 	SuggestedSizeIncrement Decimal
+	MinAlgoSize            Decimal
 
 	SecIDList []TagValue
 
@@ -319,11 +320,12 @@ func NewContractDetails() *ContractDetails {
 	cd.MinSize = UNSET_DECIMAL
 	cd.SizeIncrement = UNSET_DECIMAL
 	cd.SuggestedSizeIncrement = UNSET_DECIMAL
+	cd.MinAlgoSize = UNSET_DECIMAL
 	return cd
 }
 
 func (c ContractDetails) String() string {
-	return fmt.Sprintf("%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %t, %t, %f, %t, %s, %s, %s, %s, %t, %s, %s, %s, %s",
+	return fmt.Sprintf("%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %t, %t, %f, %t, %s, %s, %s, %s, %t, %s, %s, %s, %s, %s, %s, %s, %s, %s",
 		c.Contract,
 		c.MarketName,
 		FloatMaxString(c.MinTick),
@@ -367,6 +369,11 @@ func (c ContractDetails) String() string {
 		DecimalMaxString(c.MinSize),
 		DecimalMaxString(c.SizeIncrement),
 		DecimalMaxString(c.SuggestedSizeIncrement),
+		DecimalMaxString(c.MinAlgoSize),
+		c.IneligibilityReasonList,
+		c.EventContract1,
+		c.EventContractDescription1,
+		c.EventContractDescription2,
 	)
 }
 
