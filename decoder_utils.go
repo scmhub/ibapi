@@ -1123,6 +1123,16 @@ func decodeContractDetails(contractProto *protobuf.Contract, contractDetailsProt
 
 	contractDetails.IneligibilityReasonList = decodeIneligibilityReasonList(contractDetailsProto)
 
+	if contractDetailsProto.EventContract1 != nil {
+		contractDetails.EventContract1 = contractDetailsProto.GetEventContract1()
+	}
+	if contractDetailsProto.EventContractDescription1 != nil {
+		contractDetails.EventContractDescription1 = contractDetailsProto.GetEventContractDescription1()
+	}
+	if contractDetailsProto.EventContractDescription2 != nil {
+		contractDetails.EventContractDescription2 = contractDetailsProto.GetEventContractDescription2()
+	}
+
 	return contractDetails
 }
 

@@ -70,4 +70,9 @@ message ContractDetails {
     optional string bondNotes = 57;
 
     repeated IneligibilityReason ineligibilityReasonList = 58;
+    
+     // event contract fields
+    optional string eventContract1 = 59;
+    optional string eventContractDescription1 = 60;
+    optional string eventContractDescription2 = 61;
 }

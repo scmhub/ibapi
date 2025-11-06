@@ -308,6 +308,10 @@ type ContractDetails struct {
 	FundDistributionPolicyIndicator FundDistributionPolicyIndicator
 	FundAssetType                   FundAssetType
 	IneligibilityReasonList         []IneligibilityReason
+
+	EventContract1            string
+	EventContractDescription1 string
+	EventContractDescription2 string
 }
 
 func NewContractDetails() *ContractDetails {
