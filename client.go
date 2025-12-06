@@ -2366,6 +2366,15 @@ func (c *EClient) placeOrderProtoBuf(placeOrderRequestProto *protobuf.PlaceOrder
 		return
 	}
 
+	if placeOrderRequestProto.Order != nil {
+		wrongParam := c.validateOrderParameters(placeOrderRequestProto.Order)
+		if wrongParam != "" {
+			c.wrapper.Error(orderID, currentTimeMillis(), UPDATE_TWS.Code,
+				UPDATE_TWS.Msg+" The following order parameter is not supported by your TWS version - "+wrongParam, "")
+			return
+		}
+	}
+
 	me := NewMsgEncoder(150, c)
 
 	me.encodeMsgID(PLACE_ORDER + PROTOBUF_MSG_ID)
@@ -2378,6 +2387,42 @@ func (c *EClient) placeOrderProtoBuf(placeOrderRequestProto *protobuf.PlaceOrder
 	me.encodeProto(msg)
 
 	c.reqChan <- me.Bytes()
+}
+
+func (c *EClient) validateOrderParameters(order *protobuf.Order) string {
+	if c.serverVersion < MIN_SERVER_VER_ADDITIONAL_ORDER_PARAMS_1 {
+		if order.Deactivate != nil {
+			return "deactivate"
+		}
+
+		if order.PostOnly != nil {
+			return "postOnly"
+		}
+
+		if order.AllowPreOpen != nil {
+			return "allowPreOpen"
+		}
+
+		if order.IgnoreOpenAuction != nil {
+			return "ignoreOpenAuction"
+		}
+	}
+
+	if c.serverVersion < MIN_SERVER_VER_ADDITIONAL_ORDER_PARAMS_2 {
+		if order.RouteMarketableToBbo != nil {
+			return "routeMarketableToBbo"
+		}
+
+		if order.SeekPriceImprovement != nil {
+			return "seekPriceImprovement"
+		}
+
+		if order.WhatIfType != nil {
+			return "whatIfType"
+		}
+	}
+
+	return ""
 }
 
 // CancelOrder cancel an order by orderId.
