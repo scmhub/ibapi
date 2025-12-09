@@ -64,7 +64,32 @@ func createPlaceOrderRequestProto(orderID OrderID, contract *Contract, order *Or
 	if err != nil {
 		return nil, err
 	}
+	placeOrderRequestProto.AttachedOrders = createAttachedOrdersProto(order)
 	return placeOrderRequestProto, nil
+}
+
+func createAttachedOrdersProto(order *Order) *protobuf.AttachedOrders {
+	attachedOrdersProto := &protobuf.AttachedOrders{}
+
+	// Stop Loss Order
+	if isValidInt64Value(order.SLOrderID) {
+		slOrderID := int32(order.SLOrderID)
+		attachedOrdersProto.SlOrderId = &slOrderID
+	}
+	if !stringIsEmpty(order.SLOrderType) {
+		attachedOrdersProto.SlOrderType = &order.SLOrderType
+	}
+
+	// Profit Target Order
+	if isValidInt64Value(order.PTOrderID) {
+		ptOrderID := int32(order.PTOrderID)
+		attachedOrdersProto.PtOrderId = &ptOrderID
+	}
+	if !stringIsEmpty(order.PTOrderType) {
+		attachedOrdersProto.PtOrderType = &order.PTOrderType
+	}
+
+	return attachedOrdersProto
 }
 
 func createOrderProto(order *Order) (*protobuf.Order, error) {

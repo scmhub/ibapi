@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+package protobuf;
+
+option go_package = ".;protobuf";
+
+message AttachedOrders {
+    optional int32 slOrderId = 1;
+    optional string slOrderType = 2;
+    optional int32 ptOrderId = 3;
+    optional string ptOrderType = 4;
+}

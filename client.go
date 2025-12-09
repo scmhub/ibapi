@@ -2375,7 +2375,16 @@ func (c *EClient) placeOrderProtoBuf(placeOrderRequestProto *protobuf.PlaceOrder
 		}
 	}
 
-	me := NewMsgEncoder(150, c)
+	if placeOrderRequestProto.AttachedOrders != nil {
+		wrongParam := c.validateAttachedOrdersParameters(placeOrderRequestProto.AttachedOrders)
+		if wrongParam != "" {
+			c.wrapper.Error(orderID, currentTimeMillis(), UPDATE_TWS.Code,
+				UPDATE_TWS.Msg+" The following attached orders parameter is not supported by your TWS version - "+wrongParam, "")
+			return
+		}
+	}
+
+	me := NewMsgEncoder(160, c)
 
 	me.encodeMsgID(PLACE_ORDER + PROTOBUF_MSG_ID)
 
@@ -2422,6 +2431,24 @@ func (c *EClient) validateOrderParameters(order *protobuf.Order) string {
 		}
 	}
 
+	return ""
+}
+
+func (c *EClient) validateAttachedOrdersParameters(attachedOrders *protobuf.AttachedOrders) string {
+	if c.serverVersion < MIN_SERVER_VER_ATTACHED_ORDERS {
+		if attachedOrders.SlOrderId != nil {
+			return "slOrderId"
+		}
+		if attachedOrders.SlOrderType != nil {
+			return "slOrderType"
+		}
+		if attachedOrders.PtOrderId != nil {
+			return "ptOrderId"
+		}
+		if attachedOrders.PtOrderType != nil {
+			return "ptOrderType"
+		}
+	}
 	return ""
 }
 

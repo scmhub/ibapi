@@ -247,6 +247,12 @@ type Order struct {
 	Deactivate               bool
 	SeekPriceImprovement     ThreeStateBoolean
 	WhatIfType               int64
+
+	// attached orders
+	SLOrderID   int64 `default:"UNSET_INT"`
+	SLOrderType string
+	PTOrderID   int64 `default:"UNSET_INT"`
+	PTOrderType string
 }
 
 // NewOrder creates a default Order.
@@ -311,6 +317,9 @@ func NewOrder() *Order {
 	order.ManualOrderIndicator = UNSET_INT
 	order.SeekPriceImprovement = STATE_DEFAULT
 	order.WhatIfType = UNSET_INT
+
+	order.SLOrderID = UNSET_INT
+	order.PTOrderID = UNSET_INT
 
 	return order
 }

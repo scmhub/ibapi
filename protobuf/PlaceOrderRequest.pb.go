@@ -22,12 +22,13 @@ const (
 )
 
 type PlaceOrderRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	OrderId       *int32                 `protobuf:"varint,1,opt,name=orderId,proto3,oneof" json:"orderId,omitempty"`
-	Contract      *Contract              `protobuf:"bytes,2,opt,name=contract,proto3,oneof" json:"contract,omitempty"`
-	Order         *Order                 `protobuf:"bytes,3,opt,name=order,proto3,oneof" json:"order,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	OrderId        *int32                 `protobuf:"varint,1,opt,name=orderId,proto3,oneof" json:"orderId,omitempty"`
+	Contract       *Contract              `protobuf:"bytes,2,opt,name=contract,proto3,oneof" json:"contract,omitempty"`
+	Order          *Order                 `protobuf:"bytes,3,opt,name=order,proto3,oneof" json:"order,omitempty"`
+	AttachedOrders *AttachedOrders        `protobuf:"bytes,4,opt,name=attachedOrders,proto3,oneof" json:"attachedOrders,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *PlaceOrderRequest) Reset() {
@@ -81,19 +82,28 @@ func (x *PlaceOrderRequest) GetOrder() *Order {
 	return nil
 }
 
+func (x *PlaceOrderRequest) GetAttachedOrders() *AttachedOrders {
+	if x != nil {
+		return x.AttachedOrders
+	}
+	return nil
+}
+
 var File_PlaceOrderRequest_proto protoreflect.FileDescriptor
 
 const file_PlaceOrderRequest_proto_rawDesc = "" +
 	"\n" +
-	"\x17PlaceOrderRequest.proto\x12\bprotobuf\x1a\x0eContract.proto\x1a\vOrder.proto\"\xb6\x01\n" +
+	"\x17PlaceOrderRequest.proto\x12\bprotobuf\x1a\x0eContract.proto\x1a\vOrder.proto\x1a\x14AttachedOrders.proto\"\x90\x02\n" +
 	"\x11PlaceOrderRequest\x12\x1d\n" +
 	"\aorderId\x18\x01 \x01(\x05H\x00R\aorderId\x88\x01\x01\x123\n" +
 	"\bcontract\x18\x02 \x01(\v2\x12.protobuf.ContractH\x01R\bcontract\x88\x01\x01\x12*\n" +
-	"\x05order\x18\x03 \x01(\v2\x0f.protobuf.OrderH\x02R\x05order\x88\x01\x01B\n" +
+	"\x05order\x18\x03 \x01(\v2\x0f.protobuf.OrderH\x02R\x05order\x88\x01\x01\x12E\n" +
+	"\x0eattachedOrders\x18\x04 \x01(\v2\x18.protobuf.AttachedOrdersH\x03R\x0eattachedOrders\x88\x01\x01B\n" +
 	"\n" +
 	"\b_orderIdB\v\n" +
 	"\t_contractB\b\n" +
-	"\x06_orderB\fZ\n" +
+	"\x06_orderB\x11\n" +
+	"\x0f_attachedOrdersB\fZ\n" +
 	".;protobufb\x06proto3"
 
 var (
@@ -113,15 +123,17 @@ var file_PlaceOrderRequest_proto_goTypes = []any{
 	(*PlaceOrderRequest)(nil), // 0: protobuf.PlaceOrderRequest
 	(*Contract)(nil),          // 1: protobuf.Contract
 	(*Order)(nil),             // 2: protobuf.Order
+	(*AttachedOrders)(nil),    // 3: protobuf.AttachedOrders
 }
 var file_PlaceOrderRequest_proto_depIdxs = []int32{
 	1, // 0: protobuf.PlaceOrderRequest.contract:type_name -> protobuf.Contract
 	2, // 1: protobuf.PlaceOrderRequest.order:type_name -> protobuf.Order
-	2, // [2:2] is the sub-list for method output_type
-	2, // [2:2] is the sub-list for method input_type
-	2, // [2:2] is the sub-list for extension type_name
-	2, // [2:2] is the sub-list for extension extendee
-	0, // [0:2] is the sub-list for field type_name
+	3, // 2: protobuf.PlaceOrderRequest.attachedOrders:type_name -> protobuf.AttachedOrders
+	3, // [3:3] is the sub-list for method output_type
+	3, // [3:3] is the sub-list for method input_type
+	3, // [3:3] is the sub-list for extension type_name
+	3, // [3:3] is the sub-list for extension extendee
+	0, // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_PlaceOrderRequest_proto_init() }
@@ -131,6 +143,7 @@ func file_PlaceOrderRequest_proto_init() {
 	}
 	file_Contract_proto_init()
 	file_Order_proto_init()
+	file_AttachedOrders_proto_init()
 	file_PlaceOrderRequest_proto_msgTypes[0].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
