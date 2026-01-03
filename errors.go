@@ -98,14 +98,17 @@ var (
 	// FAIL_SEND_CANCELTICKBYTICKDATA       = CodeMsgPair{577, "Cancel Tick-By-Tick Data Sending Error - "}
 	// FAIL_SEND_REQCOMPLETEDORDERS         = CodeMsgPair{578, "Request Completed Orders Sending Error - "}
 	INVALID_SYMBOL = CodeMsgPair{579, "Invalid symbol in string - "}
-	// FAIL_SEND_REQ_WSH_META_DATA   = CodeMsgPair{580, "Request WSH Meta Data Sending Error - "}
-	// FAIL_SEND_CAN_WSH_META_DATA   = CodeMsgPair{581, "Cancel WSH Meta Data Sending Error - "}
-	// FAIL_SEND_REQ_WSH_EVENT_DATA  = CodeMsgPair{582, "Request WSH Event Data Sending Error - "}
-	// FAIL_SEND_CAN_WSH_EVENT_DATA  = CodeMsgPair{583, "Cancel WSH Event Data Sending Error - "}
-	// FAIL_SEND_REQ_USER_INFO       = CodeMsgPair{584, "Request User Info Sending Error - "}
+	// FAIL_SEND_REQ_WSH_META_DATA          = CodeMsgPair{580, "Request WSH Meta Data Sending Error - "}
+	// FAIL_SEND_CAN_WSH_META_DATA          = CodeMsgPair{581, "Cancel WSH Meta Data Sending Error - "}
+	// FAIL_SEND_REQ_WSH_EVENT_DATA         = CodeMsgPair{582, "Request WSH Event Data Sending Error - "}
+	// FAIL_SEND_CAN_WSH_EVENT_DATA         = CodeMsgPair{583, "Cancel WSH Event Data Sending Error - "}
+	// FAIL_SEND_REQ_USER_INFO              = CodeMsgPair{584, "Request User Info Sending Error - "}
 	FA_PROFILE_NOT_SUPPORTED = CodeMsgPair{585, "FA Profile is not supported anymore, use FA Group instead - "}
-	// FAIL_READ_MESSAGE             = CodeMsgPair{586, "Failed to read message because not connected"}
-	// FAIL_SEND_REQCURRTIMEINMILLIS = CodeMsgPair{587, "Request Current Time In Millis Sending Error - "}
+	// FAIL_READ_MESSAGE                    = CodeMsgPair{586, "Failed to read message because not connected"}
+	// FAIL_SEND_REQCURRTIMEINMILLIS        = CodeMsgPair{587, "Request Current Time In Millis Sending Error - "}
 	ERROR_ENCODING_PROTOBUF = CodeMsgPair{588, "Error encoding protobuf - "}
-	// FAIL_SEND_CANMKTDEPTH         = CodeMsgPair{589, "Cancel Market Depth Sending Error - "}
+	// FAIL_SEND_CANMKTDEPTH                = CodeMsgPair{589, "Cancel Market Depth Sending Error - "}
+	// FAIL_SEND_CANCEL_CONTRACT_DATA       = CodeMsgPair{590, "Cancel Contract Data Sending Error -"}
+	// FAIL_SEND_CANCEL_HISTORICAL_TICKS    = CodeMsgPair{591, "Cancel Historical Ticks Sending Error - "}
+	// FAIL_SEND_REQCONFIG                  = CodeMsgPair{592, "Request Config Sending Error - "}
 )

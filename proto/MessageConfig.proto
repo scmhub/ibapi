@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package protobuf;
+
+option go_package = ".;protobuf";
+
+message MessageConfig {
+    optional int32 id = 1;
+    optional string title = 2;
+    optional string message = 3;
+    optional string defaultAction = 4;
+    optional bool enabled = 5;
+}

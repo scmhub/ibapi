@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+package protobuf;
+
+option go_package = ".;protobuf";
+
+message OrdersSmartRoutingConfig {
+    optional bool seekPriceImprovement = 1;
+    optional bool preOpenReroute = 2;
+    optional bool doNotRouteToDarkPools = 3;
+    optional string defaultAlgorithm = 4;
+}

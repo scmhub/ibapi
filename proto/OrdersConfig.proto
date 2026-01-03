@@ -1,0 +1,12 @@
+
+syntax = "proto3";
+
+package protobuf;
+
+import "OrdersSmartRoutingConfig.proto";
+
+option go_package = ".;protobuf";
+
+message OrdersConfig {
+    OrdersSmartRoutingConfig smartRouting = 1;
+}

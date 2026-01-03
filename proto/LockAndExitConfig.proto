@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package protobuf;
+
+option go_package = ".;protobuf";
+
+message LockAndExitConfig {
+    optional string autoLogoffTime = 1;
+    optional string autoLogoffPeriod = 2;
+    optional string autoLogoffType = 3;
+}

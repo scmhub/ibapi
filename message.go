@@ -92,6 +92,7 @@ const (
 	USER_INFO                                IN = 107
 	HISTORICAL_DATA_END                      IN = 108
 	CURRENT_TIME_IN_MILLIS                   IN = 109
+	CONFIG_RESPONSE                          IN = 110
 )
 
 // OUT is the outgoing msg id's.
@@ -181,6 +182,7 @@ const (
 	REQ_CURRENT_TIME_IN_MILLIS    OUT = 105
 	CANCEL_CONTRACT_DATA          OUT = 106
 	CANCEL_HISTORICAL_TICKS       OUT = 107
+	REQ_CONFIG                    OUT = 108
 )
 
 // TWS New Bulletins constants

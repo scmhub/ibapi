@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package protobuf;
+
+import "ApiPrecautionsConfig.proto";
+import "ApiSettingsConfig.proto";
+
+option go_package = ".;protobuf";
+
+message ApiConfig {
+    optional ApiPrecautionsConfig precautions = 1;
+    optional ApiSettingsConfig settings = 2;
+}

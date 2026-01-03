@@ -443,6 +443,8 @@ type EWrapper interface {
 	DisplayGroupUpdatedProtoBuf(displayGroupUpdatedProto *protobuf.DisplayGroupUpdated)
 	// MarketDepthExchangesProtoBuf .
 	MarketDepthExchangesProtoBuf(marketDepthExchangesProto *protobuf.MarketDepthExchanges)
+	// ConfigResponseProtoBuf .
+	ConfigResponseProtoBuf(configResponseProto *protobuf.ConfigResponse)
 }
 
 var _ EWrapper = (*Wrapper)(nil)
@@ -1179,4 +1181,8 @@ func (w Wrapper) DisplayGroupUpdatedProtoBuf(displayGroupUpdatedProto *protobuf.
 
 func (w Wrapper) MarketDepthExchangesProtoBuf(marketDepthExchangesProto *protobuf.MarketDepthExchanges) {
 	log.Debug().Stringer("marketDepthExchangesProto", marketDepthExchangesProto).Msg("<MarketDepthExchangesProtoBuf>")
+}
+
+func (w Wrapper) ConfigResponseProtoBuf(configResponseProto *protobuf.ConfigResponse) {
+	log.Debug().Stringer("configResponseProto", configResponseProto).Msg("<ConfigResponseProtoBuf>")
 }

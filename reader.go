@@ -26,7 +26,7 @@ func EReader(ctx context.Context, cancel context.CancelFunc, scanner *bufio.Scan
 				if !ok {
 					return
 				}
-				decoder.interpret(msg) // single worker and no go here!!
+				decoder.parseAndProcessMsg(msg) // single worker and no go here!!
 			}
 		}
 	}()

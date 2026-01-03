@@ -6473,3 +6473,34 @@ func (c *EClient) cancelHistoricalTicksProtoBuf(cancelHistoricalTicksProto *prot
 
 	c.reqChan <- me.Bytes()
 }
+
+func (c *EClient) ReqConfigProtoBuf(configRequestProto *protobuf.ConfigRequest) {
+	reqID := NO_VALID_ID
+	if configRequestProto.ReqId != nil {
+		reqID = int64(*configRequestProto.ReqId)
+	}
+
+	if !c.IsConnected() {
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
+	if c.serverVersion < MIN_SERVER_VER_CONFIG {
+		c.wrapper.Error(reqID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+"  It does not support config requests.", "")
+		return
+	}
+
+	me := NewMsgEncoder(1, c)
+
+	me.encodeMsgID(REQ_CONFIG + PROTOBUF_MSG_ID)
+
+	msg, err := proto.Marshal(configRequestProto)
+	if err != nil {
+		c.wrapper.Error(reqID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
+		return
+	}
+
+	me.encodeProto(msg)
+
+	c.reqChan <- me.Bytes()
+}

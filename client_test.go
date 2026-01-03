@@ -6,6 +6,8 @@ import (
 	"os"
 	"testing"
 	"time"
+
+	"github.com/scmhub/ibapi/protobuf"
 )
 
 const (
@@ -783,4 +785,13 @@ func TestWshCalendarOperations(t *testing.T) {
 	time.Sleep(10 * time.Second)
 	ib.CancelWshEventData(30002)
 	ib.CancelWshEventData(30003)
+}
+
+func TestConfigOperations(t *testing.T) {
+	ib := setupIBClient(t)
+	var configRequestProto protobuf.ConfigRequest
+	// reqID := int32(20001)
+	// configRequestProto.ReqId = &reqID
+	ib.ReqConfigProtoBuf(&configRequestProto)
+	time.Sleep(2 * time.Second)
 }
