@@ -11,7 +11,7 @@ func createExecutionFilterProto(execFilter *ExecutionFilter) *protobuf.Execution
 	executionFilterProto := &protobuf.ExecutionFilter{}
 	if isValidInt64Value(execFilter.ClientID) {
 		clientID := int32(execFilter.ClientID)
-		executionFilterProto.LastNDays = &clientID
+		executionFilterProto.ClientId = &clientID
 	}
 	if !stringIsEmpty(execFilter.AcctCode) {
 		executionFilterProto.AcctCode = &execFilter.AcctCode
