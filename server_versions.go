@@ -169,10 +169,11 @@ const (
 	MIN_SERVER_VER_CONFIG                             Version = 219
 	MIN_SERVER_VER_MARKET_DATA_VOLUMES_IN_SHARES      Version = 220
 	MIN_SERVER_VER_UPDATE_CONFIG                      Version = 221
+	MIN_SERVER_VER_FRACTIONAL_LAST_SIZE               Version = 222
 
 	// 100+ messaging
 	// 100 = enhanced handshake, msg length prefixes
 
 	MIN_CLIENT_VER = 100
-	MAX_CLIENT_VER = MIN_SERVER_VER_UPDATE_CONFIG
+	MAX_CLIENT_VER = MIN_SERVER_VER_FRACTIONAL_LAST_SIZE
 )

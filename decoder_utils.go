@@ -1024,6 +1024,12 @@ func decodeContractDetails(contractProto *protobuf.Contract, contractDetailsProt
 	if contractDetailsProto.MinAlgoSize != nil {
 		contractDetails.MinAlgoSize = StringToDecimal(contractDetailsProto.GetMinAlgoSize())
 	}
+	if contractDetailsProto.LastPricePrecision != nil {
+		contractDetails.LastPricePrecision = StringToDecimal(contractDetailsProto.GetLastPricePrecision())
+	}
+	if contractDetailsProto.LastSizePrecision != nil {
+		contractDetails.LastSizePrecision = StringToDecimal(contractDetailsProto.GetLastSizePrecision())
+	}
 
 	setLastTradeDate(contractDetails.Contract.LastTradeDateOrContractMonth, contractDetails, isBond)
 

@@ -9,4 +9,6 @@ message TickReqParams {
 	optional string minTick = 2;
 	optional string bboExchange = 3;
     optional int32 snapshotPermissions = 4;
+    optional string lastPricePrecision = 5;
+	optional string lastSizePrecision = 6;
 }

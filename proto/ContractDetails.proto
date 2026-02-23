@@ -77,4 +77,6 @@ message ContractDetails {
     optional string eventContractDescription2 = 61;
 
     optional string minAlgoSize = 62;
+    optional string lastPricePrecision = 63;
+    optional string lastSizePrecision = 64;
 }

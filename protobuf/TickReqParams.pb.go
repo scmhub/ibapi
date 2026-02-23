@@ -27,6 +27,8 @@ type TickReqParams struct {
 	MinTick             *string                `protobuf:"bytes,2,opt,name=minTick,proto3,oneof" json:"minTick,omitempty"`
 	BboExchange         *string                `protobuf:"bytes,3,opt,name=bboExchange,proto3,oneof" json:"bboExchange,omitempty"`
 	SnapshotPermissions *int32                 `protobuf:"varint,4,opt,name=snapshotPermissions,proto3,oneof" json:"snapshotPermissions,omitempty"`
+	LastPricePrecision  *string                `protobuf:"bytes,5,opt,name=lastPricePrecision,proto3,oneof" json:"lastPricePrecision,omitempty"`
+	LastSizePrecision   *string                `protobuf:"bytes,6,opt,name=lastSizePrecision,proto3,oneof" json:"lastSizePrecision,omitempty"`
 	unknownFields       protoimpl.UnknownFields
 	sizeCache           protoimpl.SizeCache
 }
@@ -89,21 +91,39 @@ func (x *TickReqParams) GetSnapshotPermissions() int32 {
 	return 0
 }
 
+func (x *TickReqParams) GetLastPricePrecision() string {
+	if x != nil && x.LastPricePrecision != nil {
+		return *x.LastPricePrecision
+	}
+	return ""
+}
+
+func (x *TickReqParams) GetLastSizePrecision() string {
+	if x != nil && x.LastSizePrecision != nil {
+		return *x.LastSizePrecision
+	}
+	return ""
+}
+
 var File_TickReqParams_proto protoreflect.FileDescriptor
 
 const file_TickReqParams_proto_rawDesc = "" +
 	"\n" +
-	"\x13TickReqParams.proto\x12\bprotobuf\"\xe5\x01\n" +
+	"\x13TickReqParams.proto\x12\bprotobuf\"\xfa\x02\n" +
 	"\rTickReqParams\x12\x19\n" +
 	"\x05reqId\x18\x01 \x01(\x05H\x00R\x05reqId\x88\x01\x01\x12\x1d\n" +
 	"\aminTick\x18\x02 \x01(\tH\x01R\aminTick\x88\x01\x01\x12%\n" +
 	"\vbboExchange\x18\x03 \x01(\tH\x02R\vbboExchange\x88\x01\x01\x125\n" +
-	"\x13snapshotPermissions\x18\x04 \x01(\x05H\x03R\x13snapshotPermissions\x88\x01\x01B\b\n" +
+	"\x13snapshotPermissions\x18\x04 \x01(\x05H\x03R\x13snapshotPermissions\x88\x01\x01\x123\n" +
+	"\x12lastPricePrecision\x18\x05 \x01(\tH\x04R\x12lastPricePrecision\x88\x01\x01\x121\n" +
+	"\x11lastSizePrecision\x18\x06 \x01(\tH\x05R\x11lastSizePrecision\x88\x01\x01B\b\n" +
 	"\x06_reqIdB\n" +
 	"\n" +
 	"\b_minTickB\x0e\n" +
 	"\f_bboExchangeB\x16\n" +
-	"\x14_snapshotPermissionsB\fZ\n" +
+	"\x14_snapshotPermissionsB\x15\n" +
+	"\x13_lastPricePrecisionB\x14\n" +
+	"\x12_lastSizePrecisionB\fZ\n" +
 	".;protobufb\x06proto3"
 
 var (
