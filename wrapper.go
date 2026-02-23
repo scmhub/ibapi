@@ -445,6 +445,8 @@ type EWrapper interface {
 	MarketDepthExchangesProtoBuf(marketDepthExchangesProto *protobuf.MarketDepthExchanges)
 	// ConfigResponseProtoBuf .
 	ConfigResponseProtoBuf(configResponseProto *protobuf.ConfigResponse)
+	// UpdateConfigResponse .
+	UpdateConfigResponseProtoBuf(UpdateConfigResponseProto *protobuf.UpdateConfigResponse)
 }
 
 var _ EWrapper = (*Wrapper)(nil)
@@ -1185,4 +1187,8 @@ func (w Wrapper) MarketDepthExchangesProtoBuf(marketDepthExchangesProto *protobu
 
 func (w Wrapper) ConfigResponseProtoBuf(configResponseProto *protobuf.ConfigResponse) {
 	log.Debug().Stringer("configResponseProto", configResponseProto).Msg("<ConfigResponseProtoBuf>")
+}
+
+func (w Wrapper) UpdateConfigResponseProtoBuf(UpdateConfigResponseProto *protobuf.UpdateConfigResponse) {
+	log.Debug().Stringer("updateConfigResponseProto", UpdateConfigResponseProto).Msg("<UpdateConfigResponseProtoBuf>")
 }

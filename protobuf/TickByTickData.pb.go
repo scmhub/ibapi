@@ -139,7 +139,7 @@ var File_TickByTickData_proto protoreflect.FileDescriptor
 
 const file_TickByTickData_proto_rawDesc = "" +
 	"\n" +
-	"\x14TickByTickData.proto\x12\bprotobuf\x1a\x18HistoricalTickLast.proto\x1a\x1aHistoricalTickBidAsk.proto\x1a\x14HistoricalTick.proto\"\xe5\x02\n" +
+	"\x14TickByTickData.proto\x12\bprotobuf\x1a\x14HistoricalTick.proto\x1a\x1aHistoricalTickBidAsk.proto\x1a\x18HistoricalTickLast.proto\"\xe5\x02\n" +
 	"\x0eTickByTickData\x12\x19\n" +
 	"\x05reqId\x18\x01 \x01(\x05H\x01R\x05reqId\x88\x01\x01\x12\x1f\n" +
 	"\btickType\x18\x02 \x01(\x05H\x02R\btickType\x88\x01\x01\x12N\n" +
@@ -186,9 +186,9 @@ func file_TickByTickData_proto_init() {
 	if File_TickByTickData_proto != nil {
 		return
 	}
-	file_HistoricalTickLast_proto_init()
-	file_HistoricalTickBidAsk_proto_init()
 	file_HistoricalTick_proto_init()
+	file_HistoricalTickBidAsk_proto_init()
+	file_HistoricalTickLast_proto_init()
 	file_TickByTickData_proto_msgTypes[0].OneofWrappers = []any{
 		(*TickByTickData_HistoricalTickLast)(nil),
 		(*TickByTickData_HistoricalTickBidAsk)(nil),

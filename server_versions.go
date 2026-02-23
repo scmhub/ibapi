@@ -167,9 +167,12 @@ const (
 	MIN_SERVER_VER_ADDITIONAL_ORDER_PARAMS_2          Version = 217
 	MIN_SERVER_VER_ATTACHED_ORDERS                    Version = 218
 	MIN_SERVER_VER_CONFIG                             Version = 219
+	MIN_SERVER_VER_MARKET_DATA_VOLUMES_IN_SHARES      Version = 220
+	MIN_SERVER_VER_UPDATE_CONFIG                      Version = 221
+
 	// 100+ messaging
 	// 100 = enhanced handshake, msg length prefixes
 
 	MIN_CLIENT_VER = 100
-	MAX_CLIENT_VER = MIN_SERVER_VER_CONFIG
+	MAX_CLIENT_VER = MIN_SERVER_VER_UPDATE_CONFIG
 )

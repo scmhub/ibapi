@@ -6515,3 +6515,34 @@ func (c *EClient) ReqConfigProtoBuf(configRequestProto *protobuf.ConfigRequest) 
 
 	c.reqChan <- me.Bytes()
 }
+
+func (c *EClient) UpdateConfigProtoBuf(updateConfigRequestProto *protobuf.UpdateConfigRequest) {
+	reqID := NO_VALID_ID
+	if updateConfigRequestProto.ReqId != nil {
+		reqID = int64(*updateConfigRequestProto.ReqId)
+	}
+
+	if !c.IsConnected() {
+		c.wrapper.Error(reqID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
+		return
+	}
+
+	if c.serverVersion < MIN_SERVER_VER_UPDATE_CONFIG {
+		c.wrapper.Error(reqID, currentTimeMillis(), UPDATE_TWS.Code, UPDATE_TWS.Msg+"  It does not support update config requests.", "")
+		return
+	}
+
+	me := NewMsgEncoder(1, c)
+
+	me.encodeMsgID(UPDATE_CONFIG + PROTOBUF_MSG_ID)
+
+	msg, err := proto.Marshal(updateConfigRequestProto)
+	if err != nil {
+		c.wrapper.Error(reqID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
+		return
+	}
+
+	me.encodeProto(msg)
+
+	c.reqChan <- me.Bytes()
+}

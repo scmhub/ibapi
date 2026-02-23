@@ -2,11 +2,9 @@ syntax = "proto3";
 
 package protobuf;
 
-import "HistoricalTickLast.proto";
-import "HistoricalTickBidAsk.proto";
 import "HistoricalTick.proto";
-
-
+import "HistoricalTickBidAsk.proto";
+import "HistoricalTickLast.proto";
 
 option go_package = ".;protobuf";
 

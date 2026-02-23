@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package protobuf;
+
+option go_package = ".;protobuf";
+
+message UpdateConfigWarning {
+    optional int32 messageId = 1;
+    optional string title = 2;
+    optional string message = 3;
+}

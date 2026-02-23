@@ -790,8 +790,12 @@ func TestWshCalendarOperations(t *testing.T) {
 func TestConfigOperations(t *testing.T) {
 	ib := setupIBClient(t)
 	var configRequestProto protobuf.ConfigRequest
-	// reqID := int32(20001)
-	// configRequestProto.ReqId = &reqID
+	reqID := int32(20001)
+	configRequestProto.ReqId = &reqID
 	ib.ReqConfigProtoBuf(&configRequestProto)
+	ib.UpdateConfigProtoBuf(UpdateConfigAPISettings(20002))
+	ib.UpdateConfigProtoBuf(UpdateOrdersConfig(20003))
+	ib.UpdateConfigProtoBuf(UpdateMessageConfigConfirmMandatoryCapPriceAccepted(20004))
+	ib.UpdateConfigProtoBuf(UpdateConfigOrderIDReset(20005))
 	time.Sleep(2 * time.Second)
 }

@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package protobuf;
+
+import "UpdateConfigWarning.proto";
+
+option go_package = ".;protobuf";
+
+message UpdateConfigResponse {
+    optional int32 reqId = 1;
+    optional string status = 2;
+    optional string message = 3;
+    repeated string changedFields = 4;
+    repeated string errors = 5;
+    repeated UpdateConfigWarning warnings = 6;
+}

@@ -204,6 +204,8 @@ func (d *EDecoder) parseAndProcessMsg(msgBytes []byte) {
 			d.processMktDepthExchangesMsgProtoBuf(msgBuf)
 		case CONFIG_RESPONSE:
 			d.processConfigResponseMsgProtoBuf(msgBuf)
+		case UPDATE_CONFIG_RESPONSE:
+			d.processUpdateConfigResponseMsgProtoBuf(msgBuf)
 		default:
 			d.wrapper.Error(msgID, currentTimeMillis(), UNKNOWN_ID.Code, UNKNOWN_ID.Msg, "")
 		}
@@ -4418,6 +4420,17 @@ func (d *EDecoder) processConfigResponseMsgProtoBuf(msgBuf *MsgBuffer) {
 	}
 
 	d.wrapper.ConfigResponseProtoBuf(&protoMsg)
+}
+
+func (d *EDecoder) processUpdateConfigResponseMsgProtoBuf(msgBuf *MsgBuffer) {
+
+	var protoMsg protobuf.UpdateConfigResponse
+	if err := proto.Unmarshal(msgBuf.bs, &protoMsg); err != nil {
+		log.Error().Err(err).Msg("failed to unmarshal UpdateConfigResponse")
+		return
+	}
+
+	d.wrapper.UpdateConfigResponseProtoBuf(&protoMsg)
 }
 
 //
