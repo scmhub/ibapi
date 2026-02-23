@@ -95,9 +95,9 @@ func (c *Connection) getConn() *net.TCPConn {
 	return c.tcpConn.Load()
 }
 
-// setConn sets the TCP connection in a lock-free way
-func (c *Connection) setConn(conn *net.TCPConn) {
-	c.tcpConn.Store(conn)
+// setConn swaps the TCP connection and returns the previous value.
+func (c *Connection) setConn(conn *net.TCPConn) *net.TCPConn {
+	return c.tcpConn.Swap(conn)
 }
 
 func (c *Connection) reset() {
@@ -133,8 +133,10 @@ func (c *Connection) connect(host string, port int) error {
 		return err
 	}
 
-	// Atomically update connection state
-	c.setConn(newConn)
+	// Atomically update connection state (close previous socket if necessary)
+	if oldConn := c.setConn(newConn); oldConn != nil {
+		_ = oldConn.Close()
+	}
 	atomic.StoreInt32(&c.isConnected, 1)
 
 	log.Debug().Any("address", newConn.RemoteAddr()).Msg("tcp socket connected")
@@ -208,9 +210,7 @@ func (c *Connection) disconnect() error {
 	atomic.StoreInt32(&c.isConnected, 0)
 
 	// Close the connection
-	conn := c.getConn()
-	if conn != nil {
-		c.setConn(nil)
+	if conn := c.setConn(nil); conn != nil {
 		return conn.Close()
 	}
 	return nil

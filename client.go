@@ -22,7 +22,6 @@ import (
 	"sync"
 	"sync/atomic"
 	"syscall"
-	"unsafe"
 
 	"github.com/scmhub/ibapi/protobuf"
 	"google.golang.org/protobuf/proto"
@@ -284,7 +283,7 @@ type EClient struct {
 	conn                 *Connection
 	serverVersion        Version
 	connTime             string
-	connState            ConnState
+	connState            int32
 	writer               *bufio.Writer
 	scanner              *bufio.Scanner
 	wrapper              EWrapper
@@ -342,8 +341,8 @@ func (c *EClient) reset() {
 }
 
 func (c *EClient) setConnState(state ConnState) {
-	cs := ConnState(atomic.LoadInt32((*int32)(unsafe.Pointer(&c.connState))))
-	atomic.StoreInt32((*int32)(unsafe.Pointer(&c.connState)), int32(state))
+	cs := ConnState(atomic.LoadInt32(&c.connState))
+	atomic.StoreInt32(&c.connState, int32(state))
 	log.Debug().Stringer("from", cs).Stringer("to", state).Msg("connection state changed")
 }
 
@@ -411,11 +410,10 @@ func (c *EClient) useProtoBuf(msgID int64) bool {
 func (c *EClient) startAPI() error {
 
 	if c.useProtoBuf(START_API) {
-		c.startApiProtoBuf(createStartApiRequestProto(c.clientID, c.optionalCapabilities))
-		return nil
+		return c.startApiProtoBuf(createStartApiRequestProto(c.clientID, c.optionalCapabilities))
 	}
 
-	if !c.IsConnected() {
+	if !c.conn.IsConnected() {
 		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
 		return NOT_CONNECTED
 	}
@@ -453,11 +451,11 @@ func (c *EClient) startAPI() error {
 	return nil
 }
 
-func (c *EClient) startApiProtoBuf(startApiRequestProto *protobuf.StartApiRequest) {
+func (c *EClient) startApiProtoBuf(startApiRequestProto *protobuf.StartApiRequest) error {
 
-	if !c.IsConnected() {
+	if !c.conn.IsConnected() {
 		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), NOT_CONNECTED.Code, NOT_CONNECTED.Msg, "")
-		return
+		return NOT_CONNECTED
 	}
 
 	me := NewMsgEncoder(4, c)
@@ -467,12 +465,21 @@ func (c *EClient) startApiProtoBuf(startApiRequestProto *protobuf.StartApiReques
 	msg, err := proto.Marshal(startApiRequestProto)
 	if err != nil {
 		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), ERROR_ENCODING_PROTOBUF.Code, ERROR_ENCODING_PROTOBUF.Msg+err.Error(), "")
-		return
+		return err
 	}
 
 	me.encodeProto(msg)
 
-	c.reqChan <- me.Bytes()
+	payload := me.Bytes()
+	if payload == nil {
+		return fmt.Errorf("failed to encode START_API protobuf payload")
+	}
+
+	if _, err := c.writer.Write(payload); err != nil {
+		return err
+	}
+
+	return c.writer.Flush()
 }
 
 // Connect must be called before any other.
@@ -482,7 +489,7 @@ func (c *EClient) Connect(host string, port int, clientID int64) error {
 
 	if c.IsConnected() {
 		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), ALREADY_CONNECTED.Code, ALREADY_CONNECTED.Msg, "")
-		return NOT_CONNECTED
+		return ALREADY_CONNECTED
 	}
 
 	if err := c.validateInvalidSymbols(host); err != nil {
@@ -563,13 +570,13 @@ func (c *EClient) Connect(host string, port int, clientID int64) error {
 	// start requester
 	go c.request()
 
-	c.setConnState(CONNECTED)
-	c.wrapper.ConnectAck()
-
 	// startAPI
 	if err := c.startAPI(); err != nil {
 		return err
 	}
+
+	c.setConnState(CONNECTED)
+	c.wrapper.ConnectAck()
 
 	// 4) Launch the shutdown watcher exactly once
 	c.watchOnce.Do(func() {
@@ -640,7 +647,7 @@ func (c *EClient) Ctx() context.Context {
 
 // IsConnected checks connection to TWS or GateWay.
 func (c *EClient) IsConnected() bool {
-	return c.conn.IsConnected() && ConnState(atomic.LoadInt32((*int32)(unsafe.Pointer(&c.connState)))) == CONNECTED
+	return c.conn.IsConnected() && ConnState(atomic.LoadInt32(&c.connState)) == CONNECTED
 }
 
 // OptionalCapabilities returns the Optional Capabilities.
@@ -3545,6 +3552,10 @@ func (c *EClient) cancelPnLSingleProtoBuf(cancelPnLSingleProto *protobuf.CancelP
 // execFilter contains attributes that describe the filter criteria used to determine which execution reports are returned.
 // NOTE: Time format must be 'yyyymmdd-hh:mm:ss' Eg: '20030702-14:55'
 func (c *EClient) ReqExecutions(reqID int64, execFilter *ExecutionFilter) {
+
+	if execFilter == nil {
+		execFilter = NewExecutionFilter()
+	}
 
 	if c.useProtoBuf(REQ_EXECUTIONS) {
 		c.reqExecutionProtobuf(createExecutionRequestProto(reqID, execFilter))

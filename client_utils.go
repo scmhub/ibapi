@@ -9,6 +9,9 @@ import (
 
 func createExecutionFilterProto(execFilter *ExecutionFilter) *protobuf.ExecutionFilter {
 	executionFilterProto := &protobuf.ExecutionFilter{}
+	if execFilter == nil {
+		return executionFilterProto
+	}
 	if isValidInt64Value(execFilter.ClientID) {
 		clientID := int32(execFilter.ClientID)
 		executionFilterProto.ClientId = &clientID
@@ -788,8 +791,9 @@ func createContractProto(contract *Contract, order *Order) *protobuf.Contract {
 		contractProto.Right = &contract.Right
 	}
 	if !stringIsEmpty(contract.Multiplier) {
-		multiplier, _ := strconv.ParseFloat(contract.Multiplier, 64)
-		contractProto.Multiplier = &multiplier
+		if multiplier, err := strconv.ParseFloat(contract.Multiplier, 64); err == nil {
+			contractProto.Multiplier = &multiplier
+		}
 	}
 	if !stringIsEmpty(contract.Exchange) {
 		contractProto.Exchange = &contract.Exchange
