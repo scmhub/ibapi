@@ -799,3 +799,12 @@ func TestConfigOperations(t *testing.T) {
 	ib.UpdateConfigProtoBuf(UpdateConfigOrderIDReset(20005))
 	time.Sleep(2 * time.Second)
 }
+
+func TestOrderParentChildOperations(t *testing.T) {
+	ib := setupIBClient(t)
+	parentOrderID := nextID()
+	childOrderID := nextID()
+	ib.placeOrderProtoBuf(CreatePlaceOrderRequest(parentOrderID, IBMStockAtSmart(), LimitOrderProto("BUY", StringToDecimal("100"), 40, false)))
+	time.Sleep(1 * time.Second)
+	ib.placeOrderProtoBuf(CreatePlaceOrderRequest(childOrderID, MSFTStockAtSmart(), BetaHedgeOrder(parentOrderID, "SELL", "0.05", 75, true)))
+}

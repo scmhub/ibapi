@@ -2438,6 +2438,11 @@ func (c *EClient) validateOrderParameters(order *protobuf.Order) string {
 		}
 	}
 
+	if c.serverVersion < MIN_SERVER_VER_HEDGE_MAX_SIZE {
+		if order.HedgeMaxSize != nil {
+			return "hedgeMaxSize"
+		}
+	}
 	return ""
 }
 

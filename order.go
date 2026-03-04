@@ -147,8 +147,9 @@ type Order struct {
 	ScaleTable               string
 
 	// HEDGE ORDERS
-	HedgeType  string // 'D' - delta, 'B' - beta, 'F' - FX, 'P' - pair
-	HedgeParam string // 'beta=X' value for beta hedge, 'ratio=Y' for pair hedge
+	HedgeType    string // 'D' - delta, 'B' - beta, 'F' - FX, 'P' - pair
+	HedgeParam   string // 'beta=X' value for beta hedge, 'ratio=Y' for pair hedge
+	HedgeMaxSize int64  `default:"UNSET_INT"`
 
 	// Clearing info
 	Account         string // IB account
@@ -294,6 +295,8 @@ func NewOrder() *Order {
 	order.ScaleProfitOffset = UNSET_FLOAT
 	order.ScaleInitPosition = UNSET_INT
 	order.ScaleInitFillQty = UNSET_INT
+
+	order.HedgeMaxSize = UNSET_INT
 
 	order.TriggerPrice = UNSET_FLOAT
 	order.AdjustedStopPrice = UNSET_FLOAT

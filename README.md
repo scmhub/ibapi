@@ -14,7 +14,7 @@
 
 ### Prerequisites
 
-- **Go** version 1.25
+- **Go** version 1.26
 - An **Interactive Brokers** account with TWS or IB Gateway installed and running
 
 ### Installation

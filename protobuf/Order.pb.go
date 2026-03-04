@@ -189,8 +189,10 @@ type Order struct {
 	IgnoreOpenAuction           *bool    `protobuf:"varint,141,opt,name=ignoreOpenAuction,proto3,oneof" json:"ignoreOpenAuction,omitempty"`
 	SeekPriceImprovement        *int32   `protobuf:"varint,142,opt,name=seekPriceImprovement,proto3,oneof" json:"seekPriceImprovement,omitempty"`
 	WhatIfType                  *int32   `protobuf:"varint,143,opt,name=whatIfType,proto3,oneof" json:"whatIfType,omitempty"`
-	unknownFields               protoimpl.UnknownFields
-	sizeCache                   protoimpl.SizeCache
+	// hedge orders
+	HedgeMaxSize  *int32 `protobuf:"varint,144,opt,name=hedgeMaxSize,proto3,oneof" json:"hedgeMaxSize,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Order) Reset() {
@@ -1224,11 +1226,18 @@ func (x *Order) GetWhatIfType() int32 {
 	return 0
 }
 
+func (x *Order) GetHedgeMaxSize() int32 {
+	if x != nil && x.HedgeMaxSize != nil {
+		return *x.HedgeMaxSize
+	}
+	return 0
+}
+
 var File_Order_proto protoreflect.FileDescriptor
 
 const file_Order_proto_rawDesc = "" +
 	"\n" +
-	"\vOrder.proto\x12\bprotobuf\x1a\x14OrderCondition.proto\x1a\x14SoftDollarTier.proto\"\xadK\n" +
+	"\vOrder.proto\x12\bprotobuf\x1a\x14OrderCondition.proto\x1a\x14SoftDollarTier.proto\"\xe9K\n" +
 	"\x05Order\x12\x1f\n" +
 	"\bclientId\x18\x01 \x01(\x05H\x00R\bclientId\x88\x01\x01\x12\x1d\n" +
 	"\aorderId\x18\x02 \x01(\x05H\x01R\aorderId\x88\x01\x01\x12\x1b\n" +
@@ -1394,7 +1403,8 @@ const file_Order_proto_rawDesc = "" +
 	"\x14seekPriceImprovement\x18\x8e\x01 \x01(\x05H\x89\x01R\x14seekPriceImprovement\x88\x01\x01\x12%\n" +
 	"\n" +
 	"whatIfType\x18\x8f\x01 \x01(\x05H\x8a\x01R\n" +
-	"whatIfType\x88\x01\x01\x1a=\n" +
+	"whatIfType\x88\x01\x01\x12)\n" +
+	"\fhedgeMaxSize\x18\x90\x01 \x01(\x05H\x8b\x01R\fhedgeMaxSize\x88\x01\x01\x1a=\n" +
 	"\x0fAlgoParamsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1aJ\n" +
@@ -1557,7 +1567,8 @@ const file_Order_proto_rawDesc = "" +
 	"\r_allowPreOpenB\x14\n" +
 	"\x12_ignoreOpenAuctionB\x17\n" +
 	"\x15_seekPriceImprovementB\r\n" +
-	"\v_whatIfTypeB\fZ\n" +
+	"\v_whatIfTypeB\x0f\n" +
+	"\r_hedgeMaxSizeB\fZ\n" +
 	".;protobufb\x06proto3"
 
 var (
