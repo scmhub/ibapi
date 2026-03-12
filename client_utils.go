@@ -304,7 +304,7 @@ func createOrderProto(order *Order) (*protobuf.Order, error) {
 	if !stringIsEmpty(order.HedgeParam) {
 		orderProto.HedgeParam = &order.HedgeParam
 	}
-	if !isValidInt64Value(order.HedgeMaxSize) {
+	if isValidInt64Value(order.HedgeMaxSize) {
 		hedgeMaxSize := int32(order.HedgeMaxSize)
 		orderProto.HedgeMaxSize = &hedgeMaxSize
 	}
