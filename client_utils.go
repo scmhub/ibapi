@@ -646,8 +646,22 @@ func createOrderConditionProto(cond OrderCondition) *protobuf.OrderCondition {
 // Operator
 func createOperatorConditionProto(cond OrderCondition) *protobuf.OrderCondition {
 	protoCond := createOrderConditionProto(cond)
-	if op, ok := cond.(*operatorCondition); ok {
-		isMore := op.IsMore
+	var isMore bool
+	switch op := cond.(type) {
+	case *PriceCondition:
+		isMore = op.IsMore
+		protoCond.IsMore = &isMore
+	case *VolumeCondition:
+		isMore = op.IsMore
+		protoCond.IsMore = &isMore
+	case *PercentChangeCondition:
+		isMore = op.IsMore
+		protoCond.IsMore = &isMore
+	case *TimeCondition:
+		isMore = op.IsMore
+		protoCond.IsMore = &isMore
+	case *MarginCondition:
+		isMore = op.IsMore
 		protoCond.IsMore = &isMore
 	}
 	return protoCond
@@ -656,7 +670,24 @@ func createOperatorConditionProto(cond OrderCondition) *protobuf.OrderCondition 
 // Contract
 func createContractConditionProto(cond OrderCondition) *protobuf.OrderCondition {
 	protoCond := createOperatorConditionProto(cond)
-	if cc, ok := cond.(*contractCondition); ok {
+	switch cc := cond.(type) {
+	case *PriceCondition:
+		if isValidInt64Value(cc.ConID) {
+			conID := int32(cc.ConID)
+			protoCond.ConId = &conID
+		}
+		if !stringIsEmpty(cc.Exchange) {
+			protoCond.Exchange = &cc.Exchange
+		}
+	case *VolumeCondition:
+		if isValidInt64Value(cc.ConID) {
+			conID := int32(cc.ConID)
+			protoCond.ConId = &conID
+		}
+		if !stringIsEmpty(cc.Exchange) {
+			protoCond.Exchange = &cc.Exchange
+		}
+	case *PercentChangeCondition:
 		if isValidInt64Value(cc.ConID) {
 			conID := int32(cc.ConID)
 			protoCond.ConId = &conID
