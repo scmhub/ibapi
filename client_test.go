@@ -2,6 +2,7 @@ package ibapi
 
 import (
 	"flag"
+	"fmt"
 	"math/rand"
 	"os"
 	"testing"
@@ -10,17 +11,33 @@ import (
 	"github.com/scmhub/ibapi/protobuf"
 )
 
-const (
-	host    = "localhost" // "localhost"
-	port    = 7497        //7496
-	account = "DU5352527" // "DU000001"
+var (
+	host     = envOrDefault("IB_HOST", "localhost")
+	port     = envIntOrDefault("IB_PORT", 7497)
+	account  = envOrDefault("IB_ACCOUNT", "DU5352527")
+	clientID = rand.Int63n(999999)
+	orderID  int64
+
+	prettyFlag bool
+	logLevel   int
 )
 
-var clientID = rand.Int63n(999999)
-var orderID int64
+func envOrDefault(key, fallback string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return fallback
+}
 
-var prettyFlag bool
-var logLevel int
+func envIntOrDefault(key string, fallback int) int {
+	if v := os.Getenv(key); v != "" {
+		var n int
+		if _, err := fmt.Sscanf(v, "%d", &n); err == nil {
+			return n
+		}
+	}
+	return fallback
+}
 
 func init() {
 	testing.Init()
