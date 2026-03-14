@@ -715,7 +715,7 @@ func setContractConditionFields(condProto *protobuf.OrderCondition, cond *contra
 // --- Concrete condition decoders ---
 
 func decodePriceCondition(condProto *protobuf.OrderCondition) *PriceCondition {
-	cond := &PriceCondition{}
+	cond := newPriceCondition()
 	setContractConditionFields(condProto, cond.contractCondition)
 	if condProto.Price != nil {
 		cond.Price = condProto.GetPrice()
@@ -727,7 +727,7 @@ func decodePriceCondition(condProto *protobuf.OrderCondition) *PriceCondition {
 }
 
 func decodeTimeCondition(condProto *protobuf.OrderCondition) *TimeCondition {
-	cond := &TimeCondition{}
+	cond := newTimeCondition()
 	setOperatorConditionFields(condProto, cond.operatorCondition)
 	if condProto.Time != nil {
 		cond.Time = condProto.GetTime()
@@ -736,7 +736,7 @@ func decodeTimeCondition(condProto *protobuf.OrderCondition) *TimeCondition {
 }
 
 func decodeMarginCondition(condProto *protobuf.OrderCondition) *MarginCondition {
-	cond := &MarginCondition{}
+	cond := newMarginCondition()
 	setOperatorConditionFields(condProto, cond.operatorCondition)
 	if condProto.Percent != nil {
 		cond.Percent = int64(condProto.GetPercent())
@@ -745,7 +745,7 @@ func decodeMarginCondition(condProto *protobuf.OrderCondition) *MarginCondition 
 }
 
 func decodeExecutionCondition(condProto *protobuf.OrderCondition) *ExecutionCondition {
-	cond := &ExecutionCondition{}
+	cond := newExecutionCondition()
 	setConditionFields(condProto, cond)
 	if condProto.SecType != nil {
 		cond.SecType = condProto.GetSecType()
@@ -760,7 +760,7 @@ func decodeExecutionCondition(condProto *protobuf.OrderCondition) *ExecutionCond
 }
 
 func decodeVolumeCondition(condProto *protobuf.OrderCondition) *VolumeCondition {
-	cond := &VolumeCondition{}
+	cond := newVolumeCondition()
 	setContractConditionFields(condProto, cond.contractCondition)
 	if condProto.Volume != nil {
 		cond.Volume = int64(condProto.GetVolume())
@@ -769,7 +769,7 @@ func decodeVolumeCondition(condProto *protobuf.OrderCondition) *VolumeCondition 
 }
 
 func decodePercentChangeCondition(condProto *protobuf.OrderCondition) *PercentChangeCondition {
-	cond := &PercentChangeCondition{}
+	cond := newPercentChangeCondition()
 	setContractConditionFields(condProto, cond.contractCondition)
 	if condProto.ChangePercent != nil {
 		cond.ChangePercent = condProto.GetChangePercent()
