@@ -48,7 +48,7 @@ func (o OrderComboLeg) String() string {
 // Order .
 type Order struct {
 	// order identifier
-	OrderID  int64
+	int64    int64
 	ClientID int64
 	PermID   int64
 
@@ -250,9 +250,9 @@ type Order struct {
 	WhatIfType               int64
 
 	// attached orders
-	SLOrderID   int64 `default:"UNSET_INT"`
+	SLint64     int64 `default:"UNSET_INT"`
 	SLOrderType string
-	PTOrderID   int64 `default:"UNSET_INT"`
+	PTint64     int64 `default:"UNSET_INT"`
 	PTOrderType string
 }
 
@@ -321,8 +321,8 @@ func NewOrder() *Order {
 	order.SeekPriceImprovement = STATE_DEFAULT
 	order.WhatIfType = UNSET_INT
 
-	order.SLOrderID = UNSET_INT
-	order.PTOrderID = UNSET_INT
+	order.SLint64 = UNSET_INT
+	order.PTint64 = UNSET_INT
 
 	return order
 }
@@ -331,12 +331,12 @@ func (o *Order) HasSameID(other *Order) bool {
 	if o.PermID != 0 && other.PermID != 0 {
 		return o.PermID == other.PermID
 	}
-	return o.OrderID == other.OrderID && o.ClientID == other.ClientID
+	return o.int64 == other.int64 && o.ClientID == other.ClientID
 }
 
 func (o Order) String() string {
 	s := fmt.Sprintf("%s, %s, %s: %s %s %s@%s %s",
-		IntMaxString(o.OrderID),
+		IntMaxString(o.int64),
 		IntMaxString(o.ClientID),
 		LongMaxString(o.PermID),
 		o.OrderType,

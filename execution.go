@@ -16,7 +16,7 @@ type Execution struct {
 	Price                  float64
 	PermID                 int64
 	ClientID               int64
-	OrderID                int64
+	int64                  int64
 	Liquidation            int64
 	CumQty                 Decimal // UNSET_DECIMAL
 	AvgPrice               float64
@@ -32,7 +32,7 @@ type Execution struct {
 
 func (e Execution) String() string {
 	return fmt.Sprintf("ExecId: %s, Time: %s, Account: %s, Exchange: %s, Side: %s, Shares: %s, Price: %s, PermId: %s, ClientId: %s, OrderId: %s, Liquidation: %s, CumQty: %s, AvgPrice: %s, OrderRef: %s, EvRule: %s, EvMultiplier: %s, ModelCode: %s, LastLiquidity: %s,  PendingPriceRevision: %s, Submitter: %s, OptionExerciseType: %s",
-		e.ExecID, e.Time, e.AcctNumber, e.Exchange, e.Side, DecimalMaxString(e.Shares), FloatMaxString(e.Price), LongMaxString(e.PermID), IntMaxString(e.ClientID), IntMaxString(e.OrderID), IntMaxString(e.Liquidation), DecimalMaxString(e.CumQty), FloatMaxString(e.AvgPrice),
+		e.ExecID, e.Time, e.AcctNumber, e.Exchange, e.Side, DecimalMaxString(e.Shares), FloatMaxString(e.Price), LongMaxString(e.PermID), IntMaxString(e.ClientID), IntMaxString(e.int64), IntMaxString(e.Liquidation), DecimalMaxString(e.CumQty), FloatMaxString(e.AvgPrice),
 		e.OrderRef, e.EVRule, FloatMaxString(e.EVMultiplier), e.ModelCode, IntMaxString(e.LastLiquidity), strconv.FormatBool(e.PendingPriceRevision), e.Submitter, e.OptExerciseOrLapseType.String())
 }
 

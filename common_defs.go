@@ -14,10 +14,6 @@ const (
 
 var INFINITY_FLOAT float64 = math.Inf(1)
 
-type TickerID = int64
-
-type OrderID = int64
-
 type FaDataType int64
 
 const (

@@ -1023,7 +1023,7 @@ func (d *EDecoder) processOpenOrderMsg(msgBuf *MsgBuffer) {
 	orderDecoder.decodeSubmitter(msgBuf)
 	orderDecoder.decodeImbalanceOnly(msgBuf, MIN_SERVER_VER_IMBALANCE_ONLY)
 
-	d.wrapper.OpenOrder(order.OrderID, contract, order, orderState)
+	d.wrapper.OpenOrder(order.int64, contract, order, orderState)
 }
 
 func (d *EDecoder) processOpenOrderMsgProtoBuf(msgBuf *MsgBuffer) {
@@ -1544,7 +1544,7 @@ func (d *EDecoder) processExecutionDetailsMsg(msgBuf *MsgBuffer) {
 
 	// read execution fields
 	execution := NewExecution()
-	execution.OrderID = orderID
+	execution.int64 = orderID
 	execution.ExecID = msgBuf.decodeString()
 	execution.Time = msgBuf.decodeString()
 	execution.AcctNumber = msgBuf.decodeString()

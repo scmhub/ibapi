@@ -10,16 +10,16 @@ import (
 type EWrapper interface {
 	// TickPrice handles all price related ticks. Every tickPrice callback is followed by a tickSize.
 	// A tickPrice value of -1 or 0 followed by a tickSize of 0 indicates there is no data for this field currently available, whereas a tickPrice with a positive tickSize indicates an active quote of 0 (typically for a combo contract).
-	TickPrice(reqID TickerID, tickType TickType, price float64, attrib TickAttrib)
+	TickPrice(reqID int64, tickType TickType, price float64, attrib TickAttrib)
 	// TickSize handles all size related ticks.
-	TickSize(reqID TickerID, tickType TickType, size Decimal)
+	TickSize(reqID int64, tickType TickType, size Decimal)
 	// TickOptionComputation is called when the market in an option or its underlier moves.
 	// TWS's option model volatilities, prices, and deltas, along with the present value of dividends expected on that options underlier are received.
-	TickOptionComputation(reqID TickerID, tickType TickType, tickAttrib int64, impliedVol float64, delta float64, optPrice float64, pvDividend float64, gamma float64, vega float64, theta float64, undPrice float64)
+	TickOptionComputation(reqID int64, tickType TickType, tickAttrib int64, impliedVol float64, delta float64, optPrice float64, pvDividend float64, gamma float64, vega float64, theta float64, undPrice float64)
 	// TickGeneric .
-	TickGeneric(reqID TickerID, tickType TickType, value float64)
+	TickGeneric(reqID int64, tickType TickType, value float64)
 	// TickString .
-	TickString(reqID TickerID, tickType TickType, value string)
+	TickString(reqID int64, tickType TickType, value string)
 	// TickEFP handles market for Exchange for Physical.
 	// tickerId is the request's identifier.
 	// tickType is the type of tick being received.
@@ -30,10 +30,10 @@ type EWrapper interface {
 	// futureLastTradeDate is the expiration date of the single stock future.
 	// dividendImpact is the dividend impact upon the annualized basis points interest rate.
 	// dividendsToLastTradeDate is the dividends expected until the expiration of the single stock future.
-	TickEFP(reqID TickerID, tickType TickType, basisPoints float64, formattedBasisPoints string, totalDividends float64, holdDays int64, futureLastTradeDate string, dividendImpact float64, dividendsToLastTradeDate float64)
+	TickEFP(reqID int64, tickType TickType, basisPoints float64, formattedBasisPoints string, totalDividends float64, holdDays int64, futureLastTradeDate string, dividendImpact float64, dividendsToLastTradeDate float64)
 	// OrderStatus is called whenever the status of an order changes.
 	// It is also fired after reconnecting to TWS if the client has any open orders.
-	// OrderID is the order ID that was specified previously in the	call to placeOrder().
+	// int64 is the order ID that was specified previously in the	call to placeOrder().
 	// status is the order status. Possible values include:
 	//		PendingSubmit - indicates that you have transmitted the order, but have not  yet received confirmation that it has been accepted by the order destination. NOTE: This order status is not sent by TWS and should be explicitly set by the API developer when an order is submitted.
 	//		PendingCancel - indicates that you have sent a request to cancel the order but have not yet received cancel confirmation from the order destination. At this point, your order is not confirmed canceled. You may still receive an execution while your cancellation request is pending. NOTE: This order status is not sent by TWS and should be explicitly set by the API developer when an order is canceled.
@@ -48,15 +48,15 @@ type EWrapper interface {
 	// permId is the TWS id used to identify orders. Remains the same over TWS sessions.
 	// parentId is the order ID of the parent order, used for bracket and auto trailing stop orders.
 	// lastFilledPrice is the last price of the shares that have been executed. This parameter is valid only if the filled parameter value is greater than zero. Otherwise, the price parameter will be zero.
-	// clientId is the ID of the client (or TWS) that placed the order. Note that TWS orders have a fixed clientId and OrderID of 0 that distinguishes them from API orders.
+	// clientId is the ID of the client (or TWS) that placed the order. Note that TWS orders have a fixed clientId and int64 of 0 that distinguishes them from API orders.
 	// whyHeld is the field used to identify an order held when TWS is trying to locate shares for a short sell. The value used to indicate this is 'locate'.
-	OrderStatus(orderID OrderID, status string, filled Decimal, remaining Decimal, avgFillPrice float64, permID int64, parentID int64, lastFillPrice float64, clientID int64, whyHeld string, mktCapPrice float64)
+	OrderStatus(orderID int64, status string, filled Decimal, remaining Decimal, avgFillPrice float64, permID int64, parentID int64, lastFillPrice float64, clientID int64, whyHeld string, mktCapPrice float64)
 	// OpenOrder is called to feed in open orders.
 	// orderID: OrderId - The order ID assigned by TWS. Use to cancel or update TWS order.
 	// contract: Contract - The Contract class attributes describe the contract.
 	// order: Order - The Order class gives the details of the open order.
 	// orderState: OrderState - The orderState class includes attributes Used for both pre and post trade margin and commission and fees data.
-	OpenOrder(orderID OrderID, contract *Contract, order *Order, orderState *OrderState)
+	OpenOrder(orderID int64, contract *Contract, order *Order, orderState *OrderState)
 	// OpenOrderEnd is called at the end of a given request for open orders.
 	OpenOrderEnd()
 	// WinError .
@@ -86,9 +86,9 @@ type EWrapper interface {
 	// ExecDetailsEnd is called once all executions have been sent to a client in response to reqExecutions().
 	ExecDetailsEnd(reqID int64)
 	// Error is called when there is an error with the communication or when TWS wants to send a message to the client.
-	Error(reqID TickerID, errTime int64, errCode int64, errString string, advancedOrderRejectJson string)
+	Error(reqID int64, errTime int64, errCode int64, errString string, advancedOrderRejectJson string)
 	// UpdateMktDepth returns the order book.
-	// 	TickerID -  the request's identifier.
+	// 	int64 -  the request's identifier.
 	// 	position -  the order book's row being updated.
 	// 	operation - how to refresh the row:
 	// 		0 = insert (insert this new order into the row identified by 'position').
@@ -97,9 +97,9 @@ type EWrapper interface {
 	// 	side -  0 for ask, 1 for bid.
 	// 	price - the order's price.
 	// 	size -  the order's size.
-	UpdateMktDepth(TickerID TickerID, position int64, operation int64, side int64, price float64, size Decimal)
+	UpdateMktDepth(int64 int64, position int64, operation int64, side int64, price float64, size Decimal)
 	// UpdateMktDepthL2 returns the order book.
-	// 	TickerID -  the request's identifier.
+	// 	int64 -  the request's identifier.
 	//  position -  the order book's row being updated.
 	//  marketMaker - the exchange holding the order.
 	//  operation - how to refresh the row:
@@ -110,7 +110,7 @@ type EWrapper interface {
 	//  price - the order's price.
 	//  size -  the order's size.
 	//  isSmartDepth - is SMART Depth request.
-	UpdateMktDepthL2(TickerID TickerID, position int64, marketMaker string, operation int64, side int64, price float64, size Decimal, isSmartDepth bool)
+	UpdateMktDepthL2(int64 int64, position int64, marketMaker string, operation int64, side int64, price float64, size Decimal, isSmartDepth bool)
 	// UpdateNewsBulletin provides IB's bulletins.
 	// 	msgID - the bulletin's identifier.
 	// 	msgType - one of: 1 - Regular news bulletin 2 - Exchange no longer available for trading 3 - Exchange is available for trading.
@@ -154,18 +154,18 @@ type EWrapper interface {
 	// volume - the bar's traded volume if available
 	// wap   - the bar's Weighted Average Price
 	// count - the number of trades during the bar's timespan (only available for TRADES).
-	RealtimeBar(reqID TickerID, time int64, open float64, high float64, low float64, close float64, volume Decimal, wap Decimal, count int64)
+	RealtimeBar(reqID int64, time int64, open float64, high float64, low float64, close float64, volume Decimal, wap Decimal, count int64)
 	// CurrentTime will receive IB server's system current time after the invokation of reqCurrentTime.
 	CurrentTime(t int64)
 	// FundamentalData
-	FundamentalData(reqID TickerID, data string)
+	FundamentalData(reqID int64, data string)
 	// DeltaNeutralValidation
 	DeltaNeutralValidation(reqID int64, deltaNeutralContract DeltaNeutralContract)
 	// TickSnapshotEnd indicates the snapshot reception is finished.
 	TickSnapshotEnd(reqID int64)
 	// MarketDataType is called when market data switches between real-time and frozen.
 	// The marketDataType( ) callback accepts a reqId parameter and is sent per every subscription because different contracts can generally trade on a different schedule
-	MarketDataType(reqID TickerID, marketDataType int64)
+	MarketDataType(reqID int64, marketDataType int64)
 	// CommissionAndFeesReport is called immediately after a trade execution or by calling reqExecutions().
 	CommissionAndFeesReport(commissionAndFeesReport CommissionAndFeesReport)
 	// Position returns real-time positions for all accounts in response to the reqPositions() method.
@@ -223,11 +223,11 @@ type EWrapper interface {
 	// MktDepthExchanges .
 	MktDepthExchanges(depthMktDataDescriptions []DepthMktDataDescription)
 	// TickNews .
-	TickNews(TickerID TickerID, timeStamp int64, providerCode string, articleID string, headline string, extraData string)
+	TickNews(int64 int64, timeStamp int64, providerCode string, articleID string, headline string, extraData string)
 	// SmartComponents .
 	SmartComponents(reqID int64, smartComponents []SmartComponent)
 	// TickReqParams .
-	TickReqParams(TickerID TickerID, minTick float64, bboExchange string, snapshotPermissions int64)
+	TickReqParams(int64 int64, minTick float64, bboExchange string, snapshotPermissions int64)
 	// NewsProviders .
 	NewsProviders(newsProviders []NewsProvider)
 	// NewsArticle .
@@ -455,42 +455,42 @@ var _ EWrapper = (*Wrapper)(nil)
 type Wrapper struct {
 }
 
-func (w Wrapper) TickPrice(reqID TickerID, tickType TickType, price float64, attrib TickAttrib) {
+func (w Wrapper) TickPrice(reqID int64, tickType TickType, price float64, attrib TickAttrib) {
 	log.Info().Int64("ReqID", reqID).Int64("TickType", tickType).Str("Price", FloatMaxString(price)).Bool("CanAutoExecute", attrib.CanAutoExecute).Bool("PastLimit", attrib.PastLimit).Bool("PreOpen", attrib.PreOpen).Msg("<TickPrice>")
 }
 
-func (w Wrapper) TickSize(reqID TickerID, tickType TickType, size Decimal) {
+func (w Wrapper) TickSize(reqID int64, tickType TickType, size Decimal) {
 	log.Info().Int64("ReqID", reqID).Int64("TickType", tickType).Str("Size", DecimalMaxString(size)).Msg("<TickSize>")
 }
 
-func (w Wrapper) TickOptionComputation(reqID TickerID, tickType TickType, tickAttrib int64, impliedVol float64, delta float64, optPrice float64, pvDividend float64, gamma float64, vega float64, theta float64, undPrice float64) {
+func (w Wrapper) TickOptionComputation(reqID int64, tickType TickType, tickAttrib int64, impliedVol float64, delta float64, optPrice float64, pvDividend float64, gamma float64, vega float64, theta float64, undPrice float64) {
 	logger := log.Info().Int64("ReqID", reqID).Int64("TickType", tickType).Str("TickAttrib", IntMaxString(tickAttrib)).Str("ImpliedVol", FloatMaxString(impliedVol)).Str("Delta", FloatMaxString(delta))
 	logger = logger.Str("OptPrice", FloatMaxString(optPrice)).Str("PvDividend", FloatMaxString(pvDividend)).Str("Gamma", FloatMaxString(gamma)).Str("Vega", FloatMaxString(vega)).Str("Theta", FloatMaxString(theta)).Str("UndPrice", FloatMaxString(undPrice))
 	logger.Msg("<TickOptionComputation>")
 }
 
-func (w Wrapper) TickGeneric(reqID TickerID, tickType TickType, value float64) {
+func (w Wrapper) TickGeneric(reqID int64, tickType TickType, value float64) {
 	log.Info().Int64("ReqID", reqID).Int64("TickType", tickType).Str("Value", FloatMaxString(value)).Msg("<TickGeneric>")
 }
 
-func (w Wrapper) TickString(reqID TickerID, tickType TickType, value string) {
+func (w Wrapper) TickString(reqID int64, tickType TickType, value string) {
 	log.Info().Int64("ReqID", reqID).Int64("TickType", tickType).Str("Value", value).Msg("<TickString>")
 }
 
-func (w Wrapper) TickEFP(reqID TickerID, tickType TickType, basisPoints float64, formattedBasisPoints string, totalDividends float64, holdDays int64, futureLastTradeDate string, dividendImpact float64, dividendsToLastTradeDate float64) {
+func (w Wrapper) TickEFP(reqID int64, tickType TickType, basisPoints float64, formattedBasisPoints string, totalDividends float64, holdDays int64, futureLastTradeDate string, dividendImpact float64, dividendsToLastTradeDate float64) {
 	logger := log.Info().Int64("ReqID", reqID).Int64("TickType", tickType).Float64("BasisPoints", basisPoints).Str("FormattedBasisPoints", formattedBasisPoints).Float64("TotalDividends", totalDividends)
 	logger = logger.Int64("holdDays", holdDays).Str("FutureLastTradeDate", futureLastTradeDate).Float64("DividendImpact", dividendImpact).Float64("DividendsToLastTradeDate", dividendsToLastTradeDate)
 	logger.Msg("<TickEFP>")
 }
 
-func (w Wrapper) OrderStatus(orderID OrderID, status string, filled Decimal, remaining Decimal, avgFillPrice float64, permID int64, parentID int64, lastFillPrice float64, clientID int64, whyHeld string, mktCapPrice float64) {
-	logger := log.Info().Int64("OrderID", orderID).Str("Status", status).Str("Filled", DecimalMaxString(filled)).Stringer("Remaining", remaining).Float64("AvgFillPrice", avgFillPrice)
+func (w Wrapper) OrderStatus(orderID int64, status string, filled Decimal, remaining Decimal, avgFillPrice float64, permID int64, parentID int64, lastFillPrice float64, clientID int64, whyHeld string, mktCapPrice float64) {
+	logger := log.Info().Int64("int64", orderID).Str("Status", status).Str("Filled", DecimalMaxString(filled)).Stringer("Remaining", remaining).Float64("AvgFillPrice", avgFillPrice)
 	logger = logger.Int64("PermID", permID).Int64("ParentID", parentID).Float64("LastFillPrice", lastFillPrice).Int64("ClientID", clientID).Str("WhyHeld", whyHeld).Float64("MktCapPrice", mktCapPrice)
 	logger.Msg("<OrderStatus>")
 }
 
-func (w Wrapper) OpenOrder(orderID OrderID, contract *Contract, order *Order, orderState *OrderState) {
-	logger := log.Info().Str("PermID", LongMaxString(order.PermID)).Str("ClientID", IntMaxString(order.ClientID)).Str("OrderID", IntMaxString(order.OrderID))
+func (w Wrapper) OpenOrder(orderID int64, contract *Contract, order *Order, orderState *OrderState) {
+	logger := log.Info().Str("PermID", LongMaxString(order.PermID)).Str("ClientID", IntMaxString(order.ClientID)).Str("int64", IntMaxString(order.int64))
 	logger = logger.Str("Account", order.Account).Str("Symbol", contract.Symbol).Str("SecType", contract.SecType)
 	logger = logger.Str("Exchange", contract.Exchange).Float64("Strike", contract.Strike).Str("Action", order.Action).Str("OrderType", order.OrderType)
 	logger = logger.Str("TotalQuantity", DecimalMaxString(order.TotalQuantity)).Str("CashQty", FloatMaxString(order.CashQty))
@@ -561,7 +561,7 @@ func (w Wrapper) ExecDetailsEnd(reqID int64) {
 	log.Info().Int64("ReqID", reqID).Msg("<ExecDetailsEnd>")
 }
 
-func (w Wrapper) Error(reqID TickerID, errorTime int64, errCode int64, errString string, advancedOrderRejectJson string) {
+func (w Wrapper) Error(reqID int64, errorTime int64, errCode int64, errString string, advancedOrderRejectJson string) {
 	logger := log.Error().Int64("ReqID", reqID).Int64("ErrorTime", errorTime).Int64("ErrCode", errCode).Str("ErrString", errString)
 	if advancedOrderRejectJson != "" {
 		logger = logger.Str("AdvancedOrderRejectJson", advancedOrderRejectJson)
@@ -569,12 +569,12 @@ func (w Wrapper) Error(reqID TickerID, errorTime int64, errCode int64, errString
 	logger.Msg("<Error>")
 }
 
-func (w Wrapper) UpdateMktDepth(TickerID TickerID, position int64, operation int64, side int64, price float64, size Decimal) {
-	log.Info().Int64("TickerID", TickerID).Int64("Position", position).Int64("Operation", operation).Int64("Side", side).Str("Price", FloatMaxString(price)).Str("Size", DecimalMaxString(size)).Msg("<UpdateMktDepth>")
+func (w Wrapper) UpdateMktDepth(int64 int64, position int64, operation int64, side int64, price float64, size Decimal) {
+	log.Info().Int64("int64", int64).Int64("Position", position).Int64("Operation", operation).Int64("Side", side).Str("Price", FloatMaxString(price)).Str("Size", DecimalMaxString(size)).Msg("<UpdateMktDepth>")
 }
 
-func (w Wrapper) UpdateMktDepthL2(TickerID TickerID, position int64, marketMaker string, operation int64, side int64, price float64, size Decimal, isSmartDepth bool) {
-	log.Info().Int64("TickerID", TickerID).Int64("Position", position).Str("MarketMaker", marketMaker).Int64("Operation", operation).Int64("Side", side).Str("Price", FloatMaxString(price)).Str("Size", DecimalMaxString(size)).Bool("IsSmartDepth", isSmartDepth).Msg("<UpdateMktDepthL2>")
+func (w Wrapper) UpdateMktDepthL2(int64 int64, position int64, marketMaker string, operation int64, side int64, price float64, size Decimal, isSmartDepth bool) {
+	log.Info().Int64("int64", int64).Int64("Position", position).Str("MarketMaker", marketMaker).Int64("Operation", operation).Int64("Side", side).Str("Price", FloatMaxString(price)).Str("Size", DecimalMaxString(size)).Bool("IsSmartDepth", isSmartDepth).Msg("<UpdateMktDepthL2>")
 }
 
 func (w Wrapper) UpdateNewsBulletin(msgID int64, msgType int64, newsMessage string, originExch string) {
@@ -728,8 +728,8 @@ func (w Wrapper) MktDepthExchanges(depthMktDataDescriptions []DepthMktDataDescri
 	log.Info().Any("DepthMktDataDescriptions", depthMktDataDescriptions).Msg("<MktDepthExchanges>")
 }
 
-func (w Wrapper) TickNews(TickerID TickerID, timeStamp int64, providerCode string, articleID string, headline string, extraData string) {
-	log.Info().Int64("TickerID", TickerID).Str("TimeStamp", IntMaxString(timeStamp)).Str("ProviderCode", providerCode).Str("ArticleID", articleID).Str("Headline", headline).Str("ExtraData", extraData).Msg("<TickNews>")
+func (w Wrapper) TickNews(int64 int64, timeStamp int64, providerCode string, articleID string, headline string, extraData string) {
+	log.Info().Int64("int64", int64).Str("TimeStamp", IntMaxString(timeStamp)).Str("ProviderCode", providerCode).Str("ArticleID", articleID).Str("Headline", headline).Str("ExtraData", extraData).Msg("<TickNews>")
 }
 
 func (w Wrapper) SmartComponents(reqID int64, smartComponents []SmartComponent) {
@@ -739,8 +739,8 @@ func (w Wrapper) SmartComponents(reqID int64, smartComponents []SmartComponent) 
 	}
 }
 
-func (w Wrapper) TickReqParams(TickerID TickerID, minTick float64, bboExchange string, snapshotPermissions int64) {
-	log.Info().Int64("TickerID", TickerID).Str("MinTick", FloatMaxString(minTick)).Str("BboExchange", bboExchange).Str("SnapshotPermissions", IntMaxString(snapshotPermissions)).Msg("<TickReqParams>")
+func (w Wrapper) TickReqParams(int64 int64, minTick float64, bboExchange string, snapshotPermissions int64) {
+	log.Info().Int64("int64", int64).Str("MinTick", FloatMaxString(minTick)).Str("BboExchange", bboExchange).Str("SnapshotPermissions", IntMaxString(snapshotPermissions)).Msg("<TickReqParams>")
 }
 
 func (w Wrapper) NewsProviders(newsProviders []NewsProvider) {
@@ -818,7 +818,7 @@ func (w Wrapper) TickByTickMidPoint(reqID int64, time int64, midPoint float64) {
 }
 
 func (w Wrapper) OrderBound(permID int64, clientID int64, orderID int64) {
-	log.Info().Str("PermID", LongMaxString(permID)).Str("ClientID", IntMaxString(clientID)).Str("OrderID", IntMaxString(orderID)).Msg("<OrderBound>")
+	log.Info().Str("PermID", LongMaxString(permID)).Str("ClientID", IntMaxString(clientID)).Str("int64", IntMaxString(orderID)).Msg("<OrderBound>")
 }
 
 func (w Wrapper) CompletedOrder(contract *Contract, order *Order, orderState *OrderState) {

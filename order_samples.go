@@ -442,7 +442,7 @@ func BracketOrder(parentOrderId int64, action string, quantity Decimal, limitPri
 
 	// This will be our main or "parent" order
 	parent = NewOrder()
-	parent.OrderID = parentOrderId
+	parent.int64 = parentOrderId
 	parent.Action = action
 	parent.OrderType = "LMT"
 	parent.TotalQuantity = quantity
@@ -452,7 +452,7 @@ func BracketOrder(parentOrderId int64, action string, quantity Decimal, limitPri
 	parent.Transmit = false
 
 	takeProfit = NewOrder()
-	takeProfit.OrderID = parent.OrderID + 1
+	takeProfit.int64 = parent.int64 + 1
 	if action == "BUY" {
 		takeProfit.Action = "SELL"
 	} else {
@@ -465,7 +465,7 @@ func BracketOrder(parentOrderId int64, action string, quantity Decimal, limitPri
 	takeProfit.Transmit = false
 
 	stopLoss = NewOrder()
-	stopLoss.OrderID = parent.OrderID + 2
+	stopLoss.int64 = parent.int64 + 2
 	if action == "BUY" {
 		stopLoss.Action = "SELL"
 	} else {
@@ -801,7 +801,7 @@ func AttachAdjustableToStop(parent *Order, attachedOrderStopPrice float64, trigg
 		action = "BUY"
 	}
 	order := Stop(action, parent.TotalQuantity, attachedOrderStopPrice)
-	order.ParentID = parent.OrderID
+	order.ParentID = parent.int64
 	// When trigger price is penetrated
 	order.TriggerPrice = triggerPrice
 	// The parent order will be turned into a STP order
@@ -821,7 +821,7 @@ func AttachAdjustableToStopLimit(parent *Order, attachedOrderStopPrice float64, 
 		action = "BUY"
 	}
 	order := Stop(action, parent.TotalQuantity, attachedOrderStopPrice)
-	order.ParentID = parent.OrderID
+	order.ParentID = parent.int64
 	// When trigger price is penetrated
 	order.TriggerPrice = triggerPrice
 	// The parent order will be turned into a STP LMT order
@@ -843,7 +843,7 @@ func AttachAdjustableToTrail(parent *Order, attachedOrderStopPrice float64, trig
 		action = "BUY"
 	}
 	order := Stop(action, parent.TotalQuantity, attachedOrderStopPrice)
-	order.ParentID = parent.OrderID
+	order.ParentID = parent.int64
 	// When trigger price is penetrated
 	order.TriggerPrice = triggerPrice
 	// The parent order will be turned into a TRAIL order

@@ -10,7 +10,7 @@ type OrderDecoder struct {
 }
 
 func (d *OrderDecoder) decodeOrderId(msgBuf *MsgBuffer) {
-	d.order.OrderID = msgBuf.decodeInt64()
+	d.order.int64 = msgBuf.decodeInt64()
 }
 
 func (d *OrderDecoder) decodeContractFields(msgBuf *MsgBuffer) {

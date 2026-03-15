@@ -789,7 +789,7 @@ func (c *EClient) TWSConnectionTime() string {
 // Do not enter any genericTicklist values if you use snapshots.
 // regulatorySnapshot: With the US Value Snapshot Bundle for stocks, regulatory snapshots are available for 0.01 USD each.
 // mktDataOptions is for internal use only.Use default value XYZ.
-func (c *EClient) ReqMktData(reqID TickerID, contract *Contract, genericTickList string, snapshot bool, regulatorySnapshot bool, mktDataOptions []TagValue) {
+func (c *EClient) ReqMktData(reqID int64, contract *Contract, genericTickList string, snapshot bool, regulatorySnapshot bool, mktDataOptions []TagValue) {
 
 	if c.useProtoBuf(REQ_MKT_DATA) {
 		c.reqMarketDataProtoBuf(createMarketDataRequestProto(reqID, contract, genericTickList, snapshot, regulatorySnapshot, mktDataOptions))
@@ -905,7 +905,7 @@ func (c *EClient) reqMarketDataProtoBuf(marketDataRequestProto *protobuf.MarketD
 }
 
 // CancelMktData stops the market data flow for the specified TickerId.
-func (c *EClient) CancelMktData(reqID TickerID) {
+func (c *EClient) CancelMktData(reqID int64) {
 
 	if c.useProtoBuf(CANCEL_MKT_DATA) {
 		c.cancelMarketDataProtoBuf(createCancelMarketDataProto(reqID))
@@ -1556,7 +1556,7 @@ func (c *EClient) cancelCalculateOptionPriceProtoBuf(cancelCalculateOptionPriceP
 // manualOrderTime isthe manual order time.
 // customerAccount is the customer account.
 // professionalCustomer:bool - professional customer.
-func (c *EClient) ExerciseOptions(reqID TickerID, contract *Contract, exerciseAction int, exerciseQuantity int, account string, override int, manualOrderTime string, customerAccount string, professionalCustomer bool) {
+func (c *EClient) ExerciseOptions(reqID int64, contract *Contract, exerciseAction int, exerciseQuantity int, account string, override int, manualOrderTime string, customerAccount string, professionalCustomer bool) {
 
 	if c.useProtoBuf(EXERCISE_OPTIONS) {
 		c.exerciseOptionsProtoBuf(createExerciseOptionsRequestProto(reqID, contract, int64(exerciseAction), int64(exerciseQuantity), account, override != 0, manualOrderTime, customerAccount, professionalCustomer))
@@ -1673,7 +1673,7 @@ func (c *EClient) exerciseOptionsProtoBuf(exerciseOptionsRequestProto *protobuf.
 // This tag is also used when canceling the order.
 // contract contains a description of the contract which is being traded.
 // order contains the details of the traded order.
-func (c *EClient) PlaceOrder(orderID OrderID, contract *Contract, order *Order) {
+func (c *EClient) PlaceOrder(orderID int64, contract *Contract, order *Order) {
 
 	if c.useProtoBuf(PLACE_ORDER) {
 		placeOrderRequestProto, err := createPlaceOrderRequestProto(orderID, contract, order)
@@ -2466,7 +2466,7 @@ func (c *EClient) validateAttachedOrdersParameters(attachedOrders *protobuf.Atta
 
 // CancelOrder cancel an order by orderId.
 // It can only be used to cancel an order that was placed originally by a client with the same client ID
-func (c *EClient) CancelOrder(orderID OrderID, orderCancel OrderCancel) {
+func (c *EClient) CancelOrder(orderID int64, orderCancel OrderCancel) {
 
 	if c.useProtoBuf(CANCEL_ORDER) {
 		c.cancelOrderProtoBuf(createCancelOrderRequestProto(orderID, &orderCancel))

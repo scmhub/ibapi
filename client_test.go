@@ -489,9 +489,9 @@ func TestConditionSamples(t *testing.T) {
 func TestBracketSample(t *testing.T) {
 	ib := setupIBClient(t)
 	parent, takeProfit, stopLoss := BracketOrder(nextID(), "BUY", StringToDecimal("100"), 30, 40, 20)
-	ib.PlaceOrder(parent.OrderID, EuropeanStock(), parent)
-	ib.PlaceOrder(takeProfit.OrderID, EuropeanStock(), takeProfit)
-	ib.PlaceOrder(stopLoss.OrderID, EuropeanStock(), stopLoss)
+	ib.PlaceOrder(parent.int64, EuropeanStock(), parent)
+	ib.PlaceOrder(takeProfit.int64, EuropeanStock(), takeProfit)
+	ib.PlaceOrder(stopLoss.int64, EuropeanStock(), stopLoss)
 }
 
 func TestHedgeSample(t *testing.T) {
@@ -499,12 +499,12 @@ func TestHedgeSample(t *testing.T) {
 	//F Hedge order
 	//Parent order on a contract which currency differs from your base currency
 	parent := LimitOrder("BUY", StringToDecimal("100"), 10)
-	parent.OrderID = nextID()
+	parent.int64 = nextID()
 	parent.Transmit = false
 	// Hedge on the currency conversion
-	hedge := MarketFHedge(parent.OrderID, "BUY")
+	hedge := MarketFHedge(parent.int64, "BUY")
 	// Place the parent first...
-	ib.PlaceOrder(parent.OrderID, EuropeanStock(), parent)
+	ib.PlaceOrder(parent.int64, EuropeanStock(), parent)
 	// Then the hedge order
 	ib.PlaceOrder(nextID(), EurGbpFx(), hedge)
 }
@@ -796,15 +796,15 @@ func TestConfigOperations(t *testing.T) {
 	ib.UpdateConfigProtoBuf(UpdateConfigAPISettings(20002))
 	ib.UpdateConfigProtoBuf(UpdateOrdersConfig(20003))
 	ib.UpdateConfigProtoBuf(UpdateMessageConfigConfirmMandatoryCapPriceAccepted(20004))
-	ib.UpdateConfigProtoBuf(UpdateConfigOrderIDReset(20005))
+	ib.UpdateConfigProtoBuf(UpdateConfigint64Reset(20005))
 	time.Sleep(2 * time.Second)
 }
 
 func TestOrderParentChildOperations(t *testing.T) {
 	ib := setupIBClient(t)
-	parentOrderID := nextID()
-	childOrderID := nextID()
-	ib.placeOrderProtoBuf(CreatePlaceOrderRequest(parentOrderID, IBMStockAtSmart(), LimitOrderProto("BUY", StringToDecimal("100"), 40, false)))
+	parentint64 := nextID()
+	childint64 := nextID()
+	ib.placeOrderProtoBuf(CreatePlaceOrderRequest(parentint64, IBMStockAtSmart(), LimitOrderProto("BUY", StringToDecimal("100"), 40, false)))
 	time.Sleep(1 * time.Second)
-	ib.placeOrderProtoBuf(CreatePlaceOrderRequest(childOrderID, MSFTStockAtSmart(), BetaHedgeOrder(parentOrderID, "SELL", "0.05", 75, true)))
+	ib.placeOrderProtoBuf(CreatePlaceOrderRequest(childint64, MSFTStockAtSmart(), BetaHedgeOrder(parentint64, "SELL", "0.05", 75, true)))
 }

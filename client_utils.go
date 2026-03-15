@@ -55,7 +55,7 @@ func createExecutionRequestProto(reqID int64, execFilter *ExecutionFilter) *prot
 	return executionRequestProto
 }
 
-func createPlaceOrderRequestProto(orderID OrderID, contract *Contract, order *Order) (*protobuf.PlaceOrderRequest, error) {
+func createPlaceOrderRequestProto(orderID int64, contract *Contract, order *Order) (*protobuf.PlaceOrderRequest, error) {
 	var err error
 	placeOrderRequestProto := &protobuf.PlaceOrderRequest{}
 	if isValidInt64Value(orderID) {
@@ -75,18 +75,18 @@ func createAttachedOrdersProto(order *Order) *protobuf.AttachedOrders {
 	attachedOrdersProto := &protobuf.AttachedOrders{}
 
 	// Stop Loss Order
-	if isValidInt64Value(order.SLOrderID) {
-		slOrderID := int32(order.SLOrderID)
-		attachedOrdersProto.SlOrderId = &slOrderID
+	if isValidInt64Value(order.SLint64) {
+		slint64 := int32(order.SLint64)
+		attachedOrdersProto.SlOrderId = &slint64
 	}
 	if !stringIsEmpty(order.SLOrderType) {
 		attachedOrdersProto.SlOrderType = &order.SLOrderType
 	}
 
 	// Profit Target Order
-	if isValidInt64Value(order.PTOrderID) {
-		ptOrderID := int32(order.PTOrderID)
-		attachedOrdersProto.PtOrderId = &ptOrderID
+	if isValidInt64Value(order.PTint64) {
+		ptint64 := int32(order.PTint64)
+		attachedOrdersProto.PtOrderId = &ptint64
 	}
 	if !stringIsEmpty(order.PTOrderType) {
 		attachedOrdersProto.PtOrderType = &order.PTOrderType
@@ -103,8 +103,8 @@ func createOrderProto(order *Order) (*protobuf.Order, error) {
 		clientID := int32(order.ClientID)
 		orderProto.ClientId = &clientID
 	}
-	if isValidInt64Value(order.OrderID) {
-		orderID := int32(order.OrderID)
+	if isValidInt64Value(order.int64) {
+		orderID := int32(order.int64)
 		orderProto.OrderId = &orderID
 	}
 	if isValidInt64Value(order.PermID) {
@@ -916,7 +916,7 @@ func createComboLegProto(comboLeg *ComboLeg, perLegPrice float64) *protobuf.Comb
 	return comboLegProto
 }
 
-func createCancelOrderRequestProto(orderID OrderID, orderCancel *OrderCancel) *protobuf.CancelOrderRequest {
+func createCancelOrderRequestProto(orderID int64, orderCancel *OrderCancel) *protobuf.CancelOrderRequest {
 	cancelOrderRequestProto := &protobuf.CancelOrderRequest{}
 	if isValidInt64Value(orderID) {
 		id := int32(orderID)

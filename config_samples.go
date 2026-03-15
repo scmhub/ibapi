@@ -79,8 +79,8 @@ func UpdateMessageConfigConfirmMandatoryCapPriceAccepted(reqID int32) *protobuf.
 	}
 }
 
-// UpdateConfigOrderIDReset .
-func UpdateConfigOrderIDReset(reqID int32) *protobuf.UpdateConfigRequest {
+// UpdateConfigint64Reset .
+func UpdateConfigint64Reset(reqID int32) *protobuf.UpdateConfigRequest {
 	return &protobuf.UpdateConfigRequest{
 		ReqId:                 proto.Int32(reqID),
 		ResetAPIOrderSequence: proto.Bool(true),
