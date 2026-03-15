@@ -506,9 +506,9 @@ func TestConditionSamples(t *testing.T) {
 func TestBracketSample(t *testing.T) {
 	ib := setupIBClient(t)
 	parent, takeProfit, stopLoss := BracketOrder(nextID(), "BUY", StringToDecimal("100"), 30, 40, 20)
-	ib.PlaceOrder(parent.int64, EuropeanStock(), parent)
-	ib.PlaceOrder(takeProfit.int64, EuropeanStock(), takeProfit)
-	ib.PlaceOrder(stopLoss.int64, EuropeanStock(), stopLoss)
+	ib.PlaceOrder(parent.OrderID, EuropeanStock(), parent)
+	ib.PlaceOrder(takeProfit.OrderID, EuropeanStock(), takeProfit)
+	ib.PlaceOrder(stopLoss.OrderID, EuropeanStock(), stopLoss)
 }
 
 func TestHedgeSample(t *testing.T) {
@@ -516,12 +516,12 @@ func TestHedgeSample(t *testing.T) {
 	//F Hedge order
 	//Parent order on a contract which currency differs from your base currency
 	parent := LimitOrder("BUY", StringToDecimal("100"), 10)
-	parent.int64 = nextID()
+	parent.OrderID = nextID()
 	parent.Transmit = false
 	// Hedge on the currency conversion
-	hedge := MarketFHedge(parent.int64, "BUY")
+	hedge := MarketFHedge(parent.OrderID, "BUY")
 	// Place the parent first...
-	ib.PlaceOrder(parent.int64, EuropeanStock(), parent)
+	ib.PlaceOrder(parent.OrderID, EuropeanStock(), parent)
 	// Then the hedge order
 	ib.PlaceOrder(nextID(), EurGbpFx(), hedge)
 }

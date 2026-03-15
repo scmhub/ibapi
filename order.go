@@ -48,7 +48,7 @@ func (o OrderComboLeg) String() string {
 // Order .
 type Order struct {
 	// order identifier
-	int64    int64
+	OrderID  int64
 	ClientID int64
 	PermID   int64
 
@@ -331,12 +331,12 @@ func (o *Order) HasSameID(other *Order) bool {
 	if o.PermID != 0 && other.PermID != 0 {
 		return o.PermID == other.PermID
 	}
-	return o.int64 == other.int64 && o.ClientID == other.ClientID
+	return o.OrderID == other.OrderID && o.ClientID == other.ClientID
 }
 
 func (o Order) String() string {
 	s := fmt.Sprintf("%s, %s, %s: %s %s %s@%s %s",
-		IntMaxString(o.int64),
+		IntMaxString(o.OrderID),
 		IntMaxString(o.ClientID),
 		LongMaxString(o.PermID),
 		o.OrderType,

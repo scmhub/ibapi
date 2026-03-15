@@ -103,8 +103,8 @@ func createOrderProto(order *Order) (*protobuf.Order, error) {
 		clientID := int32(order.ClientID)
 		orderProto.ClientId = &clientID
 	}
-	if isValidInt64Value(order.int64) {
-		orderID := int32(order.int64)
+	if isValidInt64Value(order.OrderID) {
+		orderID := int32(order.OrderID)
 		orderProto.OrderId = &orderID
 	}
 	if isValidInt64Value(order.PermID) {

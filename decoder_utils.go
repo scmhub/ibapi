@@ -146,7 +146,7 @@ func decodeDeltaNeutralContract(contractProto *protobuf.Contract) *DeltaNeutralC
 func decodeExecution(executionProto *protobuf.Execution) *Execution {
 	execution := NewExecution()
 	if executionProto.OrderId != nil {
-		execution.int64 = int64(executionProto.GetOrderId())
+		execution.OrderID = int64(executionProto.GetOrderId())
 	}
 	if executionProto.ClientId != nil {
 		execution.ClientID = int64(executionProto.GetClientId())
@@ -218,10 +218,10 @@ func decodeOrder(orderID int64, contractProto *protobuf.Contract, orderProto *pr
 		order.ClientID = int64(orderProto.GetClientId())
 	}
 	if isValidInt64Value(orderID) {
-		order.int64 = orderID
+		order.OrderID = orderID
 	}
 	if orderProto.OrderId != nil {
-		order.int64 = int64(orderProto.GetOrderId())
+		order.OrderID = int64(orderProto.GetOrderId())
 	}
 	if orderProto.PermId != nil {
 		order.PermID = int64(orderProto.GetPermId())
