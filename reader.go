@@ -18,6 +18,12 @@ func EReader(ctx context.Context, cancel context.CancelFunc, scanner *bufio.Scan
 		log.Debug().Msg("decoder started")
 		defer log.Debug().Msg("decoder ended")
 		defer wg.Done()
+		defer func() {
+			if r := recover(); r != nil {
+				log.Error().Interface("panic", r).Msg("decoder panic, triggering shutdown")
+				cancel()
+			}
+		}()
 		for {
 			select {
 			case <-ctx.Done():
