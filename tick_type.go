@@ -109,6 +109,12 @@ const (
 	FINAL_IPO_LAST
 	DELAYED_YIELD_BID
 	DELAYED_YIELD_ASK
+	ODD_LOT_BID
+	ODD_LOT_ASK
+	ODD_LOT_BID_SIZE
+	ODD_LOT_ASK_SIZE
+	ODD_LOT_BID_EXCH
+	ODD_LOT_ASK_EXCH
 	NOT_SET
 )
 
@@ -226,5 +232,5 @@ var tickTypeMap = map[TickType]string{
 }
 
 func IsPrice(tickType TickType) bool {
-	return tickType == BID || tickType == ASK || tickType == LAST || tickType == DELAYED_BID || tickType == DELAYED_ASK || tickType == DELAYED_LAST
+	return tickType == BID || tickType == ASK || tickType == LAST || tickType == DELAYED_BID || tickType == DELAYED_ASK || tickType == DELAYED_LAST || tickType == ODD_LOT_BID || tickType == ODD_LOT_ASK
 }

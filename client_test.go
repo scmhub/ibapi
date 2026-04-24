@@ -102,18 +102,15 @@ func TestClient(t *testing.T) {
 	ib.SetConnectionOptions("+PACEAPI")
 
 	if err := ib.Connect(host, port, clientID); err != nil {
-		log.Error().Err(err).Msg("connect")
-		return
+		t.Fatalf("connect: %v", err)
 	}
 	time.Sleep(1 * time.Second)
 	if !ib.IsConnected() {
-		t.Error("not connected")
-		return
+		t.Fatal("not connected")
 	}
 
 	if err := ib.Disconnect(); err != nil {
-		log.Error().Err(err).Msg("Disconnect")
-		return
+		t.Fatalf("disconnect: %v", err)
 	}
 }
 
@@ -225,7 +222,7 @@ func TestMarketDepthOperations(t *testing.T) {
 	ib.CancelMktDepth(2001, false)
 	ib.ReqMktDepth(2002, EurGbpFx(), 5, true, nil)
 	time.Sleep(5 * time.Second)
-	ib.CancelMktDepth(2001, true)
+	ib.CancelMktDepth(2002, true)
 }
 
 func TestRealTimeBars(t *testing.T) {
@@ -293,7 +290,7 @@ func TestContractOperations(t *testing.T) {
 	// ReqContractDetails - crypto
 	ib.ReqContractDetails(217, CryptoContract())
 	// ReqContractDetails - by isssuer id
-	ib.ReqContractDetails(211, ByIssuerId())
+	ib.ReqContractDetails(222, ByIssuerId())
 }
 
 func TestMarketScanners(t *testing.T) {
@@ -376,7 +373,8 @@ func TestOrderOperations(t *testing.T) {
 	ib.ReqAutoOpenOrders(true)
 	ib.ReqOpenOrders()
 	// Placing/modifying an order - remember to ALWAYS increment the nextValidId after placing an order so it can be used for the next one!
-	ib.PlaceOrder(nextID(), USStock(), LimitOrder("SELL", ONE, 50))
+	sellOrderID := nextID()
+	ib.PlaceOrder(sellOrderID, USStock(), LimitOrder("SELL", ONE, 50))
 
 	// ib.PlaceOrder(nextID(), OptionAtBox(), Block("BUY", StringToDecimal("50"), 20))
 	// ib.PlaceOrder(nextID(), OptionAtBox(), BoxTop("SELL", StringToDecimal("10")))
@@ -403,15 +401,17 @@ func TestOrderOperations(t *testing.T) {
 	// ib.PlaceOrder(nextID(), USStock(), TrailingStopLimit("BUY", ONE, 2, 5, 50))
 
 	// mid price
-	ib.PlaceOrder(nextID(), USStockAtSmart(), Midprice("BUY", ONE, 150))
+	midpriceOrderID := nextID()
+	ib.PlaceOrder(midpriceOrderID, USStockAtSmart(), Midprice("BUY", ONE, 150))
 	// with cash Qty
 	orderID++
-	ib.PlaceOrder(nextID(), USStockAtSmart(), LimitOrderWithCashQty("BUY", 111.11, 5000))
+	cashQtyOrderID := nextID()
+	ib.PlaceOrder(cashQtyOrderID, USStockAtSmart(), LimitOrderWithCashQty("BUY", 111.11, 5000))
 
 	time.Sleep(1 * time.Second)
 
 	// Cancel one order
-	ib.CancelOrder(nextID(), CancelOrderEmpty())
+	ib.CancelOrder(cashQtyOrderID, CancelOrderEmpty())
 
 	// cancel all orders for all accounts
 	ib.ReqGlobalCancel(CancelOrderEmpty())
@@ -428,42 +428,53 @@ func TestOrderOperations(t *testing.T) {
 	ib.ReqCompletedOrders(false)
 
 	// order submission
-	ib.PlaceOrder(nextID(), CryptoContract(), LimitOrder("BUY", StringToDecimal("0.12345678"), 3700))
+	cryptoOrderID := nextID()
+	ib.PlaceOrder(cryptoOrderID, CryptoContract(), LimitOrder("BUY", StringToDecimal("0.12345678"), 3700))
 
 	// order time
-	ib.PlaceOrder(nextID(), USStockAtSmart(), LimitOrderWithManualOrderTime("BUY", StringToDecimal("100"), 111.11, "20240714-13:00:00"))
+	manualTimeOrderID := nextID()
+	ib.PlaceOrder(manualTimeOrderID, USStockAtSmart(), LimitOrderWithManualOrderTime("BUY", StringToDecimal("100"), 111.11, "20240714-13:00:00"))
 	// Cancel one order
-	ib.CancelOrder(nextID(), CancelOrderWithManualTime("20240914-00:00:05"))
+	ib.CancelOrder(manualTimeOrderID, CancelOrderWithManualTime("20240914-00:00:05"))
 
 	// peg best to mid order submission
-	ib.PlaceOrder(nextID(), IBKRATSContract(), PegBestUpToMidOrder("BUY", StringToDecimal("100"), 111.11, 100, 200, 0.02, 0.025))
+	pegBestUpToMidOrderID := nextID()
+	ib.PlaceOrder(pegBestUpToMidOrderID, IBKRATSContract(), PegBestUpToMidOrder("BUY", StringToDecimal("100"), 111.11, 100, 200, 0.02, 0.025))
 
 	// peg best order submission
-	ib.PlaceOrder(nextID(), IBKRATSContract(), PegBestOrder("BUY", StringToDecimal("100"), 111.11, 100, 200, 0.03))
+	pegBestOrderID := nextID()
+	ib.PlaceOrder(pegBestOrderID, IBKRATSContract(), PegBestOrder("BUY", StringToDecimal("100"), 111.11, 100, 200, 0.03))
 
 	// peg mid order submission
-	ib.PlaceOrder(nextID(), IBKRATSContract(), PegMidOrder("BUY", StringToDecimal("100"), 111.11, 100, 200, 0.025))
+	pegMidOrderID := nextID()
+	ib.PlaceOrder(pegMidOrderID, IBKRATSContract(), PegMidOrder("BUY", StringToDecimal("100"), 111.11, 100, 200, 0.025))
 
 	// limit with customer account order submission
-	ib.PlaceOrder(nextID(), USStockAtSmart(), LimitOrderWithCustomerAccount("BUY", StringToDecimal("100"), 111.11, "CustAcct"))
+	customerAccountOrderID := nextID()
+	ib.PlaceOrder(customerAccountOrderID, USStockAtSmart(), LimitOrderWithCustomerAccount("BUY", StringToDecimal("100"), 111.11, "CustAcct"))
 
 	// limit with include overnight
-	ib.PlaceOrder(nextID(), USStockAtSmart(), LimitOrderWithIncludeOvernight("BUY", StringToDecimal("100"), 111.11))
+	includeOvernightOrderID := nextID()
+	ib.PlaceOrder(includeOvernightOrderID, USStockAtSmart(), LimitOrderWithIncludeOvernight("BUY", StringToDecimal("100"), 111.11))
 
 	// limit with CME Tag
-	ib.PlaceOrder(nextID(), SimpleFuture(), LimitOrderWithCmeTaggingFields("BUY", StringToDecimal("1"), 5333, "ABCD", 1))
+	firstCmeOrderID := nextID()
+	ib.PlaceOrder(firstCmeOrderID, SimpleFuture(), LimitOrderWithCmeTaggingFields("BUY", StringToDecimal("1"), 5333, "ABCD", 1))
 	time.Sleep(5 * time.Second)
-	ib.CancelOrder(nextID(), OrderCancelWithCmeTaggingFields("BCDE", 0))
+	ib.CancelOrder(firstCmeOrderID, OrderCancelWithCmeTaggingFields("BCDE", 0))
 	time.Sleep(2 * time.Second)
-	ib.PlaceOrder(nextID(), SimpleFuture(), LimitOrderWithCmeTaggingFields("BUY", StringToDecimal("1"), 5333, "CDEF", 0))
+	secondCmeOrderID := nextID()
+	ib.PlaceOrder(secondCmeOrderID, SimpleFuture(), LimitOrderWithCmeTaggingFields("BUY", StringToDecimal("1"), 5333, "CDEF", 0))
 	time.Sleep(5 * time.Second)
-	ib.CancelOrder(nextID(), OrderCancelWithCmeTaggingFields("DEFG", 1))
+	ib.CancelOrder(secondCmeOrderID, OrderCancelWithCmeTaggingFields("DEFG", 1))
 
 	// Imbalance only order
-	ib.PlaceOrder(nextID(), USStockAtSmart(), LimitOnCloseOrderWithImbalanceOnly("BUY", StringToDecimal("100"), 44.44))
+	imbalanceOnlyOrderID := nextID()
+	ib.PlaceOrder(imbalanceOnlyOrderID, USStockAtSmart(), LimitOnCloseOrderWithImbalanceOnly("BUY", StringToDecimal("100"), 44.44))
 
 	// zero strike order
-	ib.PlaceOrder(nextID(), OptForecastxZeroStrike(), LimitOrder("BUY", StringToDecimal("1"), 0.05))
+	zeroStrikeOrderID := nextID()
+	ib.PlaceOrder(zeroStrikeOrderID, OptForecastxZeroStrike(), LimitOrder("BUY", StringToDecimal("1"), 0.05))
 }
 
 func TestOcaSamples(t *testing.T) {
@@ -824,4 +835,21 @@ func TestOrderParentChildOperations(t *testing.T) {
 	ib.placeOrderProtoBuf(CreatePlaceOrderRequest(parentint64, IBMStockAtSmart(), LimitOrderProto("BUY", StringToDecimal("100"), 40, false)))
 	time.Sleep(1 * time.Second)
 	ib.placeOrderProtoBuf(CreatePlaceOrderRequest(childint64, MSFTStockAtSmart(), BetaHedgeOrder(parentint64, "SELL", "0.05", 75, true)))
+}
+
+func TestNewsOperationsProto(t *testing.T) {
+	ib := setupIBClient(t)
+	ib.reqHistoricalNewsProtoBuf(HistoricalNewsRequestWithEndTime(10001))
+	time.Sleep(1 * time.Second)
+	ib.reqHistoricalNewsProtoBuf(HistoricalNewsRequestWithStartTime(10002))
+}
+
+func TestTickDataOperationsProto(t *testing.T) {
+	ib := setupIBClient(t)
+	ib.reqMarketDataProtoBuf(OddLotBidAskQuotesRequest(20001, IBMStockAtSmart()))
+	time.Sleep(10 * time.Second)
+	ib.cancelMarketDataProtoBuf(CancelMarketDataRequest(20001))
+	time.Sleep(1 * time.Second)
+	ib.reqMarketDataProtoBuf(RegulatorySnapshotRequest(20002, IBMStockAtSmart()))
+	time.Sleep(10 * time.Second)
 }
