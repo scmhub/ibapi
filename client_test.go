@@ -318,13 +318,6 @@ func TestMarketScanners(t *testing.T) {
 	ib.CancelScannerSubscription(7002)
 }
 
-func TestFundamentals(t *testing.T) {
-	ib := setupIBClient(t)
-	ib.ReqFundamentalData(8001, USStock(), "ReportsFinSummary", nil)
-	time.Sleep(2 * time.Second)
-	ib.CancelFundamentalData(8001)
-}
-
 func TestBulletins(t *testing.T) {
 	ib := setupIBClient(t)
 	ib.ReqNewsBulletins(true)

@@ -12,8 +12,7 @@ const (
 	// MIN_SERVER_VER_CONTRACT_CONID              Version = 37
 	MIN_SERVER_VER_SUPPORTED                          Version = 38 // 38 is the minimum supported version
 	MIN_SERVER_VER_PTA_ORDERS                         Version = 39
-	MIN_SERVER_VER_FUNDAMENTAL_DATA                   Version = 40
-	MIN_SERVER_VER_DELTA_NEUTRAL                      Version = 40
+	MIN_SERVER_VER_DELTA_NEUTRAL                      Version = 40 // MIN_SERVER_VER_FUNDAMENTAL_DATA Version = 40 was removed in API after v0.10.46
 	MIN_SERVER_VER_CONTRACT_DATA_CHAIN                Version = 40
 	MIN_SERVER_VER_SCALE_ORDERS2                      Version = 40
 	MIN_SERVER_VER_ALGO_ORDERS                        Version = 41

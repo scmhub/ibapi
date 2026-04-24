@@ -1745,32 +1745,6 @@ func createScannerSubscriptionProto(subscription *ScannerSubscription, scannerSu
 	return proto
 }
 
-func createFundamentalsDataRequestProto(reqID int64, contract *Contract, reportType string, fundamentalsDataOptionsList []TagValue) *protobuf.FundamentalsDataRequest {
-	req := &protobuf.FundamentalsDataRequest{}
-	if isValidInt64Value(reqID) {
-		id := int32(reqID)
-		req.ReqId = &id
-	}
-	req.Contract = createContractProto(contract, &Order{})
-	if !stringIsEmpty(reportType) {
-		req.ReportType = &reportType
-	}
-	opts := createStringStringMap(fundamentalsDataOptionsList)
-	if len(opts) > 0 {
-		req.FundamentalsDataOptions = opts
-	}
-	return req
-}
-
-func createCancelFundamentalsDataProto(reqID int64) *protobuf.CancelFundamentalsData {
-	cancel := &protobuf.CancelFundamentalsData{}
-	if isValidInt64Value(reqID) {
-		id := int32(reqID)
-		cancel.ReqId = &id
-	}
-	return cancel
-}
-
 func createPnLRequestProto(reqID int64, account, modelCode string) *protobuf.PnLRequest {
 	req := &protobuf.PnLRequest{}
 	if isValidInt64Value(reqID) {

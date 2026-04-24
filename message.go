@@ -33,8 +33,7 @@ const (
 	TICK_STRING                              IN = 46
 	TICK_EFP                                 IN = 47
 	CURRENT_TIME                             IN = 49
-	REAL_TIME_BARS                           IN = 50
-	FUNDAMENTAL_DATA                         IN = 51
+	REAL_TIME_BARS                           IN = 50 // FUNDAMENTAL_DATA IN = 51 // Fundamental data is not supported after version 0.10.46
 	CONTRACT_DATA_END                        IN = 52
 	OPEN_ORDER_END                           IN = 53
 	ACCT_DOWNLOAD_END                        IN = 54
@@ -127,9 +126,7 @@ const (
 	CANCEL_HISTORICAL_DATA        OUT = 25
 	REQ_CURRENT_TIME              OUT = 49
 	REQ_REAL_TIME_BARS            OUT = 50
-	CANCEL_REAL_TIME_BARS         OUT = 51
-	REQ_FUNDAMENTAL_DATA          OUT = 52
-	CANCEL_FUNDAMENTAL_DATA       OUT = 53
+	CANCEL_REAL_TIME_BARS         OUT = 51 // REQ_FUNDAMENTAL_DATA OUT = 52	// CANCEL_FUNDAMENTAL_DATA OUT = 53	// Fundamental data is not supported after version 0.10.46
 	REQ_CALC_IMPLIED_VOLAT        OUT = 54
 	REQ_CALC_OPTION_PRICE         OUT = 55
 	CANCEL_CALC_IMPLIED_VOLAT     OUT = 56
@@ -242,8 +239,6 @@ var PROTOBUF_MSG_IDS = map[OUT]Version{
 	REQ_SCANNER_PARAMETERS:        MIN_SERVER_VER_PROTOBUF_SCAN_DATA,
 	REQ_SCANNER_SUBSCRIPTION:      MIN_SERVER_VER_PROTOBUF_SCAN_DATA,
 	CANCEL_SCANNER_SUBSCRIPTION:   MIN_SERVER_VER_PROTOBUF_SCAN_DATA,
-	REQ_FUNDAMENTAL_DATA:          MIN_SERVER_VER_PROTOBUF_SCAN_DATA,
-	CANCEL_FUNDAMENTAL_DATA:       MIN_SERVER_VER_PROTOBUF_SCAN_DATA,
 	REQ_PNL:                       MIN_SERVER_VER_PROTOBUF_SCAN_DATA,
 	CANCEL_PNL:                    MIN_SERVER_VER_PROTOBUF_SCAN_DATA,
 	REQ_PNL_SINGLE:                MIN_SERVER_VER_PROTOBUF_SCAN_DATA,

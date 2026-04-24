@@ -157,8 +157,6 @@ type EWrapper interface {
 	RealtimeBar(reqID int64, time int64, open float64, high float64, low float64, close float64, volume Decimal, wap Decimal, count int64)
 	// CurrentTime will receive IB server's system current time after the invokation of reqCurrentTime.
 	CurrentTime(t int64)
-	// FundamentalData
-	FundamentalData(reqID int64, data string)
 	// DeltaNeutralValidation
 	DeltaNeutralValidation(reqID int64, deltaNeutralContract DeltaNeutralContract)
 	// TickSnapshotEnd indicates the snapshot reception is finished.
@@ -393,8 +391,6 @@ type EWrapper interface {
 	ScannerParametersProtoBuf(scannerParametersProto *protobuf.ScannerParameters)
 	// ScannerDataProtoBuf .
 	ScannerDataProtoBuf(scannerDataProto *protobuf.ScannerData)
-	// FundamentalsDataProtoBuf .
-	FundamentalsDataProtoBuf(fundamentalsDataProto *protobuf.FundamentalsData)
 	// PnLProtoBuf .
 	PnLProtoBuf(pnlProto *protobuf.PnL)
 	// PnLSingleProtoBuf .
@@ -615,10 +611,6 @@ func (w Wrapper) RealtimeBar(reqID int64, time int64, open float64, high float64
 
 func (w Wrapper) CurrentTime(t int64) {
 	log.Info().Time("Server Time", time.Unix(t, 0)).Msg("<CurrentTime>")
-}
-
-func (w Wrapper) FundamentalData(reqID int64, data string) {
-	log.Info().Int64("ReqID", reqID).Str("Data", data).Msg("<FundamentalData>")
 }
 
 func (w Wrapper) DeltaNeutralValidation(reqID int64, deltaNeutralContract DeltaNeutralContract) {
@@ -1083,10 +1075,6 @@ func (w Wrapper) ScannerParametersProtoBuf(scannerParametersProto *protobuf.Scan
 
 func (w Wrapper) ScannerDataProtoBuf(scannerDataProto *protobuf.ScannerData) {
 	log.Debug().Stringer("scannerDataProto", scannerDataProto).Msg("<ScannerDataProtoBuf>")
-}
-
-func (w Wrapper) FundamentalsDataProtoBuf(fundamentalsDataProto *protobuf.FundamentalsData) {
-	log.Debug().Stringer("fundamentalsDataProto", fundamentalsDataProto).Msg("<FundamentalsDataProtoBuf>")
 }
 
 func (w Wrapper) PnLProtoBuf(pnlProto *protobuf.PnL) {

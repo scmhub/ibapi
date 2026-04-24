@@ -152,8 +152,6 @@ func (d *EDecoder) parseAndProcessMsg(msgBytes []byte) {
 			d.processScannerParametersMsgProtoBuf(msgBuf)
 		case SCANNER_DATA:
 			d.processScannerDataMsgProtoBuf(msgBuf)
-		case FUNDAMENTAL_DATA:
-			d.processFundamentalsDataMsgProtoBuf(msgBuf)
 		case PNL:
 			d.processPnLMsgProtoBuf(msgBuf)
 		case PNL_SINGLE:
@@ -263,8 +261,6 @@ func (d *EDecoder) parseAndProcessMsg(msgBytes []byte) {
 			d.processCurrentTimeMsg(msgBuf)
 		case REAL_TIME_BARS:
 			d.processRealTimeBarsMsg(msgBuf)
-		case FUNDAMENTAL_DATA:
-			d.processFundamentalDataMsg(msgBuf)
 		case CONTRACT_DATA_END:
 			d.processContractDataEndMsg(msgBuf)
 		case OPEN_ORDER_END:
@@ -2155,16 +2151,6 @@ func (d *EDecoder) processRealTimeBarsMsgProtoBuf(msgBuf *MsgBuffer) {
 	d.wrapper.RealtimeBar(reqID, t, open, high, low, close, volume, wap, count)
 }
 
-func (d *EDecoder) processFundamentalDataMsg(msgBuf *MsgBuffer) {
-
-	msgBuf.decode() // version
-
-	reqID := msgBuf.decodeInt64()
-	data := msgBuf.decodeString()
-
-	d.wrapper.FundamentalData(reqID, data)
-}
-
 func (d *EDecoder) processContractDataEndMsg(msgBuf *MsgBuffer) {
 
 	msgBuf.decode() // version
@@ -2172,27 +2158,6 @@ func (d *EDecoder) processContractDataEndMsg(msgBuf *MsgBuffer) {
 	reqID := msgBuf.decodeInt64()
 
 	d.wrapper.ContractDetailsEnd(reqID)
-}
-
-func (d *EDecoder) processFundamentalsDataMsgProtoBuf(msgBuf *MsgBuffer) {
-	var fundamentalsDataProto protobuf.FundamentalsData
-	if err := proto.Unmarshal(msgBuf.bs, &fundamentalsDataProto); err != nil {
-		log.Error().Err(err).Msg("failed to unmarshal FundamentalsData message")
-		return
-	}
-
-	d.wrapper.FundamentalsDataProtoBuf(&fundamentalsDataProto)
-
-	reqID := NO_VALID_ID
-	if fundamentalsDataProto.ReqId != nil {
-		reqID = int64(fundamentalsDataProto.GetReqId())
-	}
-	data := ""
-	if fundamentalsDataProto.Data != nil {
-		data = fundamentalsDataProto.GetData()
-	}
-
-	d.wrapper.FundamentalData(reqID, data)
 }
 
 func (d *EDecoder) processContractDataEndMsgProtoBuf(msgBuf *MsgBuffer) {
