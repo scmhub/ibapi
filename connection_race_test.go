@@ -79,6 +79,39 @@ func (s *DummyServer) Address() (string, int) {
 	return s.addr, s.port
 }
 
+func TestConnectionNilReceiverDoesNotPanic(t *testing.T) {
+	var conn *Connection
+
+	assertNoPanic(t, "write", func() {
+		if _, err := conn.Write([]byte("test")); err == nil {
+			t.Fatal("expected write on nil connection to return an error")
+		}
+	})
+
+	assertNoPanic(t, "read", func() {
+		buf := make([]byte, 4)
+		if _, err := conn.Read(buf); err == nil {
+			t.Fatal("expected read on nil connection to return an error")
+		}
+	})
+
+	assertNoPanic(t, "disconnect", func() {
+		if err := conn.disconnect(); err != nil {
+			t.Fatalf("expected disconnect on nil connection to be a no-op: %v", err)
+		}
+	})
+}
+
+func assertNoPanic(t *testing.T, name string, fn func()) {
+	t.Helper()
+	defer func() {
+		if r := recover(); r != nil {
+			t.Fatalf("%s panicked: %v", name, r)
+		}
+	}()
+	fn()
+}
+
 // TestConnectionRaceConditions demonstrates race conditions in Connection
 func TestConnectionRaceConditions(t *testing.T) {
 	// Start dummy server

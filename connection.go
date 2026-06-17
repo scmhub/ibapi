@@ -34,6 +34,10 @@ type Connection struct {
 }
 
 func (c *Connection) Write(bs []byte) (int, error) {
+	if c == nil {
+		return 0, fmt.Errorf("connection is nil")
+	}
+
 	// Fast path: try write with current connection
 	conn := c.getConn()
 	if conn != nil {
@@ -74,6 +78,10 @@ func (c *Connection) Write(bs []byte) (int, error) {
 }
 
 func (c *Connection) Read(bs []byte) (int, error) {
+	if c == nil {
+		return 0, fmt.Errorf("connection is nil")
+	}
+
 	conn := c.getConn()
 	if conn == nil {
 		return 0, fmt.Errorf("connection not available")
@@ -195,6 +203,10 @@ func (c *Connection) reconnect() error {
 }
 
 func (c *Connection) disconnect() error {
+	if c == nil {
+		return nil
+	}
+
 	// Load statistics atomically for logging
 	msgSent := atomic.LoadInt64(&c.numMsgSent)
 	bytesSent := atomic.LoadInt64(&c.numBytesSent)
