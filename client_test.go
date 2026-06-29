@@ -523,7 +523,7 @@ func TestHedgeSample(t *testing.T) {
 	parent.OrderID = nextID()
 	parent.Transmit = false
 	// Hedge on the currency conversion
-	hedge := MarketFHedge(parent.OrderID, "BUY")
+	hedge := MarketFxHedge(parent.OrderID, "BUY")
 	// Place the parent first...
 	ib.PlaceOrder(parent.OrderID, EuropeanStock(), parent)
 	// Then the hedge order
