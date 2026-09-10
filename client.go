@@ -1962,7 +1962,7 @@ func (c *EClient) PlaceOrder(orderID int64, contract *Contract, order *Order) {
 	if c.serverVersion >= MIN_SERVER_VER_FRACTIONAL_POSITIONS {
 		me.encodeDecimal(order.TotalQuantity)
 	} else {
-		me.encodeDecimal(order.TotalQuantity)
+		me.encodeInt64(order.TotalQuantity.Int())
 	}
 
 	me.encodeString(order.OrderType)
