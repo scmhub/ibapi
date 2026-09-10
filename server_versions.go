@@ -170,7 +170,7 @@ const (
 	MIN_SERVER_VER_UPDATE_CONFIG                      Version = 221
 	MIN_SERVER_VER_FRACTIONAL_LAST_SIZE               Version = 222
 	MIN_SERVER_VER_HEDGE_MAX_SIZE                     Version = 223
-	MIN_SERVER_VER_USE_PRECISION_FROM_SEC_DEFS        Version = 224
+	MIN_SERVER_VER_USE_PRECISION_FROM_SEC_DEF         Version = 224
 	MIN_SERVER_VER_ODD_LOT_BID_ASK_QUOTES             Version = 225
 
 	// 100+ messaging

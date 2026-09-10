@@ -681,30 +681,6 @@ func ContAndExpiringFut() *Contract {
 	return contract
 }
 
-// JefferiesContract .
-func JefferiesContract() *Contract {
-
-	contract := NewContract()
-	contract.Symbol = "AAPL"
-	contract.SecType = "STK"
-	contract.Exchange = "JEFFALGO" // must be direct-routed to JEFALGO
-	contract.Currency = "USD"      // only available for US stocks
-
-	return contract
-}
-
-// CSFBContract .
-func CSFBContract() *Contract {
-
-	contract := NewContract()
-	contract.Symbol = "IBKR"
-	contract.SecType = "STK"
-	contract.Exchange = "CSFBALGO"
-	contract.Currency = "USD"
-
-	return contract
-}
-
 // IBKRATSContract .
 func IBKRATSContract() *Contract {
 

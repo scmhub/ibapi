@@ -64,17 +64,15 @@ func FillPctVolParams(baseOrder *Order, pctVol float64, startTime, endTime strin
 }
 
 // FillTwapParams .
-func FillTwapParams(baseOrder *Order, strategyType string, startTime, endTime string, allowPastEndTime bool) {
+func FillTwapParams(baseOrder *Order, startTime, endTime string, allowPastEndTime bool) {
 	baseOrder.AlgoStrategy = "Twap"
 	baseOrder.AlgoParams = []TagValue{}
-	tag1 := TagValue{Tag: "strategyType", Value: strategyType}
-	tag2 := TagValue{Tag: "startTime", Value: startTime}
-	tag3 := TagValue{Tag: "endTime", Value: endTime}
-	tag4 := TagValue{Tag: "allowPastEndTime", Value: boolToString(allowPastEndTime)}
+	tag1 := TagValue{Tag: "startTime", Value: startTime}
+	tag2 := TagValue{Tag: "endTime", Value: endTime}
+	tag3 := TagValue{Tag: "allowPastEndTime", Value: boolToString(allowPastEndTime)}
 	baseOrder.AlgoParams = append(baseOrder.AlgoParams, tag1)
 	baseOrder.AlgoParams = append(baseOrder.AlgoParams, tag2)
 	baseOrder.AlgoParams = append(baseOrder.AlgoParams, tag3)
-	baseOrder.AlgoParams = append(baseOrder.AlgoParams, tag4)
 }
 
 // FillVwapParams .
@@ -87,6 +85,24 @@ func FillVwapParams(baseOrder *Order, maxPctVol float64, startTime, endTime stri
 	tag4 := TagValue{Tag: "allowPastEndTime", Value: boolToString(allowPastEndTime)}
 	tag5 := TagValue{Tag: "noTakeLiq", Value: boolToString(noTakeLiq)}
 	tag6 := TagValue{Tag: "speedUp", Value: boolToString(speedUp)}
+	baseOrder.AlgoParams = append(baseOrder.AlgoParams, tag1)
+	baseOrder.AlgoParams = append(baseOrder.AlgoParams, tag2)
+	baseOrder.AlgoParams = append(baseOrder.AlgoParams, tag3)
+	baseOrder.AlgoParams = append(baseOrder.AlgoParams, tag4)
+	baseOrder.AlgoParams = append(baseOrder.AlgoParams, tag5)
+	baseOrder.AlgoParams = append(baseOrder.AlgoParams, tag6)
+}
+
+// FillAccuDistrParams .
+func FillAccuDistrParams(baseOrder *Order, timeBetweenOrders int64, routeOrderType string, componentSize int64, activeTimeStart, activeTimeEnd, activeTimeTz string) {
+	baseOrder.AlgoStrategy = "AccuDistr"
+	baseOrder.AlgoParams = []TagValue{}
+	tag1 := TagValue{Tag: "timeBetweenOrders", Value: int64ToString(timeBetweenOrders)}
+	tag2 := TagValue{Tag: "routeOrderType", Value: routeOrderType}
+	tag3 := TagValue{Tag: "componentSize", Value: int64ToString(componentSize)}
+	tag4 := TagValue{Tag: "activeTimeStart", Value: activeTimeStart}
+	tag5 := TagValue{Tag: "activeTimeEnd", Value: activeTimeEnd}
+	tag6 := TagValue{Tag: "activeTimeTz", Value: activeTimeTz}
 	baseOrder.AlgoParams = append(baseOrder.AlgoParams, tag1)
 	baseOrder.AlgoParams = append(baseOrder.AlgoParams, tag2)
 	baseOrder.AlgoParams = append(baseOrder.AlgoParams, tag3)
@@ -212,69 +228,4 @@ func FillTimeVariantPctVolParams(baseOrder *Order, startPctVol, endPctVol float6
 	baseOrder.AlgoParams = append(baseOrder.AlgoParams, tag3)
 	baseOrder.AlgoParams = append(baseOrder.AlgoParams, tag4)
 	baseOrder.AlgoParams = append(baseOrder.AlgoParams, tag5)
-}
-
-// FillJefferiesVWAPParams .
-func FillJefferiesVWAPParams(baseOrder *Order, startTime, endTime string, relativeLimit, maxVolumeRate float64, excludeAuctions string,
-	triggerPrice, wowPrice float64, minFillSize int64, wowOrderPct float64, wowMode string, isBuyBack bool, wowReference string) {
-	baseOrder.AlgoStrategy = "VWAP"
-	baseOrder.AlgoParams = []TagValue{}
-	tag1 := TagValue{Tag: "StartTime", Value: startTime}
-	tag2 := TagValue{Tag: "EndTime", Value: endTime}
-	tag3 := TagValue{Tag: "RelativeLimit", Value: float64ToString(relativeLimit)}
-	tag4 := TagValue{Tag: "MaxVolumeRate", Value: float64ToString(maxVolumeRate)}
-	tag5 := TagValue{Tag: "ExcludeAuctions", Value: excludeAuctions}
-	tag6 := TagValue{Tag: "TriggerPrice", Value: float64ToString(triggerPrice)}
-	tag7 := TagValue{Tag: "WowPrice", Value: float64ToString(wowPrice)}
-	tag8 := TagValue{Tag: "MinFillSize", Value: int64ToString(minFillSize)}
-	tag9 := TagValue{Tag: "WowOrderPct", Value: float64ToString(wowOrderPct)}
-	tag10 := TagValue{Tag: "WowMode", Value: wowMode}
-	tag11 := TagValue{Tag: "IsBuyBack", Value: boolToString(isBuyBack)}
-	tag12 := TagValue{Tag: "WowReference", Value: wowReference}
-	baseOrder.AlgoParams = append(baseOrder.AlgoParams, tag1)
-	baseOrder.AlgoParams = append(baseOrder.AlgoParams, tag2)
-	baseOrder.AlgoParams = append(baseOrder.AlgoParams, tag3)
-	baseOrder.AlgoParams = append(baseOrder.AlgoParams, tag4)
-	baseOrder.AlgoParams = append(baseOrder.AlgoParams, tag5)
-	baseOrder.AlgoParams = append(baseOrder.AlgoParams, tag6)
-	baseOrder.AlgoParams = append(baseOrder.AlgoParams, tag7)
-	baseOrder.AlgoParams = append(baseOrder.AlgoParams, tag8)
-	baseOrder.AlgoParams = append(baseOrder.AlgoParams, tag9)
-	baseOrder.AlgoParams = append(baseOrder.AlgoParams, tag10)
-	baseOrder.AlgoParams = append(baseOrder.AlgoParams, tag11)
-	baseOrder.AlgoParams = append(baseOrder.AlgoParams, tag12)
-}
-
-// FillCSFBInlineParams .
-func FillCSFBInlineParams(baseOrder *Order, startTime, endTime, execStyle string, minPercent, maxPercent, displaySize int64, auction string, blockFinder bool,
-	blockPrice float64, minBlockSize, maxBlockSize int64, iWouldPrice float64) {
-
-	// must be direct-routed to "CSFBALGO"
-
-	baseOrder.AlgoStrategy = "INLINE"
-	baseOrder.AlgoParams = []TagValue{}
-	tag1 := TagValue{Tag: "StartTime", Value: startTime}
-	tag2 := TagValue{Tag: "EndTime", Value: endTime}
-	tag3 := TagValue{Tag: "ExecStyle", Value: execStyle}
-	tag4 := TagValue{Tag: "MinPercent", Value: int64ToString(minPercent)}
-	tag5 := TagValue{Tag: "MaxPercent", Value: int64ToString(maxPercent)}
-	tag6 := TagValue{Tag: "DisplaySize", Value: int64ToString(displaySize)}
-	tag7 := TagValue{Tag: "Auction", Value: auction}
-	tag8 := TagValue{Tag: "BlockFinder", Value: boolToString(blockFinder)}
-	tag9 := TagValue{Tag: "BlockPrice", Value: float64ToString(blockPrice)}
-	tag10 := TagValue{Tag: "MinBlockSize", Value: int64ToString(minBlockSize)}
-	tag11 := TagValue{Tag: "MaxBlockSize", Value: int64ToString(maxBlockSize)}
-	tag12 := TagValue{Tag: "IWouldPrice", Value: float64ToString(iWouldPrice)}
-	baseOrder.AlgoParams = append(baseOrder.AlgoParams, tag1)
-	baseOrder.AlgoParams = append(baseOrder.AlgoParams, tag2)
-	baseOrder.AlgoParams = append(baseOrder.AlgoParams, tag3)
-	baseOrder.AlgoParams = append(baseOrder.AlgoParams, tag4)
-	baseOrder.AlgoParams = append(baseOrder.AlgoParams, tag5)
-	baseOrder.AlgoParams = append(baseOrder.AlgoParams, tag6)
-	baseOrder.AlgoParams = append(baseOrder.AlgoParams, tag7)
-	baseOrder.AlgoParams = append(baseOrder.AlgoParams, tag8)
-	baseOrder.AlgoParams = append(baseOrder.AlgoParams, tag9)
-	baseOrder.AlgoParams = append(baseOrder.AlgoParams, tag10)
-	baseOrder.AlgoParams = append(baseOrder.AlgoParams, tag11)
-	baseOrder.AlgoParams = append(baseOrder.AlgoParams, tag12)
 }

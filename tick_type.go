@@ -228,6 +228,12 @@ var tickTypeMap = map[TickType]string{
 	FINAL_IPO_LAST:            "FINAL_IPO_LAST",
 	DELAYED_YIELD_BID:         "DELAYED_YIELD_BID",
 	DELAYED_YIELD_ASK:         "DELAYED_YIELD_ASK",
+	ODD_LOT_BID:               "ODD_LOT_BID",
+	ODD_LOT_ASK:               "ODD_LOT_ASK",
+	ODD_LOT_BID_SIZE:          "ODD_LOT_BID_SIZE",
+	ODD_LOT_ASK_SIZE:          "ODD_LOT_ASK_SIZE",
+	ODD_LOT_BID_EXCH:          "ODD_LOT_BID_EXCH",
+	ODD_LOT_ASK_EXCH:          "ODD_LOT_ASK_EXCH",
 	NOT_SET:                   "NOT_SET",
 }
 

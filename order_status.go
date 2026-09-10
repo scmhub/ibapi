@@ -6,7 +6,7 @@ import "strings"
 type OrderStatus int
 
 const (
-	OrderStatusApiPending    OrderStatus = iota
+	OrderStatusApiPending OrderStatus = iota
 	OrderStatusApiCancelled
 	OrderStatusPreSubmitted
 	OrderStatusPendingCancel
