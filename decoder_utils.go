@@ -1141,6 +1141,9 @@ func decodeContractDetails(contractProto *protobuf.Contract, contractDetailsProt
 	if contractDetailsProto.EventContractDescription2 != nil {
 		contractDetails.EventContractDescription2 = contractDetailsProto.GetEventContractDescription2()
 	}
+	if contractDetailsProto.SettlementMethod != nil {
+		contractDetails.SettlementMethod = contractDetailsProto.GetSettlementMethod()
+	}
 
 	return contractDetails
 }

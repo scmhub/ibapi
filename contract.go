@@ -315,6 +315,8 @@ type ContractDetails struct {
 	EventContract1            string
 	EventContractDescription1 string
 	EventContractDescription2 string
+
+	SettlementMethod string
 }
 
 func NewContractDetails() *ContractDetails {
@@ -329,7 +331,7 @@ func NewContractDetails() *ContractDetails {
 }
 
 func (c ContractDetails) String() string {
-	return fmt.Sprintf("%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %t, %t, %f, %t, %s, %s, %s, %s, %t, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s",
+	return fmt.Sprintf("%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %t, %t, %f, %t, %s, %s, %s, %s, %t, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s",
 		c.Contract,
 		c.MarketName,
 		FloatMaxString(c.MinTick),
@@ -380,6 +382,7 @@ func (c ContractDetails) String() string {
 		c.EventContract1,
 		c.EventContractDescription1,
 		c.EventContractDescription2,
+		c.SettlementMethod,
 	)
 }
 
