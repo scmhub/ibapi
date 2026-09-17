@@ -461,6 +461,9 @@ func createOrderProto(order *Order) (*protobuf.Order, error) {
 	if order.ConditionsIgnoreRth {
 		orderProto.ConditionsIgnoreRth = &order.ConditionsIgnoreRth
 	}
+	if order.ConditionsIncludeOvernight {
+		orderProto.ConditionsIncludeOvernight = &order.ConditionsIncludeOvernight
+	}
 
 	// models
 	if !stringIsEmpty(order.ModelCode) {

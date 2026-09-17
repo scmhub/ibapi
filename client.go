@@ -2443,6 +2443,12 @@ func (c *EClient) validateOrderParameters(order *protobuf.Order) string {
 			return "hedgeMaxSize"
 		}
 	}
+
+	if c.serverVersion < UNIFIED_VERSION_COND_ORDER_WITH_OVERNIGHT_PARAM {
+		if order.ConditionsIncludeOvernight != nil {
+			return "conditionsIncludeOvernight"
+		}
+	}
 	return ""
 }
 

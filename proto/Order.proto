@@ -208,4 +208,6 @@ message Order {
     
     // hedge orders
     optional int32 hedgeMaxSize = 144;
+
+    optional bool conditionsIncludeOvernight = 145;
 }

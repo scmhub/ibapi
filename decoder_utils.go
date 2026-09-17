@@ -533,6 +533,9 @@ func decodeOrder(orderID int64, contractProto *protobuf.Contract, orderProto *pr
 	if orderProto.ConditionsIgnoreRth != nil {
 		order.ConditionsIgnoreRth = orderProto.GetConditionsIgnoreRth()
 	}
+	if orderProto.ConditionsIncludeOvernight != nil {
+		order.ConditionsIncludeOvernight = orderProto.GetConditionsIncludeOvernight()
+	}
 	// models
 	if orderProto.ModelCode != nil {
 		order.ModelCode = orderProto.GetModelCode()

@@ -48,6 +48,7 @@ func MarketOrder(action string, quantity Decimal) *Order {
 	order.Action = action
 	order.OrderType = "MKT"
 	order.TotalQuantity = quantity
+	order.TIF = "DAY"
 
 	return order
 }

@@ -193,9 +193,10 @@ type Order struct {
 	AdjustableTrailingUnit       int64
 	LmtPriceOffset               float64 `default:"UNSET_FLOAT"`
 
-	Conditions            []OrderCondition
-	ConditionsCancelOrder bool
-	ConditionsIgnoreRth   bool
+	Conditions                 []OrderCondition
+	ConditionsCancelOrder      bool
+	ConditionsIgnoreRth        bool
+	ConditionsIncludeOvernight bool
 
 	// ext operator
 	ExtOperator string
