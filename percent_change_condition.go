@@ -26,5 +26,5 @@ func (pcc PercentChangeCondition) makeFields() []any {
 
 func (pcc PercentChangeCondition) String() string {
 	volume := fmt.Sprintf("%f", pcc.ChangePercent)
-	return fmt.Sprintf("%s %s", pcc.contractCondition, pcc.operatorCondition.stringWithOperator(volume))
+	return fmt.Sprintf("%s %s", pcc.contractCondition, pcc.stringWithOperator(volume))
 }

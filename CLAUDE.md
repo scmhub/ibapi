@@ -11,11 +11,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ```bash
 go build ./...          # compile everything
 go vet ./...            # static analysis
-gofmt -l .              # check formatting (there is no separate lint config/CI in this repo)
+gofmt -l .              # check formatting
+golangci-lint run ./... # linter (config: .golangci.yml)
 go test ./... -run TestName   # run a single test by name
 ```
 
-There is no Makefile, no CI workflow, and no linter config in this repo — `go build`/`go vet`/`gofmt` are the checks to run before considering a change done.
+There is no Makefile in this repo — `go build`/`go vet`/`gofmt`/`golangci-lint run` are the checks to run before considering a change done. `.github/workflows/ci.yml` runs these same checks (plus the self-contained subset of tests that don't need a live TWS/Gateway, see below) on every push/PR to `main`.
 
 ### Tests require a live TWS/IB Gateway connection
 

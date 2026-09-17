@@ -25,5 +25,5 @@ func (tc TimeCondition) makeFields() []any {
 }
 
 func (tc TimeCondition) String() string {
-	return fmt.Sprintf("time is %s", tc.operatorCondition.stringWithOperator(tc.Time))
+	return fmt.Sprintf("time is %s", tc.stringWithOperator(tc.Time))
 }

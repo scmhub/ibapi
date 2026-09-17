@@ -173,7 +173,7 @@ func decodeExecution(executionProto *protobuf.Execution) *Execution {
 		execution.Price = executionProto.GetPrice()
 	}
 	if executionProto.PermId != nil {
-		execution.PermID = int64(executionProto.GetPermId())
+		execution.PermID = executionProto.GetPermId()
 	}
 	if executionProto.IsLiquidation != nil {
 		execution.Liquidation = BoolToInt64(executionProto.GetIsLiquidation())
@@ -224,7 +224,7 @@ func decodeOrder(orderID int64, contractProto *protobuf.Contract, orderProto *pr
 		order.OrderID = int64(orderProto.GetOrderId())
 	}
 	if orderProto.PermId != nil {
-		order.PermID = int64(orderProto.GetPermId())
+		order.PermID = orderProto.GetPermId()
 	}
 	if orderProto.ParentId != nil {
 		order.ParentID = int64(orderProto.GetParentId())

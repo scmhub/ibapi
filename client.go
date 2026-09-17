@@ -109,20 +109,6 @@ func (me *MsgEncoder) encodeFields(v ...any) *MsgEncoder {
 	return me
 }
 
-// encodeMax encodes a value that might be UNSET
-func (me *MsgEncoder) encodeMax(v any) *MsgEncoder {
-	switch val := v.(type) {
-	case int64:
-		return me.encodeIntMax(val)
-	case float64:
-		return me.encodeFloatMax(val)
-	// case Decimal:
-	// 	return me.encodeDecimalMax(val)
-	default:
-		return me.encodeField(v)
-	}
-}
-
 // encodeInt adds an int value to the message
 func (me *MsgEncoder) encodeInt(v int) *MsgEncoder {
 	me.buf.WriteString(strconv.Itoa(v))
@@ -178,6 +164,8 @@ func (me *MsgEncoder) encodeBytes(v []byte) *MsgEncoder {
 }
 
 // encodeBytes adds raw bytes to the message
+//
+//nolint:unparam // returns *MsgEncoder for chaining, consistent with every other encode* method
 func (me *MsgEncoder) encodeProto(v []byte) *MsgEncoder {
 	me.buf.Write(v)
 	return me
@@ -191,6 +179,8 @@ func (me *MsgEncoder) encodeDecimal(v Decimal) *MsgEncoder {
 }
 
 // encodeTagValues adds a slice of TagValue to the message
+//
+//nolint:unparam // returns *MsgEncoder for chaining, consistent with every other encode* method
 func (me *MsgEncoder) encodeTagValues(v []TagValue) *MsgEncoder {
 	for _, tv := range v {
 		me.buf.WriteString(tv.Tag)
@@ -202,6 +192,9 @@ func (me *MsgEncoder) encodeTagValues(v []TagValue) *MsgEncoder {
 	return me
 }
 
+// encodeContract adds a Contract's fields to the message.
+//
+//nolint:unparam // returns *MsgEncoder for chaining, consistent with every other encode* method
 func (me *MsgEncoder) encodeContract(v *Contract) *MsgEncoder {
 	me.encodeInt64(v.ConID)
 	me.encodeString(v.Symbol)
@@ -220,6 +213,8 @@ func (me *MsgEncoder) encodeContract(v *Contract) *MsgEncoder {
 }
 
 // encodeIntMax adds an int64 value to the message, handling UNSET_INT
+//
+//nolint:unparam // returns *MsgEncoder for chaining, consistent with every other encode* method
 func (me *MsgEncoder) encodeIntMax(v int64) *MsgEncoder {
 	if v == UNSET_INT {
 		me.buf.WriteByte(delim)
@@ -229,6 +224,8 @@ func (me *MsgEncoder) encodeIntMax(v int64) *MsgEncoder {
 }
 
 // encodeFloatMax adds a float64 value to the message, handling UNSET_FLOAT
+//
+//nolint:unparam // returns *MsgEncoder for chaining, consistent with every other encode* method
 func (me *MsgEncoder) encodeFloatMax(v float64) *MsgEncoder {
 	if v == UNSET_FLOAT {
 		me.buf.WriteByte(delim)
@@ -347,11 +344,11 @@ func (c *EClient) setConnState(state ConnState) {
 }
 
 // request is a goroutine that will get the req from reqChan and send it to TWS.
+// The caller must call c.wg.Add(1) before starting this goroutine.
 func (c *EClient) request() {
 	log.Debug().Msg("requester started")
 	defer log.Debug().Msg("requester ended")
 
-	c.wg.Add(1)
 	defer c.wg.Done()
 
 	for {
@@ -400,7 +397,7 @@ func (c *EClient) validateInvalidSymbols(host string) error {
 }
 
 func (c *EClient) useProtoBuf(msgID int64) bool {
-	if version, exists := PROTOBUF_MSG_IDS[OUT(msgID)]; exists {
+	if version, exists := PROTOBUF_MSG_IDS[msgID]; exists {
 		return version <= c.serverVersion
 	}
 	return false
@@ -512,6 +509,22 @@ func (c *EClient) Connect(host string, port int, clientID int64) error {
 		return CONNECT_FAIL
 	}
 
+	// From here on the socket is live: any early return below must tear it
+	// down and reset internal state the same way Disconnect() does, otherwise
+	// the socket and any goroutines started below are leaked and can interfere
+	// with a subsequent Connect() (e.g. a stale reader canceling the new ctx).
+	connected := false
+	defer func() {
+		if !connected {
+			c.cancel()
+			if err := c.conn.disconnect(); err != nil {
+				log.Error().Err(err).Msg("error disconnecting after failed Connect")
+			}
+			c.wg.Wait()
+			c.reset()
+		}
+	}()
+
 	// HandShake with the TWS or GateWay to ensure the version,
 	log.Debug().Msg("Handshake with TWS or GateWay")
 
@@ -552,7 +565,7 @@ func (c *EClient) Connect(host string, port int, clientID int64) error {
 	msgBytes := c.scanner.Bytes()
 	serverInfo := splitMsgBytes(msgBytes)
 	v, _ := strconv.Atoi(string(serverInfo[0]))
-	c.serverVersion = Version(v)
+	c.serverVersion = v
 	if c.serverVersion < MIN_SERVER_VER_SUPPORTED {
 		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), UNSUPPORTED_VERSION.Code, UNSUPPORTED_VERSION.Msg, "")
 		return UNSUPPORTED_VERSION
@@ -565,9 +578,18 @@ func (c *EClient) Connect(host string, port int, clientID int64) error {
 	c.decoder = &EDecoder{wrapper: c.wrapper, serverVersion: c.serverVersion}
 
 	//start Ereader
-	go EReader(c.ctx, c.cancel, c.scanner, c.decoder, &c.wg)
+	// Called synchronously (not `go EReader(...)`) so that its internal
+	// wg.Add calls for the scan/decode goroutines happen before Connect()
+	// proceeds, closing the race where an immediate Disconnect() could call
+	// wg.Wait() before those goroutines registered themselves.
+	EReader(c.ctx, c.cancel, c.scanner, c.decoder, &c.wg)
 
 	// start requester
+	// wg.Add must happen here, before the goroutine starts, not inside
+	// request() itself - otherwise a Disconnect() racing right after Connect()
+	// could call wg.Wait() before request() registers, then reset() would hand
+	// out a new ctx/reqChan/wg while this stale goroutine is still starting.
+	c.wg.Add(1)
 	go c.request()
 
 	// startAPI
@@ -577,6 +599,7 @@ func (c *EClient) Connect(host string, port int, clientID int64) error {
 
 	c.setConnState(CONNECTED)
 	c.wrapper.ConnectAck()
+	connected = true
 
 	// 4) Launch the shutdown watcher exactly once
 	c.watchOnce.Do(func() {
@@ -605,7 +628,9 @@ func (c *EClient) ConnectWithGracefulShutdown(host string, port int, clientID in
 	go func() {
 		<-sigChan
 		log.Warn().Msg("detected termination signal, shutting down gracefully")
-		c.Disconnect()
+		if err := c.Disconnect(); err != nil {
+			log.Error().Err(err).Msg("error disconnecting on termination signal")
+		}
 		os.Exit(0)
 	}()
 	return nil
@@ -618,7 +643,7 @@ func (c *EClient) Disconnect() error {
 		return nil
 	}
 
-	// Set Disconnected state realy so that new calls to Disconnect() will not block
+	// Set Disconnected state early so that new calls to Disconnect() will not block
 	c.setConnState(DISCONNECTED)
 
 	// 1) Cancel to unblock request Loop

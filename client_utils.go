@@ -637,7 +637,7 @@ func createConditionsProto(order *Order) ([]*protobuf.OrderCondition, error) {
 // Base
 func createOrderConditionProto(cond OrderCondition) *protobuf.OrderCondition {
 	protoCond := &protobuf.OrderCondition{}
-	if isValidInt64Value(int64(cond.Type())) {
+	if isValidInt64Value(cond.Type()) {
 		t := int32(cond.Type())
 		protoCond.Type = &t
 	}
@@ -1607,7 +1607,7 @@ func createWshEventDataRequestProto(reqID int64, wshEventData *WshEventData) *pr
 		wshEventDataRequestProto.ReqId = &id
 	}
 
-	if isValidInt64Value(int64(wshEventData.ConID)) {
+	if isValidInt64Value(wshEventData.ConID) {
 		cid := int32(wshEventData.ConID)
 		wshEventDataRequestProto.ConId = &cid
 	}
@@ -1636,7 +1636,7 @@ func createWshEventDataRequestProto(reqID int64, wshEventData *WshEventData) *pr
 		wshEventDataRequestProto.EndDate = &wshEventData.EndDate
 	}
 
-	if isValidInt64Value(int64(wshEventData.TotalLimit)) {
+	if isValidInt64Value(wshEventData.TotalLimit) {
 		total := int32(wshEventData.TotalLimit)
 		wshEventDataRequestProto.TotalLimit = &total
 	}

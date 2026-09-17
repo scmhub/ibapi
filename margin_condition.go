@@ -26,5 +26,5 @@ func (mc MarginCondition) makeFields() []any {
 
 func (mc MarginCondition) String() string {
 	percent := fmt.Sprintf("%d", mc.Percent)
-	return fmt.Sprintf("the margin cushion persent %s", mc.operatorCondition.stringWithOperator(percent))
+	return fmt.Sprintf("the margin cushion persent %s", mc.stringWithOperator(percent))
 }

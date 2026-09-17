@@ -840,7 +840,7 @@ func (d *EDecoder) processOrderStatusMsgProtoBuf(msgBuf *MsgBuffer) {
 	}
 	var permID int64
 	if orderStatusProto.PermId != nil {
-		permID = int64(orderStatusProto.GetPermId())
+		permID = orderStatusProto.GetPermId()
 	}
 	var parentID int64
 	if orderStatusProto.ParentId != nil {
@@ -906,7 +906,7 @@ func (d *EDecoder) processErrorMsgProtoBuf(msgBuf *MsgBuffer) {
 	}
 	var errorTimeMs int64
 	if errorMessageProto.ErrorTime != nil {
-		errorTimeMs = int64(errorMessageProto.GetErrorTime())
+		errorTimeMs = errorMessageProto.GetErrorTime()
 	}
 	var errorCode int64
 	if errorMessageProto.ErrorCode != nil {
@@ -1617,7 +1617,7 @@ func (d *EDecoder) processExecutionDetailsMsgProtoBuf(msgBuf *MsgBuffer) {
 
 	d.wrapper.ExecDetailsProtoBuf(&executionDetailsProto)
 
-	var reqID int64 = int64(executionDetailsProto.GetReqId())
+	reqID := int64(executionDetailsProto.GetReqId())
 
 	var contract *Contract
 	if executionDetailsProto.Contract != nil {
@@ -4037,7 +4037,7 @@ func (d *EDecoder) processOrderBoundMsgProtoBuf(msgBuf *MsgBuffer) {
 
 	var permID int64
 	if orderBoundProto.PermId != nil {
-		permID = int64(orderBoundProto.GetPermId())
+		permID = orderBoundProto.GetPermId()
 	}
 	var clientID int64
 	if orderBoundProto.PermId != nil {

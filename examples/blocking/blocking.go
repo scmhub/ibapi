@@ -61,7 +61,11 @@ func main() {
 		log.Error().Err(err).Msg("Connect")
 		return
 	}
-	defer ib.Disconnect()
+	defer func() {
+		if err := ib.Disconnect(); err != nil {
+			log.Error().Err(err).Msg("Disconnect")
+		}
+	}()
 	// Add a short delay to allow the connection to stabilize
 	time.Sleep(100 * time.Millisecond)
 	log.Info().Msg("Waited for connection to stabilize")

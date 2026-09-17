@@ -216,7 +216,7 @@ func (m *MsgBuffer) decodeStringUnescaped() string {
 		log.Panic().Err(m.err).Msg("decode string read error")
 	}
 	var s string
-	s, m.err = strconv.Unquote(fmt.Sprint("\"", m.bs[:len(m.bs)-1], "\""))
+	s, m.err = strconv.Unquote(fmt.Sprint("\"", string(m.bs[:len(m.bs)-1]), "\""))
 	if m.err != nil {
 		log.Panic().Err(m.err).Msg("decode string unmarshal error")
 	}

@@ -4,22 +4,6 @@ import "fmt"
 
 const NO_ROW_NUMBER_SPECIFIED int64 = -1
 
-// ScanData .
-type ScanData struct {
-	Rank            int64
-	ContractDetails *ContractDetails
-	Distance        string
-	Benchmark       string
-	Projection      string
-	LegsStr         string
-}
-
-func (s ScanData) String() string {
-	return fmt.Sprintf("Rank: %d, Symbol: %s, SecType: %s, Currency: %s, Distance: %s, Benchmark: %s, Projection: %s, Legs String: %s",
-		s.Rank, s.ContractDetails.Contract.Symbol, s.ContractDetails.Contract.SecType, s.ContractDetails.Contract.Currency,
-		s.Distance, s.Benchmark, s.Projection, s.LegsStr)
-}
-
 // ScannerSubscription .
 type ScannerSubscription struct {
 	NumberOfRows             int64 `default:"NO_ROW_NUMBER_SPECIFIED"`

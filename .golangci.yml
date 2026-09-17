@@ -1,0 +1,25 @@
+version: "2"
+
+linters:
+  default: standard
+  enable:
+    - errcheck
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+    - misspell
+    - unconvert
+    - unparam
+
+  exclusions:
+    rules:
+      # Generated protobuf bindings: not ours to lint.
+      - path: protobuf/.*\.pb\.go
+        linters:
+          - all
+
+formatters:
+  enable:
+    - gofmt
+    - goimports

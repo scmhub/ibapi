@@ -28,5 +28,5 @@ func (vc VolumeCondition) makeFields() []any {
 
 func (vc VolumeCondition) String() string {
 	volume := strconv.FormatInt(vc.Volume, 10)
-	return fmt.Sprintf("%s %s", vc.contractCondition, vc.operatorCondition.stringWithOperator(volume))
+	return fmt.Sprintf("%s %s", vc.contractCondition, vc.stringWithOperator(volume))
 }
