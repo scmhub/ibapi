@@ -27,7 +27,7 @@ jobs:
             exit 1
           fi
       - name: test (self-contained, no live TWS/Gateway required)
-        run: go test ./... -run '^Test(Create.*Proto.*|ContractComplexJSON)$' -race -v
+        run: go test ./... -run '^Test(Create.*Proto.*|ContractComplexJSON|Lifecycle.*)$' -race -v
 
   lint:
     runs-on: ubuntu-latest

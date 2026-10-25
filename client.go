@@ -16,12 +16,14 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/signal"
 	"strconv"
 	"sync"
 	"sync/atomic"
 	"syscall"
+	"time"
 
 	"github.com/scmhub/ibapi/protobuf"
 	"google.golang.org/protobuf/proto"
@@ -272,6 +274,9 @@ func (me *MsgEncoder) Reset() {
 
 // EClient is the main struct to use from API user's point of view.
 type EClient struct {
+	connectStarted       atomic.Bool
+	disconnectOnce       sync.Once
+	disconnectErr        error
 	host                 string
 	port                 int
 	clientID             int64
@@ -365,11 +370,8 @@ func (c *EClient) request() {
 			nn, err := c.writer.Write(req)
 			if err != nil {
 				log.Error().Err(err).Int("nbytes", nn).Bytes("reqMsg", req).Msg("requester write error")
-				// Disconnect the client
-				log.Info().Msg("Disconnecting client due to write error.")
-				if disconnectErr := c.Disconnect(); disconnectErr != nil {
-					log.Error().Err(disconnectErr).Msg("Error during disconnect.")
-				}
+				// Let the session watcher dispose the client; the requester must
+				// return before teardown can join the session goroutines.
 				c.cancel()
 				return
 			}
@@ -480,9 +482,21 @@ func (c *EClient) startApiProtoBuf(startApiRequestProto *protobuf.StartApiReques
 }
 
 // Connect must be called before any other.
-// There is no feedback for a successful connection, but a subsequent attempt to connect will return the message "Already connected.".
-// You should wait for the connection to be established and NextValidID to be returned before calling any other function. If you don't wait, you will get a broken pipe error.
+// An EClient is single-use; create a fresh client for each connection attempt.
+// Reusing a disconnected client is rejected instead of resetting live watcher state.
+// Wait for NextValidID before sending requests; Connect returning alone does not
+// indicate that TWS has completed session initialization.
 func (c *EClient) Connect(host string, port int, clientID int64) error {
+	return c.ConnectContext(context.Background(), host, port, clientID)
+}
+
+// ConnectContext bounds dialing and the API handshake. Each client is one session.
+// The context does not govern a successfully established session; use Disconnect
+// to close it. Create a new EClient after any failed or completed attempt.
+func (c *EClient) ConnectContext(ctx context.Context, host string, port int, clientID int64) error {
+	if !c.connectStarted.CompareAndSwap(false, true) {
+		return fmt.Errorf("EClient is single-use: create a new EClient for each connection attempt")
+	}
 
 	if c.IsConnected() {
 		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), ALREADY_CONNECTED.Code, ALREADY_CONNECTED.Msg, "")
@@ -502,26 +516,26 @@ func (c *EClient) Connect(host string, port int, clientID int64) error {
 
 	// Connecting to IB server
 	log.Info().Str("host", host).Int("port", port).Int64("clientID", clientID).Msg("Connecting to IB server")
-	if err := c.conn.connect(c.host, c.port); err != nil {
+	if err := c.conn.connectContext(ctx, c.host, c.port); err != nil {
 		log.Error().Err(CONNECT_FAIL).Msg("Connection fail")
 		c.wrapper.Error(NO_VALID_ID, currentTimeMillis(), CONNECT_FAIL.Code, CONNECT_FAIL.Msg, "")
 		c.reset()
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
 		return CONNECT_FAIL
 	}
 
-	// From here on the socket is live: any early return below must tear it
-	// down and reset internal state the same way Disconnect() does, otherwise
-	// the socket and any goroutines started below are leaked and can interfere
-	// with a subsequent Connect() (e.g. a stale reader canceling the new ctx).
+	socket := c.conn.getConn()
+	if deadline, ok := ctx.Deadline(); ok {
+		_ = socket.SetDeadline(deadline)
+	}
+	stopCancel := context.AfterFunc(ctx, func() { _ = socket.Close() })
 	connected := false
 	defer func() {
+		stopCancel()
 		if !connected {
-			c.cancel()
-			if err := c.conn.disconnect(); err != nil {
-				log.Error().Err(err).Msg("error disconnecting after failed Connect")
-			}
-			c.wg.Wait()
-			c.reset()
+			_ = c.Disconnect()
 		}
 	}()
 
@@ -558,12 +572,21 @@ func (c *EClient) Connect(host string, port int, clientID int64) error {
 
 	// scan once to get server info
 	if !c.scanner.Scan() {
-		return c.scanner.Err()
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+		if err := c.scanner.Err(); err != nil {
+			return err
+		}
+		return io.EOF
 	}
 
 	// Init server info
 	msgBytes := c.scanner.Bytes()
 	serverInfo := splitMsgBytes(msgBytes)
+	if len(serverInfo) < 2 {
+		return fmt.Errorf("incomplete IBKR handshake")
+	}
 	v, _ := strconv.Atoi(string(serverInfo[0]))
 	c.serverVersion = v
 	if c.serverVersion < MIN_SERVER_VER_SUPPORTED {
@@ -593,13 +616,12 @@ func (c *EClient) Connect(host string, port int, clientID int64) error {
 	go c.request()
 
 	// startAPI
+	c.setConnState(CONNECTED)
 	if err := c.startAPI(); err != nil {
 		return err
 	}
 
-	c.setConnState(CONNECTED)
 	c.wrapper.ConnectAck()
-	connected = true
 
 	// 4) Launch the shutdown watcher exactly once
 	c.watchOnce.Do(func() {
@@ -611,6 +633,13 @@ func (c *EClient) Connect(host string, port int, clientID int64) error {
 		}()
 	})
 
+	if !stopCancel() {
+		return ctx.Err()
+	}
+	if err := socket.SetDeadline(time.Time{}); err != nil {
+		return err
+	}
+	connected = true
 	log.Debug().Msg("IB Client Connected!")
 
 	return nil
@@ -638,32 +667,26 @@ func (c *EClient) ConnectWithGracefulShutdown(host string, port int, clientID in
 
 // Disconnect terminates the connections with TWS.
 // Calling this function does not cancel orders that have already been sent.
+// To interrupt connection establishment, cancel the ConnectContext context and
+// wait for it to return before calling Disconnect. Concurrent Disconnect calls
+// are supported once connection establishment has returned.
 func (c *EClient) Disconnect() error {
-	if !c.IsConnected() {
-		return nil
+	closed := false
+	c.disconnectOnce.Do(func() {
+		c.connectStarted.Store(true)
+		c.setConnState(DISCONNECTED)
+		c.cancel()
+		c.disconnectErr = c.conn.disconnect()
+		c.wg.Wait()
+		// Session fields stay immutable after shutdown. A fresh EClient owns
+		// the next handshake, so the old watcher cannot observe replacement state.
+		closed = true
+	})
+	// Run callbacks after Once completes so a callback may call Disconnect.
+	if closed {
+		c.wrapper.ConnectionClosed()
 	}
-
-	// Set Disconnected state early so that new calls to Disconnect() will not block
-	c.setConnState(DISCONNECTED)
-
-	// 1) Cancel to unblock request Loop
-	c.cancel()
-
-	// 2) Close the socket to unblock reader loop
-	if err := c.conn.disconnect(); err != nil {
-		return err
-	}
-
-	// 3) Wait for loops to exit
-	c.wg.Wait()
-
-	// 4) Reset internal state
-	c.reset()
-
-	c.wrapper.ConnectionClosed()
-	log.Debug().Msg("IB Client Disconnected!")
-
-	return nil
+	return c.disconnectErr
 }
 
 func (c *EClient) Ctx() context.Context {
